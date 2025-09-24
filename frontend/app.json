@@ -1,12 +1,17 @@
 {
   "expo": {
-    "name": "frontend",
+    "name": "PetQuest",
     "slug": "frontend",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "frontend",
     "userInterfaceStyle": "automatic",
+     "splash": {
+      "image": "./assets/images/example.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#000000"
+    },
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true
