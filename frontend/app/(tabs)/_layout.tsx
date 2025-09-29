@@ -28,7 +28,7 @@ export default function TabLayout() {
         name="Calendar"
         component={HomeScreen} // Using HomeScreen as placeholder
         options={{
-          title: 'Calendar',
+          title: ' ',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="calendar" color={color} />,
         }}
       />
@@ -36,7 +36,7 @@ export default function TabLayout() {
         name="Todo"
         component={ExploreScreen} // Using ExploreScreen as placeholder
         options={{
-          title: 'Todo',
+          title: '',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="list.bullet" color={color} />,
         }}
       />
@@ -61,7 +61,7 @@ export default function TabLayout() {
         component={HomeScreen} // Using HomeScreen as placeholder
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="gear.fill" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="ear.fill" color={color} />,
         }}
       />
     </Tab.Navigator>
