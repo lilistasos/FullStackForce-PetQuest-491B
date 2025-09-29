@@ -15,29 +15,6 @@ Task Breakdown: Each story should be broken down into smaller technical tasks (e
 ---
 
 ## User Stories:
-
-### Story 1: [Short Title of User Story]
-* **As a:** [Type of User]
-* **I want to:** [Perform some action/feature]
-* **So that:** [I can achieve some goal/benefit]
-* **Priority:** [High/Medium/Low]
-* **Effort:** [Low/Medium/High]
-* **Assigned to:** [Name(s) of team member(s)]
-* **Acceptance Criteria:**
-    * [ ] Criterion 1: [A specific, testable condition that must be met.]
-    * [ ] Criterion 2: [Another specific, testable condition.]
-    * [ ] Criterion 3: [And so on...]
-
-### Story 2: [Short Title of User Story]
-* **As a:** [Type of User]
-* **I want to:** [Perform some action/feature]
-* **So that:** [I can achieve some goal/benefit]
-* **Priority:** [High/Medium/Low]
-* **Effort:** [Low/Medium/High]
-* **Assigned to:** [Name(s) of team member(s)]
-* **Acceptance Criteria:**
-    * [ ] Criterion 1: [A specific, testable condition.]
-    * [ ] Criterion 2: [Another specific, testable condition.]
  
 ### Story 1: Individual Account Creation
 * **As a:** Person with no children
@@ -89,7 +66,7 @@ Account Login
 * **Acceptance Criteria:**
        * [ ] Criterion 1: The bottom task bar buttons switch to the relevant page quickly
   
-## Story 6: Child view of calendar
+### Story 5: Child view of calendar
 * **As a:** Child
 * **I want to:** View my current months calendar
 * **So that:**  I can easily see my months agenda and plan around tasks
@@ -101,7 +78,7 @@ Account Login
      Criterion 2: A task is marked as completed once marked as completed
      Criterion 3: Points are added to account once a task is completed
 
-### Story 7: Child Views Tasks on to-do list
+### Story 6: Child Views Tasks on to-do list
 * **As a:** Child
 * **I want to:** View the tasks on my to do list and mark them complete
 * **So that:** I know what tasks I need to do and what I’ve finished
@@ -112,7 +89,7 @@ Account Login
       Criterion 1: I should be able to see all the tasks I need to do and what I’ve finished
       Criterion 2: If I’m sent a new task, it should show up on the to do list 
 
-### Story 8: View Tasks for Different Days
+### Story 7: View Tasks for Different Days
 * **As a:**  Child
 * **I want to:**  Switch between days and view tasks for different days
 * **So that:**  I know my current and future tasks
@@ -124,7 +101,7 @@ Account Login
       Criterion 2: I should see a change in dates and tasks
       Criterion 3: I should be able to see all of my completed/ incomplete tasks for each day
 
-### Story 9: Task Details
+### Story 8: Task Details
 * **As a:** Individual
 * **I want to:** Be able to write details under each task and view them
 * **So that:**  I can be reminded of the specifics of a task I set quickly
@@ -137,7 +114,7 @@ Account Login
       Criterion 3: Users can click on a task in the calendar view and have the task and the details pop up
 
 
-### Story 10: Account Storage/Database
+### Story 9: Account Storage/Database
 * **As a:** User
 * **I want to:** have my account persist after logging out
 * **So that:** I can know my settings, calendar and to do list are saved
@@ -150,7 +127,7 @@ Account Login
       Criterion 3: The account details are deleted from the database when a user deletes their account
 
 
-### Story 11: Pet Pages 
+### Story 10: Pet Pages 
 * **As a:** User
 * **I want to:** View my pets, shop, and accessories
 * **So that:** I can customize my pets and engage with the fun side of the app
@@ -166,4 +143,4 @@ Account Login
 
 
 
-### [Add more stories as needed]
+### If we finish these quicker than expected, please work on another user story and let the team know!
