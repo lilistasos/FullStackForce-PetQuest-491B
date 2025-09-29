@@ -8,9 +8,9 @@ Task Breakdown: Each story should be broken down into smaller technical tasks (e
 
 # Sprint Backlog: [Your Team Name/Project Name]
 
-**Sprint Dates:** [Start Date] to [End Date]
+**Sprint Dates:** September 30th, 2025 to October 22nd, 2025
 
-**Sprint Goal:** [Clearly state the main objective for this sprint in one sentence.]
+**Sprint Goal:** Get our app running with the core features being able to sign-up, login, view the calendar, and view the to-do list.
 
 ---
 
