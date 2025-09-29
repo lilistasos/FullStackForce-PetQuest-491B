@@ -2,7 +2,7 @@
 
 ## Senior Design Project
 
-Our goal...
+Our goal is to help parents educate their children on the importance of time management while making it fun. Individuals who would also like to use this app are more than welcome to set goals for themselves as well.
 
 ---
 
