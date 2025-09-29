@@ -6,11 +6,11 @@ Sprint 1 Backlog: A list of the specific user stories and tasks selected from th
 
 Task Breakdown: Each story should be broken down into smaller technical tasks (e.g., "Design database schema for users," "Create REST API endpoint for login," "Build the login UI component"). Assign each task to a team member.
 
-# Sprint Backlog: [Your Team Name/Project Name]
+# Sprint Backlog:  Full Stack Force / PetQuest 
 
-**Sprint Dates:** [Start Date] to [End Date]
+**Sprint Dates:** September 30th, 2025 to October 22nd, 2025
 
-**Sprint Goal:** [Clearly state the main objective for this sprint in one sentence.]
+**Sprint Goal:** Get our app running with the core features being able to sign-up, login, view the calendar, and view the to-do list.
 
 ---
 
