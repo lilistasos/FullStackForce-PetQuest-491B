@@ -10,23 +10,30 @@ Our goal is to help parents educate their children on the importance of time man
 
 ## Tech Stack
 
-### Frontend
-*
+### Frontend Languages
+* JavaScript
+* TypeScript
+
+### Frontend Frameworks
+* React Native
+* Expo
+
+### Backend
+* Databases
 *
 *
 *
 
-### Backend
-*
-*
-*
-*
 ### Libraries
 
 ### Tools
 * Discord: Primary platform for communication
 
 ## Repository Structure
+
+frontend → Stoage of our frontend design using Expo
+
+backend → Design of backend structure
 
 design_artifacts → History of our design process 
 
