@@ -1,7 +1,5 @@
-// app/index.tsx
-import ChildLayout from "./(child)/_layout";
+import { Redirect } from "expo-router";
 
 export default function Index() {
-  // Render the child layout directly (no redirect)
-  return <ChildLayout />;
+  return <Redirect href="/(indv)/calendar" />;
 }

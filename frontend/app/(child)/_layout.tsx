@@ -1,5 +1,7 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { TouchableOpacity } from "react-native";
+import { Ionicons } from '@expo/vector-icons';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -7,10 +9,10 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 // Import your screen components
-import CalendarScreen from './calendar';
-import TodoScreen from './todo';
-import PetScreen from './pet';
-import AccountScreen from './account';
+import CalendarScreen from './(tabs)/calendar';
+import TodoScreen from './(tabs)/todo';
+import PetScreen from './(tabs)/pet';
+import AccountScreen from './(tabs)/account';
 
 // Create the bottom tab navigator using React Navigation's createBottomTabNavigator
 const Tab = createBottomTabNavigator();
@@ -20,11 +22,23 @@ export default function TabLayout() {
 
   return (
     <Tab.Navigator
-      screenOptions={{
+      initialRouteName="Calendar"
+      screenOptions={({ route }) => ({
         tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        headerShown: false,
         tabBarButton: HapticTab,
-      }}
+        headerTitleAlign: 'center',
+        headerTitle: route.name,
+        headerRight: () => (
+          <TouchableOpacity
+            style={{ marginRight: 15 }}
+            onPress={() => {
+              console.log('Hamburger pressed on', route.name);
+            }}
+          >
+            <Ionicons name="menu" size={24} color="black" />
+          </TouchableOpacity>
+        ),
+      })}
     >
       <Tab.Screen
         name="Calendar"
@@ -36,7 +50,7 @@ export default function TabLayout() {
       />
       <Tab.Screen
         name="Todo"
-        component={TodoScreen} // Using ExploreScreen as placeholder
+        component={TodoScreen}
         options={{
           title: '',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="list.bullet" color={color} />,
@@ -44,18 +58,18 @@ export default function TabLayout() {
       />
       <Tab.Screen
         name="Pet"
-        component={PetScreen} // Using HomeScreen as placeholder
+        component={PetScreen}
         options={{
           title: ' ',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="pawprint.fill" color={color} />,
         }}
       />
       <Tab.Screen
-        name="Heart"
+        name="Account"
         component={AccountScreen} 
         options={{
           title: ' ',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="accessibility" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.fill" color={color} />,
         }}
       />
     </Tab.Navigator>
