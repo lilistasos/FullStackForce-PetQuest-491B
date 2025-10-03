@@ -8,13 +8,11 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
-// Import your screen components
 import CalendarScreen from './(tabs)/calendar';
 import TodoScreen from './(tabs)/todo';
 import PetScreen from './(tabs)/pet';
 import AccountScreen from './(tabs)/account';
 
-// Create the bottom tab navigator using React Navigation's createBottomTabNavigator
 const Tab = createBottomTabNavigator();
 
 export default function TabLayout() {
@@ -24,18 +22,42 @@ export default function TabLayout() {
     <Tab.Navigator
       initialRouteName="Calendar"
       screenOptions={({ route }) => ({
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+        tabBarActiveTintColor: "#3EA0D6", 
+        tabBarInactiveTintColor: "black", 
+        tabBarStyle: {
+      backgroundColor: "#52AFDD",
+    },
+
+      headerStyle: {
+      backgroundColor: "#52AFDD", 
+    },
+    headerTintColor: "#000000ff", 
+    headerTitleStyle: {
+      fontWeight: "bold",
+    },
+
         tabBarButton: HapticTab,
         headerTitleAlign: 'center',
         headerTitle: route.name,
+        headerLeft: () => (
+          <TouchableOpacity
+            style={{ marginLeft: 15 }}
+            onPress={() => {
+              // TODO
+            }}
+          >
+            <Ionicons name="menu" size={24} color="black" />
+          </TouchableOpacity>
+        ),
+
         headerRight: () => (
           <TouchableOpacity
             style={{ marginRight: 15 }}
             onPress={() => {
-              console.log('Hamburger pressed on', route.name);
+              // TODO
             }}
           >
-            <Ionicons name="menu" size={24} color="black" />
+            <Ionicons name="notifications-outline" size={24} color="black" />
           </TouchableOpacity>
         ),
       })}
