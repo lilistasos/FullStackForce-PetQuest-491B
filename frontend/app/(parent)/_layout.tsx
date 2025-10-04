@@ -11,7 +11,6 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import CalendarScreen from './(tabs)/calendar';
 import TodoScreen from './(tabs)/todo';
 import PostScreen from './(tabs)/post';
-import PetScreen from './(tabs)/pet';
 import AccountScreen from './(tabs)/account';
 
 const Tab = createBottomTabNavigator();
@@ -26,11 +25,11 @@ export default function TabLayout() {
             tabBarActiveTintColor: "#FFFFFF", 
             tabBarInactiveTintColor: "#000000ff", 
             tabBarStyle: {
-          backgroundColor: "#7B4FDD",
+          backgroundColor: "#dd4f4fff",
         },
     
           headerStyle: {
-          backgroundColor: "#7B4FDD", 
+          backgroundColor: "#dd4f4fff", 
         },
         headerTintColor: "#000000ff", 
         headerTitleStyle: {
@@ -85,14 +84,6 @@ export default function TabLayout() {
         options={{
           title: ' ',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="plus.app.fill" color={color} />,
-        }}
-      />
-      <Tab.Screen
-        name="Pet"
-        component={PetScreen}
-        options={{
-          title: ' ',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="pawprint.fill" color={color} />,
         }}
       />
       <Tab.Screen

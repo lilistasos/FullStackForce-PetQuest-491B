@@ -22,8 +22,8 @@ export default function TabLayout() {
     <Tab.Navigator
       initialRouteName="Calendar"
       screenOptions={({ route }) => ({
-        tabBarActiveTintColor: "#3EA0D6", 
-        tabBarInactiveTintColor: "black", 
+        tabBarActiveTintColor: "#FFFFFF", 
+        tabBarInactiveTintColor: "#555555", 
         tabBarStyle: {
       backgroundColor: "#52AFDD",
     },
