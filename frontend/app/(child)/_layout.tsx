@@ -63,6 +63,14 @@ export default function TabLayout() {
       })}
     >
       <Tab.Screen
+        name="Pet"
+        component={PetScreen}
+        options={{
+          title: ' ',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="pawprint.fill" color={color} />,
+        }}
+      />
+      <Tab.Screen
         name="Calendar"
         component={CalendarScreen}
         options={{
@@ -76,14 +84,6 @@ export default function TabLayout() {
         options={{
           title: '',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="list.bullet" color={color} />,
-        }}
-      />
-      <Tab.Screen
-        name="Pet"
-        component={PetScreen}
-        options={{
-          title: ' ',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="pawprint.fill" color={color} />,
         }}
       />
       <Tab.Screen

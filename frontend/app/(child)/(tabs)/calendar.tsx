@@ -1,16 +1,22 @@
 import { View, Text } from "react-native";
+import CalendarView from "../../../components/CalendarView"; // 👈 adjust the path if needed
+
 
 export default function CalendarScreen() {
+  const today = new Date().toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+  
   return (
     <View style={{ flex: 1 }}>
-  
-      <View style={{ padding: 16, backgroundColor: "#fff", borderBottomWidth: 1 }}>
-        <Text style={{ fontSize: 18, fontWeight: "bold" }}>Calendar</Text>
+      <View style={{ padding: 10, backgroundColor: "#fff", borderBottomWidth: 1 }}>
+        <Text style={{ fontSize: 18, fontWeight: "bold" }}>{today}</Text>
       </View>
 
-      {/* Page content */}
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <Text>Calendar Page Content</Text>
+      <View style={{ flex: 1 }}>
+        <CalendarView /> 
       </View>
     </View>
   );

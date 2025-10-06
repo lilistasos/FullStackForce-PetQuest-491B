@@ -7,7 +7,7 @@
     "icon": "./assets/images/example.png",
     "scheme": "frontend",
     "userInterfaceStyle": "automatic",
-     "splash": {
+    "splash": {
       "image": "./assets/images/example.png",
       "resizeMode": "cover",
       "backgroundColor": "#000000"
@@ -43,7 +43,8 @@
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,
