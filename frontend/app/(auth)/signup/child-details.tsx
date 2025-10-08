@@ -2,15 +2,15 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet } from "react-nativ
 import { useRouter } from "expo-router";
 import { useState } from "react";
 
-export default function PersonalDetailsScreen() {
+export default function FamilyDetailsScreen() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
-  const [dob, setDob] = useState("");
+  const [familyCode, setFamilyCode] = useState("");
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Personal Details</Text>
+      <Text style={styles.title}>Child Account Details</Text>
 
       <TextInput style={styles.input} placeholder="Name" value={name} onChangeText={setName} />
       
@@ -22,7 +22,7 @@ export default function PersonalDetailsScreen() {
         onChangeText={setPassword}
       />
 
-      <TextInput 
+      <TextInput
         style={styles.input}
         placeholder="Confirm Password"
         secureTextEntry
@@ -32,14 +32,14 @@ export default function PersonalDetailsScreen() {
 
       <TextInput
         style={styles.input}
-        placeholder="Date of Birth (MM/DD/YYYY)"
-        value={dob}
-        onChangeText={setDob}
+        placeholder="Family Code (Optional)"
+        value={familyCode}
+        onChangeText={setFamilyCode}
       />
 
       <TouchableOpacity
         style={styles.button}
-        onPress={() => router.replace("/(indv)/(tabs)/calendar")}
+        onPress={() => router.replace("/(child)/(tabs)/pet")}
       >
         <Text style={styles.buttonText}>Create Account</Text>
       </TouchableOpacity>

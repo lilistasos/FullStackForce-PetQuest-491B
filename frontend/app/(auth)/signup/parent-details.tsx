@@ -10,7 +10,7 @@ export default function FamilyDetailsScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Family Account Details</Text>
+      <Text style={styles.title}>Parent Account Details</Text>
 
       <TextInput style={styles.input} placeholder="Name" value={name} onChangeText={setName} />
       <TextInput
@@ -20,16 +20,25 @@ export default function FamilyDetailsScreen() {
         value={password}
         onChangeText={setPassword}
       />
+
       <TextInput
         style={styles.input}
-        placeholder="Family Code"
+        placeholder="Confirm Password"
+        secureTextEntry
+        value={password}
+        onChangeText={setPassword}
+      />
+
+      <TextInput
+        style={styles.input}
+        placeholder="Family Code (Optional)"
         value={familyCode}
         onChangeText={setFamilyCode}
       />
 
       <TouchableOpacity
         style={styles.button}
-        onPress={() => router.replace("/(child)/(tabs)/calendar")}
+        onPress={() => router.replace("/(parent)/(tabs)/calendar")}
       >
         <Text style={styles.buttonText}>Create Account</Text>
       </TouchableOpacity>
