@@ -39,6 +39,10 @@ export default function LoginScreen() {
         <Text style={styles.buttonText}>Log In</Text>
       </TouchableOpacity>
 
+      <TouchableOpacity onPress={() => router.push("/(auth)/forgot-password")}>
+        <Text style={styles.forgotPassword}>Forgot Password?</Text>
+      </TouchableOpacity>
+
       <TouchableOpacity onPress={() => router.push("/(auth)/signup")}>
         <Text style={styles.createAccount}>Don’t have an account? Sign Up</Text>
       </TouchableOpacity>
@@ -58,5 +62,6 @@ const styles = StyleSheet.create({
   button: { backgroundColor: "#52AFDD", padding: 12, borderRadius: 10, width: "90%", alignItems: "center", marginTop: 10 },
   buttonText: { color: "#fff", fontWeight: "bold", fontSize: 16 },
   createAccount: { marginTop: 20, color: "#000", fontSize: 14 },
+  forgotPassword: {marginTop: 20, color: "#000", fontSize: 14},
   back: { marginTop: 10, color: "#555" },
 });
