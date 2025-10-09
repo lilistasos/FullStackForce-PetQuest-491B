@@ -56,6 +56,7 @@ export default function TabLayout() {
                 onPress={() => {
                   // TODO
                 }}
+                
               >
                 <Ionicons name="notifications-outline" size={24} color="black" />
               </TouchableOpacity>
@@ -71,7 +72,7 @@ export default function TabLayout() {
         }}
       />
       <Tab.Screen
-        name="Todo"
+        name="To-Do"
         component={TodoScreen}
         options={{
           title: '',
