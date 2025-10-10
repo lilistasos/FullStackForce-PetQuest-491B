@@ -1,12 +1,49 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Tabs } from 'expo-router';
 import { TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigationState } from '@react-navigation/native';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 
 export default function ChildLayout() {
+  const [headerTitle, setHeaderTitle] = useState('Pet');
+
+  // Listen to navigation state changes
+  const navigationState = useNavigationState(state => state);
+
+  useEffect(() => {
+    if (navigationState) {
+      const currentRoute = navigationState.routes[navigationState.index];
+      
+      // Get the deepest route name
+      const getDeepestRouteName = (route: any): string => {
+        if (route.state && route.state.routes) {
+          const nestedRoute = route.state.routes[route.state.index];
+          return getDeepestRouteName(nestedRoute);
+        }
+        return route.name;
+      };
+
+      const deepestRouteName = getDeepestRouteName(currentRoute);
+      
+      // Map route names to header titles
+      const routeMap: { [key: string]: string } = {
+        '(tabs)/pet': 'Pet',
+        'index': 'Pet',
+        'customize': 'Customize',
+        'shop': 'Shop',
+        'collection': 'Collection',
+        '(tabs)/calendar': 'Calendar',
+        '(tabs)/todo': 'To-Do',
+        '(tabs)/account': 'Account',
+      };
+      
+      setHeaderTitle(routeMap[deepestRouteName] || 'Pet');
+    }
+  }, [navigationState]);
+
   return (
     <Tabs
       initialRouteName="(tabs)/pet"
@@ -20,6 +57,7 @@ export default function ChildLayout() {
         tabBarButton: HapticTab,
         headerTitleAlign: 'center',
         tabBarShowLabel: false,
+        headerTitle: headerTitle,
         headerLeft: () => (
           <TouchableOpacity style={{ marginLeft: 15 }} onPress={() => {}}>
             <Ionicons name="menu" size={24} color="black" />
@@ -36,7 +74,6 @@ export default function ChildLayout() {
         name="(tabs)/pet"
         options={{
           title: 'Pet',
-          headerTitle: 'Pet',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="pawprint.fill" color={color} />,
         }}
       />
@@ -44,7 +81,6 @@ export default function ChildLayout() {
         name="(tabs)/calendar"
         options={{
           title: 'Calendar',
-          headerTitle: 'Calendar',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="calendar" color={color} />,
         }}
       />
@@ -52,7 +88,6 @@ export default function ChildLayout() {
         name="(tabs)/todo"
         options={{
           title: 'To-Do',
-          headerTitle: 'To-Do',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="list.bullet" color={color} />,
         }}
       />
@@ -60,7 +95,6 @@ export default function ChildLayout() {
         name="(tabs)/account"
         options={{
           title: 'Account',
-          headerTitle: 'Account',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.fill" color={color} />,
         }}
       />
