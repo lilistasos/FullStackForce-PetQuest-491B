@@ -25,6 +25,7 @@ const MAPPING = {
   'calendar': 'calendar-today',
   'list.bullet': 'list',
   'plus': 'add',
+  'pawprint.fill': 'pets',
   'chevron.left.forwardslash.chevron.right': 'code',
   'chevron.right': 'chevron-right',
 } as IconMapping;
