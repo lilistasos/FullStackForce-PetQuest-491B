@@ -22,21 +22,21 @@ export default function PetScreen() {
 
       <View style={styles.buttonContainer}>
         <TouchableOpacity 
-        style={styles.button}
-        onPress={() => router.push("../(pet-pages)/customize")}>
+          style={styles.button}
+          onPress={() => router.push("../(pet-pages)/customize")}>
           <Text style={styles.buttonText}>Customize</Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
-        style={styles.button}
-        onPress={() => router.push("/(pet-pages)/shop")}>
+          style={styles.button}
+          onPress={() => router.push("../(pet-pages)/shop")}>
           <Text style={styles.buttonText}>Shop</Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
-        style={styles.button}
-        onPress={() => router.push("../(pet-pages)/collection")}>
-          <Text style={styles.buttonText}>Name’s Pet</Text>
+          style={styles.button}
+          onPress={() => router.push("../(pet-pages)/collection")}>
+          <Text style={styles.buttonText}>Name's Pet</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -60,7 +60,7 @@ const styles = StyleSheet.create({
     fontFamily: "monospace",
     marginTop: 20,
     textAlign: "center",
-    marginBottom: .05,
+    marginBottom: 0.05,
   },
   imageContainer: {
     flex: 1,

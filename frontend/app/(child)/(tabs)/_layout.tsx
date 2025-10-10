@@ -1,5 +1,5 @@
 import React from 'react';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Tabs } from 'expo-router';
 import { TouchableOpacity } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
 
@@ -8,37 +8,28 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
-import CalendarScreen from './(tabs)/calendar';
-import TodoScreen from './(tabs)/todo';
-import PetScreen from './(tabs)/pet';
-import AccountScreen from './(tabs)/account';
-
-const Tab = createBottomTabNavigator();
-
 export default function TabLayout() {
   const colorScheme = useColorScheme();
 
   return (
-    <Tab.Navigator
-      initialRouteName="Calendar"
+    <Tabs
+      initialRouteName="calendar"
       screenOptions={({ route }) => ({
         tabBarActiveTintColor: "#FFFFFF", 
         tabBarInactiveTintColor: "#555555", 
         tabBarStyle: {
-      backgroundColor: "#52AFDD",
-    },
-
-      headerStyle: {
-      backgroundColor: "#52AFDD", 
-    },
-    headerTintColor: "#000000ff", 
-    headerTitleStyle: {
-      fontWeight: "bold",
-    },
-
+          backgroundColor: "#52AFDD",
+        },
+        headerStyle: {
+          backgroundColor: "#52AFDD", 
+        },
+        headerTintColor: "#000000ff", 
+        headerTitleStyle: {
+          fontWeight: "bold",
+        },
         tabBarButton: HapticTab,
         headerTitleAlign: 'center',
-        headerTitle: route.name,
+        tabBarShowLabel: false,
         headerLeft: () => (
           <TouchableOpacity
             style={{ marginLeft: 15 }}
@@ -49,7 +40,6 @@ export default function TabLayout() {
             <Ionicons name="menu" size={24} color="black" />
           </TouchableOpacity>
         ),
-
         headerRight: () => (
           <TouchableOpacity
             style={{ marginRight: 15 }}
@@ -62,38 +52,38 @@ export default function TabLayout() {
         ),
       })}
     >
-      <Tab.Screen
-        name="Pet"
-        component={PetScreen}
+      <Tabs.Screen
+        name="pet"
         options={{
-          title: ' ',
+          title: 'Pet',
+          headerTitle: 'Pet',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="pawprint.fill" color={color} />,
         }}
       />
-      <Tab.Screen
-        name="Calendar"
-        component={CalendarScreen}
+      <Tabs.Screen
+        name="calendar"
         options={{
-          title: ' ',
+          title: 'Calendar',
+          headerTitle: 'Calendar',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="calendar" color={color} />,
         }}
       />
-      <Tab.Screen
-        name="To-Do"
-        component={TodoScreen}
+      <Tabs.Screen
+        name="todo"
         options={{
-          title: '',
+          title: 'To-Do',
+          headerTitle: 'To-Do',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="list.bullet" color={color} />,
         }}
       />
-      <Tab.Screen
-        name="Account"
-        component={AccountScreen} 
+      <Tabs.Screen
+        name="account"
         options={{
-          title: ' ',
+          title: 'Account',
+          headerTitle: 'Account',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.fill" color={color} />,
         }}
       />
-    </Tab.Navigator>
+    </Tabs>
   );
 }
