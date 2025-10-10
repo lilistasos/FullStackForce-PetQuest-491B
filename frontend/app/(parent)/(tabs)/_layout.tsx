@@ -13,15 +13,15 @@ export default function TabLayout() {
 
   return (
     <Tabs
-      initialRouteName="pet"
+      initialRouteName="calendar"
       screenOptions={({ route }) => ({
         tabBarActiveTintColor: "#FFFFFF", 
-        tabBarInactiveTintColor: "#555555", 
+        tabBarInactiveTintColor: "#000000ff", 
         tabBarStyle: {
-          backgroundColor: "#52AFDD",
+          backgroundColor: "#dd4f4fff",
         },
         headerStyle: {
-          backgroundColor: "#52AFDD", 
+          backgroundColor: "#dd4f4fff", 
         },
         headerTintColor: "#000000ff", 
         headerTitleStyle: {
@@ -53,14 +53,6 @@ export default function TabLayout() {
       })}
     >
       <Tabs.Screen
-        name="pet"
-        options={{
-          title: 'Pet',
-          headerTitle: 'Pet',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="pawprint.fill" color={color} />,
-        }}
-      />
-      <Tabs.Screen
         name="calendar"
         options={{
           title: 'Calendar',
@@ -77,11 +69,19 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="post"
+        options={{
+          title: 'Post',
+          headerTitle: 'Post',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="plus.app.fill" color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="account"
         options={{
-          title: 'Account',
-          headerTitle: 'Account',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.fill" color={color} />,
+          title: 'Profile',
+          headerTitle: 'Profile',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="accessibility" color={color} />,
         }}
       />
     </Tabs>

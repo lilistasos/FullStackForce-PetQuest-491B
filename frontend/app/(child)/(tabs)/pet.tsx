@@ -36,7 +36,7 @@ export default function PetScreen() {
         <TouchableOpacity 
           style={styles.button}
           onPress={() => router.push("../(pet-pages)/collection")}>
-          <Text style={styles.buttonText}>Name's Pet</Text>
+          <Text style={styles.buttonText}>Collection</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -75,6 +75,7 @@ const styles = StyleSheet.create({
     width: "80%",
     alignItems: "center",
     marginBottom: 40,
+    justifyContent: 'space-around',
   },
   button: {
     backgroundColor: "#52AFDD",
@@ -83,6 +84,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginVertical: 8,
     alignItems: "center",
+    marginHorizontal: 20,
   },
   buttonText: {
     fontFamily: "monospace",
