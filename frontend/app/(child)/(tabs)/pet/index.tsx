@@ -23,19 +23,19 @@ export default function PetScreen() {
       <View style={styles.buttonContainer}>
         <TouchableOpacity 
           style={styles.button}
-          onPress={() => router.push("../(pet-pages)/customize")}>
+          onPress={() => router.push("/(child)/(tabs)/pet/customize")}>
           <Text style={styles.buttonText}>Customize</Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
           style={styles.button}
-          onPress={() => router.push("../(pet-pages)/shop")}>
+          onPress={() => router.push("/(child)/(tabs)/pet/shop")}>
           <Text style={styles.buttonText}>Shop</Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
           style={styles.button}
-          onPress={() => router.push("../(pet-pages)/collection")}>
+          onPress={() => router.push("/(child)/(tabs)/pet/collection")}>
           <Text style={styles.buttonText}>Collection</Text>
         </TouchableOpacity>
       </View>
