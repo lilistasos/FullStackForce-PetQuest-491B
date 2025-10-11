@@ -10,14 +10,12 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 export default function ChildLayout() {
   const [headerTitle, setHeaderTitle] = useState('Pet');
 
-  // Listen to navigation state changes
   const navigationState = useNavigationState(state => state);
 
   useEffect(() => {
     if (navigationState) {
       const currentRoute = navigationState.routes[navigationState.index];
       
-      // Get the deepest route name
       const getDeepestRouteName = (route: any): string => {
         if (route.state && route.state.routes) {
           const nestedRoute = route.state.routes[route.state.index];
@@ -28,7 +26,6 @@ export default function ChildLayout() {
 
       const deepestRouteName = getDeepestRouteName(currentRoute);
       
-      // Map route names to header titles
       const routeMap: { [key: string]: string } = {
         '(tabs)/pet': 'Pet',
         'index': 'Pet',
