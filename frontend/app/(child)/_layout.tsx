@@ -27,14 +27,14 @@ export default function ChildLayout() {
       const deepestRouteName = getDeepestRouteName(currentRoute);
       
       const routeMap: { [key: string]: string } = {
-        '(tabs)/pet': 'Pet',
+        'pet': 'Pet',
         'index': 'Pet',
         'customize': 'Customize',
         'shop': 'Shop',
         'collection': 'Collection',
-        '(tabs)/calendar': 'Calendar',
-        '(tabs)/todo': 'To-Do',
-        '(tabs)/account': 'Account',
+        'calendar': 'Calendar',
+        'todo': 'To-Do',
+        'account': 'Account',
       };
       
       setHeaderTitle(routeMap[deepestRouteName] || 'Pet');
@@ -93,13 +93,6 @@ export default function ChildLayout() {
         options={{
           title: 'Account',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.fill" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="(pet-pages)"
-        options={{
-          href: null,
-          headerShown: false,
         }}
       />
     </Tabs>

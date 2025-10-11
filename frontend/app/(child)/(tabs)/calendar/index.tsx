@@ -1,5 +1,5 @@
 import { View, Text } from "react-native";
-import CalendarView from "../../../components/CalendarView"; // 👈 adjust the path if needed
+import CalendarView from "@/components/CalendarView";
 
 
 export default function CalendarScreen() {

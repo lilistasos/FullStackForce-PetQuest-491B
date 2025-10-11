@@ -7,8 +7,10 @@ export default function AuthLayout() {
       <Stack.Screen name="signup/personal" />
       <Stack.Screen name="signup/personal-details" />
       <Stack.Screen name="signup/family" />
-      <Stack.Screen name="signup/family-details" />
+      <Stack.Screen name="signup/child-details" />
+      <Stack.Screen name="signup/parent-details" />
       <Stack.Screen name="login" />
+      <Stack.Screen name="forgot-password" />
     </Stack>
   );
 }
