@@ -13,31 +13,40 @@ export default function ChildLayout() {
   const navigationState = useNavigationState(state => state);
 
   useEffect(() => {
-    if (navigationState) {
+    if (navigationState && navigationState.index !== undefined) {
       const currentRoute = navigationState.routes[navigationState.index];
       
-      const getDeepestRouteName = (route: any): string => {
-        if (route.state && route.state.routes) {
-          const nestedRoute = route.state.routes[route.state.index];
-          return getDeepestRouteName(nestedRoute);
+      if (!currentRoute || !currentRoute.state || !currentRoute.state.routes) return;
+      
+      const tabState = currentRoute.state;
+      const tabIndex = tabState.index;
+      if (tabIndex === undefined) return;
+      
+      const activeTabRoute = tabState.routes[tabIndex];
+      
+      if (!activeTabRoute) return;
+      
+      const tabName = activeTabRoute.name || '';
+      
+      if (tabName === '(tabs)/pet') {
+        if (activeTabRoute.state && activeTabRoute.state.routes && activeTabRoute.state.index !== undefined) {
+          const petRoute = activeTabRoute.state.routes[activeTabRoute.state.index];
+          const petPageName = petRoute?.name || 'index';
+          
+          if (petPageName === 'customize') setHeaderTitle('Customize');
+          else if (petPageName === 'shop') setHeaderTitle('Shop');
+          else if (petPageName === 'collection') setHeaderTitle('Collection');
+          else setHeaderTitle('Pet');
+        } else {
+          setHeaderTitle('Pet');
         }
-        return route.name;
-      };
-
-      const deepestRouteName = getDeepestRouteName(currentRoute);
-      
-      const routeMap: { [key: string]: string } = {
-        'pet': 'Pet',
-        'index': 'Pet',
-        'customize': 'Customize',
-        'shop': 'Shop',
-        'collection': 'Collection',
-        'calendar': 'Calendar',
-        'todo': 'To-Do',
-        'account': 'Account',
-      };
-      
-      setHeaderTitle(routeMap[deepestRouteName] || 'Pet');
+      } else if (tabName === '(tabs)/calendar') {
+        setHeaderTitle('Calendar');
+      } else if (tabName === '(tabs)/todo') {
+        setHeaderTitle('To-Do');
+      } else if (tabName === '(tabs)/account') {
+        setHeaderTitle('Account');
+      }
     }
   }, [navigationState]);
 

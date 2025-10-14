@@ -13,28 +13,30 @@ export default function ParentLayout() {
   const navigationState = useNavigationState(state => state);
 
   useEffect(() => {
-    if (navigationState) {
+    if (navigationState && navigationState.index !== undefined) {
       const currentRoute = navigationState.routes[navigationState.index];
       
-      const getDeepestRouteName = (route: any): string => {
-        if (route.state && route.state.routes) {
-          const nestedRoute = route.state.routes[route.state.index];
-          return getDeepestRouteName(nestedRoute);
-        }
-        return route.name;
-      };
-
-      const deepestRouteName = getDeepestRouteName(currentRoute);
+      if (!currentRoute || !currentRoute.state || !currentRoute.state.routes) return;
       
-      const routeMap: { [key: string]: string } = {
-        'calendar': 'Calendar',
-        'post': 'Post',
-        'todo': 'To-Do',
-        'account': 'Account',
-        'notifications': 'Notifications',
-      };
+      const tabState = currentRoute.state;
+      const tabIndex = tabState.index;
+      if (tabIndex === undefined) return;
       
-      setHeaderTitle(routeMap[deepestRouteName] || 'Calendar');
+      const activeTabRoute = tabState.routes[tabIndex];
+      
+      if (!activeTabRoute) return;
+      
+      const tabName = activeTabRoute.name || '';
+      
+      if (tabName === '(tabs)/calendar') {
+        setHeaderTitle('Calendar');
+      } else if (tabName === '(tabs)/todo') {
+        setHeaderTitle('To-Do');
+      } else if (tabName === '(tabs)/post') {
+        setHeaderTitle('Post');
+      } else if (tabName === '(tabs)/account') {
+        setHeaderTitle('Account');
+      }
     }
   }, [navigationState]);
 
