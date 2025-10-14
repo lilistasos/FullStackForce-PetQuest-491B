@@ -6,9 +6,11 @@ import { useNavigationState } from '@react-navigation/native';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import HamburgerMenu from '@/components/HamburgerMenu';
 
 export default function ChildLayout() {
   const [headerTitle, setHeaderTitle] = useState('Pet');
+  const [menuVisible, setMenuVisible] = useState(false);
 
   const navigationState = useNavigationState(state => state);
 
@@ -51,7 +53,13 @@ export default function ChildLayout() {
   }, [navigationState]);
 
   return (
-    <Tabs
+    <>
+      <HamburgerMenu 
+        visible={menuVisible} 
+        onClose={() => setMenuVisible(false)}
+        backgroundColor="#52AFDD"
+      />
+      <Tabs
       initialRouteName="(tabs)/pet"
       screenOptions={{
         tabBarActiveTintColor: "#FFFFFF",
@@ -65,7 +73,7 @@ export default function ChildLayout() {
         tabBarShowLabel: false,
         headerTitle: headerTitle,
         headerLeft: () => (
-          <TouchableOpacity style={{ marginLeft: 15 }} onPress={() => {}}>
+          <TouchableOpacity style={{ marginLeft: 15 }} onPress={() => setMenuVisible(true)}>
             <Ionicons name="menu" size={24} color="black" />
           </TouchableOpacity>
         ),
@@ -105,5 +113,6 @@ export default function ChildLayout() {
         }}
       />
     </Tabs>
+    </>
   );
 }
