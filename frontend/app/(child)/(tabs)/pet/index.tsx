@@ -7,7 +7,7 @@ export default function PetScreen() {
 
   const pet = {
     name: "Pet Name!",
-    image: require("@/assets/images/example.png"),
+    image: require("@/assets/images/green-dragon.png"),
   };
 
   return (
