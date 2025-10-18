@@ -1,4 +1,4 @@
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 
@@ -6,18 +6,39 @@ export default function FamilyTypeScreen() {
   const router = useRouter();
   const [email, setEmail] = useState("");
 
+  const handleNavigation = (role:"parent" | "child") => {
+    if (!email.trim()){
+      Alert.alert("Error", "Please Enter Your Email before continuing.")
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailRegex.test(email)) {
+      Alert.alert("Error", "Please Enter a Valid Email Address.")
+      return;
+    }
+
+    router.push({
+      pathname: role === "parent"
+        ?"/(auth)/signup/parent-details"
+        :"/(auth)/signup/child-details",
+      params: {email},
+    });
+
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Family Account</Text>
 
-      <Text style={styles.subtitle}>Choose your role and Enter your Email to Continue</Text>
+      <Text style={styles.subtitle}>Enter your email then select your role to continue</Text>
 
       <View style={styles.options}>
-        <TouchableOpacity onPress={() => router.push("/(auth)/signup/parent-details")}>
+        <TouchableOpacity onPress={() => handleNavigation("parent")}>
           <Text style={styles.option}> Parent</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => router.push("/(auth)/signup/child-details")}>
+        <TouchableOpacity onPress={() => handleNavigation("child")}>
           <Text style={styles.option}> Child</Text>
         </TouchableOpacity>
       </View>

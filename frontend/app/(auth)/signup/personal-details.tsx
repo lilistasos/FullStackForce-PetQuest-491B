@@ -1,12 +1,36 @@
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from "react-native";
-import { useRouter } from "expo-router";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from "react-native";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 
 export default function PersonalDetailsScreen() {
   const router = useRouter();
+  const { email } = useLocalSearchParams<{ email: string }>();
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [dob, setDob] = useState("");
+
+  const handleCreateAccount = () =>{
+    if (!email) {
+      Alert.alert("Error", "Email is missing, go back and ensure email was submitted.")
+      return;
+    }
+    if (!name.trim() || !password.trim() || !confirmPassword.trim() || !dob.trim()){
+      Alert.alert("Error", "Please fill in every field.")
+      return;
+    }
+    if (password !== confirmPassword){
+      Alert.alert("Error", "Passwords do not match, ensure that passwords match.")
+      return;
+    }  
+    if (password.length < 6) {
+      Alert.alert("Error", "Passwords must be at least 6 characters.")
+      return;
+    }
+      
+    // If No Errors, Proceed
+    router.replace("/(indv)/(tabs)/calendar")
+  }
 
   return (
     <View style={styles.container}>
@@ -26,8 +50,8 @@ export default function PersonalDetailsScreen() {
         style={styles.input}
         placeholder="Confirm Password"
         secureTextEntry
-        value={password}
-        onChangeText={setPassword}
+        value={confirmPassword}
+        onChangeText={setConfirmPassword}
       />
 
       <TextInput
@@ -37,10 +61,7 @@ export default function PersonalDetailsScreen() {
         onChangeText={setDob}
       />
 
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => router.replace("/(indv)/(tabs)/calendar")}
-      >
+      <TouchableOpacity style={styles.button} onPress={handleCreateAccount}>
         <Text style={styles.buttonText}>Create Account</Text>
       </TouchableOpacity>
 
