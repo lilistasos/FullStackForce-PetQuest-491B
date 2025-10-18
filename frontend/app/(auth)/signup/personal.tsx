@@ -1,10 +1,30 @@
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 
 export default function PersonalEmailScreen() {
   const router = useRouter();
   const [email, setEmail] = useState("");
+
+  const handleNavigation = (role:"personal") => {
+    if (!email.trim()){
+      Alert.alert("Error", "Please Enter Your Email before continuing.")
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  
+    if (!emailRegex.test(email)) {
+      Alert.alert("Error", "Please Enter a Valid Email Address.")
+      return;
+    }
+
+    else {
+      router.push({
+        pathname: "/(auth)/signup/personal-details",
+        params: { email },
+      });
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -19,10 +39,7 @@ export default function PersonalEmailScreen() {
         keyboardType="email-address"
       />
 
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => router.push("/(auth)/signup/personal-details")}
-      >
+      <TouchableOpacity style={styles.button} onPress={() => handleNavigation("personal")}> 
         <Text style={styles.buttonText}>Next</Text>
       </TouchableOpacity>
 
