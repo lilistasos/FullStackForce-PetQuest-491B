@@ -12,11 +12,37 @@ app.use(cors());
 app.use(express.json());
 
 // Validation using Zod
+const IsoDateString = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected YYYY-MM-DD')
+  .transform((s) => new Date(s + 'T00:00:00Z'));
+
+function isAtLeastAge(dateOfBirth, minYears) {
+  const today = new Date();
+  const min = new Date(
+    today.getUTCFullYear() - minYears,
+    today.getUTCMonth(),
+    today.getUTCDate()
+  );
+  return dateOfBirth <= min;
+}
+
 const RegisterSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
   firstName: z.string().min(1),
   lastName: z.string().min(1),
+  role: z.enum(['parent', 'child', 'individual']),
+  familyCode: z.string().length(6).optional(),
+  dateOfBirth: IsoDateString.optional(),
+}).refine((data) => {
+  if (data.role === 'parent' || data.role === 'individual') {
+    if (!data.dateOfBirth) return false;
+    return isAtLeastAge(data.dateOfBirth, 13);
+  }
+  return true;
+}, {
+  message: 'Parent and individual accounts must have a valid date of birth (13+).'
 });
 
 const LoginSchema = z.object({
@@ -35,7 +61,7 @@ function validate(schema, data) {
   return parsed.data;
 }
 
-// Password helpers
+// Password Helpers
 function scryptAsync(password, salt, keylen = 64) {
   return new Promise((resolve, reject) => {
     crypto.scrypt(password, salt, keylen, (err, derivedKey) => {
@@ -66,11 +92,11 @@ function generateToken({ id, email }) {
   return jwt.sign({ sub: id, email }, process.env.JWT_SECRET, { expiresIn: '7d' });
 }
 
-// Data helpers
+// Data Helpers
 async function findUserByEmail(email) {
   const { rows } = await pool.query(
     `SELECT id, email, password_hash, first_name AS "firstName", last_name AS "lastName",
-            created_at AS "createdAt"
+            date_of_birth AS "dateOfBirth", created_at AS "createdAt"
      FROM users
      WHERE email = $1`,
     [email]
@@ -78,19 +104,21 @@ async function findUserByEmail(email) {
   return rows[0] || null;
 }
 
-async function createUser({ email, passwordHash, firstName, lastName }) {
+async function createUser({ email, passwordHash, firstName, lastName, dateOfBirth }) {
+  const dob = dateOfBirth.toISOString().slice(0, 10);
   const { rows } = await pool.query(
-    `INSERT INTO users (email, password_hash, first_name, last_name)
-     VALUES ($1, $2, $3, $4)
-     RETURNING id, email, first_name AS "firstName", last_name AS "lastName", created_at AS "createdAt"`,
-    [email, passwordHash, firstName, lastName]
+    `INSERT INTO users (email, password_hash, first_name, last_name, date_of_birth)
+     VALUES ($1, $2, $3, $4, $5)
+     RETURNING id, email, first_name AS "firstName", last_name AS "lastName",
+               date_of_birth AS "dateOfBirth", created_at AS "createdAt"`,
+    [email, passwordHash, firstName, lastName, dob]
   );
   return rows[0];
 }
 
 // Register Function
 async function registerUser(payload) {
-  const { email, password, firstName, lastName } = validate(RegisterSchema, payload);
+  const { email, password, firstName, lastName, dateOfBirth } = validate(RegisterSchema, payload);
 
   const exists = await findUserByEmail(email);
   if (exists) {
@@ -100,7 +128,7 @@ async function registerUser(payload) {
   }
 
   const passwordHash = await hashPassword(password);
-  const user = await createUser({ email, passwordHash, firstName, lastName });
+  const user = await createUser({ email, passwordHash, firstName, lastName, dateOfBirth });
   const token = generateToken(user);
   return { user, token };
 }
@@ -128,7 +156,7 @@ async function loginUser(payload) {
   return { user, token };
 }
 
-
+// Basic Routes
 app.get('/', (req, res) => res.json({ message: 'Backend is running!' }));
 
 app.get('/dbtest', async (req, res) => {
@@ -164,6 +192,6 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// Server
+// Starts Server
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
