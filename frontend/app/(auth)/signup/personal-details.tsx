@@ -27,6 +27,27 @@ export default function PersonalDetailsScreen() {
       Alert.alert("Error", "Passwords must be at least 6 characters.")
       return;
     }
+
+    // Date Checking
+    const dobRegex = /^(0[1-9]|1[0-2])\/(0[1-9]|[12]\d|3[01])\/(19|20)\d\d$/;
+    
+    if (!dobRegex.test(dob)){
+      Alert.alert("Error", "Date of Birth must be in MM/DD/YYYY Format.")
+      return;
+    }
+
+    const [month, day, year] = dob.split("/").map(Number);
+    const date = new Date(year, month - 1, day);
+    if (date.getMonth() + 1 !== month || date.getDate() !== day || date.getFullYear() !== year) {
+      Alert.alert("Error", "Date of Birth must be a valid date.");
+      return;
+    }
+    
+    const today = new Date();
+    if (date > today){
+      Alert.alert("Error", "Date of Birth cannot be in the future.");
+      return;
+    }
       
     // If No Errors, Proceed
     router.replace("/(indv)/(tabs)/calendar")

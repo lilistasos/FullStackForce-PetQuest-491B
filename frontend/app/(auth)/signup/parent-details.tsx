@@ -8,6 +8,7 @@ export default function ParentDetailsScreen() {
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [dob, setDob] = useState("");
   const [familyCode, setFamilyCode] = useState("");
   
   const handleCreateAccount = () =>{
@@ -15,7 +16,7 @@ export default function ParentDetailsScreen() {
       Alert.alert("Error", "Email is missing, go back and ensure email was submitted.")
       return;
     }
-    if (!name.trim() || !password.trim() || !confirmPassword.trim()){
+    if (!name.trim() || !password.trim() || !confirmPassword.trim() || !dob.trim()){
       Alert.alert("Error", "Please fill in Non Optional fields.")
       return;
     }
@@ -25,6 +26,27 @@ export default function ParentDetailsScreen() {
     }  
     if (password.length < 6) {
       Alert.alert("Error", "Passwords must be at least 6 characters.")
+      return;
+    }
+
+    // Date Checking
+    const dobRegex = /^(0[1-9]|1[0-2])\/(0[1-9]|[12]\d|3[01])\/(19|20)\d\d$/;
+    
+    if (!dobRegex.test(dob)){
+      Alert.alert("Error", "Date of Birth must be in MM/DD/YYYY Format.")
+      return;
+    }
+
+    const [month, day, year] = dob.split("/").map(Number);
+    const date = new Date(year, month - 1, day);
+    if (date.getMonth() + 1 !== month || date.getDate() !== day || date.getFullYear() !== year) {
+      Alert.alert("Error", "Date of Birth must be a valid date.");
+      return;
+    }
+    
+    const today = new Date();
+    if (date > today){
+      Alert.alert("Error", "Date of Birth cannot be in the future.");
       return;
     }
     
@@ -54,6 +76,13 @@ export default function ParentDetailsScreen() {
         value={confirmPassword}
         onChangeText={setConfirmPassword}
       />
+
+      <TextInput
+        style={styles.input}
+        placeholder="Date of Birth (MM/DD/YYYY)"
+        value={dob}
+        onChangeText={setDob}
+      />      
 
       <TextInput
         style={styles.input}
