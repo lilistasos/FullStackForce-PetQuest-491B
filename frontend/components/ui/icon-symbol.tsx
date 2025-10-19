@@ -28,6 +28,7 @@ const MAPPING = {
   'pawprint.fill': 'pets',
   'chevron.left.forwardslash.chevron.right': 'code',
   'chevron.right': 'chevron-right',
+  'chevron.left': 'chevron-left',
 } as IconMapping;
 
 /**
