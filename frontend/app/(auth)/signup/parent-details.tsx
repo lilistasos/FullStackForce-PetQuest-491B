@@ -51,7 +51,10 @@ export default function ParentDetailsScreen() {
     }
     
     // If No Errors, Proceed
-    router.replace("/(parent)/(tabs)/calendar")
+    router.push({
+      pathname: "/(auth)/signup/verification",
+      params: {email, role: "parent"},
+    });
 
   }
 

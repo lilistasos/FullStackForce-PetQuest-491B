@@ -50,7 +50,10 @@ export default function PersonalDetailsScreen() {
     }
       
     // If No Errors, Proceed
-    router.replace("/(indv)/(tabs)/calendar")
+    router.push({
+      pathname: "/(auth)/signup/verification",
+      params: {email, role: "individual"},
+    });
   }
 
   return (
