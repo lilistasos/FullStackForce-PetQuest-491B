@@ -16,19 +16,31 @@ export default function CalendarView() {
       {name: "Lunch", time:"12:00"},
     ],},
     {
-      title: '2025-10-20', data: [{name: "Study", description: "study for test", time: "12:00 pm"}],
+      title: '2025-10-20', data: [{name: "Study", description: "study for test", time: "12:00 pm"},
+        {name: "HW", description: "Do math hw", time: "4:00 pm"}
+      ],
     },
   ]);
   
-  const renderItem = React.useCallback((item) => {
+  const [isExpanded, setExpanded] = useState({});
+
+  const toggle = (name) => {
+    setExpanded(prev => ({
+      ...prev, [name]: !prev[name],
+    }));
+  }
+  
+  const renderItem = React.useCallback(({item}) => {
     console.log("renderItem: ", item);
      return (
-      <TouchableOpacity style={styles.item}>
+      <View>
+      <TouchableOpacity style={styles.item} onPress={toggle(item.name)}>
         <Card>
           <Card.Content>
             <View style={styles.row}>
               <Text>{item.name}</Text>
-              <Avatar.Text label={item.name ? item.name[0]?.toUpperCase() : "?"}/>
+              {/* <Avatar.Text label={item.name ? item.name[0]?.toUpperCase() : "?"}/> */}
+              <Text>{item.time}</Text>
               {/* {item.data.map((data, index) => (
                 <Text key={index}>{'${data.name} - {data.time}'}</Text>
               ))} */}
@@ -37,8 +49,15 @@ export default function CalendarView() {
           </Card.Content>
         </Card>
       </TouchableOpacity>
-    );
-  }, []);
+     
+       { isExpanded[item.name] && (
+        <View style={{padding: 10, backgroundColor: '#f0f0f0'}}>
+        <Text>{item.description}</Text>
+        </View>
+      )}
+     </View>
+     );
+}, []);
 
   // const renderItem = useCallback((item) => {
   //   console.log("renderItem: ", item)
@@ -83,7 +102,7 @@ export default function CalendarView() {
         <View style={styles.line}/>
         <AgendaList
           sections={items.filter(section => section.title === currentDate)}
-          renderItem={({item}) => renderItem(item)}
+          renderItem={renderItem}
         />
         
     </CalendarProvider>
