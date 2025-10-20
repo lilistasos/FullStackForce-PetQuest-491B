@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, FlatList, StyleSheet } from "react-native";
+import { View, Text, FlatList, StyleSheet, TouchableOpacity } from "react-native";
 
 const todo = ()=> {
 
@@ -22,7 +22,7 @@ const todo = ()=> {
     setCurrentDate(newDate);
 }
 //Format dates
-  const formattedDate = currentDate.toLocaleDateString("en-US" {
+  const formattedDate = currentDate.toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
     day: "numeric",
@@ -32,5 +32,40 @@ const todo = ()=> {
     { id: "Homework", title: "Homework" },
     { id: "Chores", title: "Chores" },
     { id: "Completed", title: "Completed" },
-  ]  
+  ];
+  const renderCategory = (category: { id: string; title: string }) => {
+    const isExpanded = expanded[category.id];
+
+    return (
+      <View style={styles.card}>
+        {/* Header row */}
+        <TouchableOpacity
+          style={styles.cardHeader}
+          onPress={() =>
+            setExpanded((prev) => ({ ...prev, [category.id]: !prev[category.id] }))
+          }
+        >
+          <Ionicons
+            name={isExpanded ? "chevron-down" : "chevron-forward"}
+            size={20}
+            color="black"
+          />
+          <Text style={styles.cardTitle}>{category.title}</Text>
+        </TouchableOpacity>
+
+        {/* Expanded area */}
+        {isExpanded && (
+          <View style={styles.taskList}>
+            {/* 3 blank task slots */}
+            {[...Array(3)].map((_, i) => (
+              <View key={i} style={styles.taskItem}>
+                <Ionicons name="ellipse-outline" size={18} color="gray" />
+                <View style={styles.taskLine} />
+              </View>
+            ))}
+          </View>
+        )}
+      </View>
+    );
+  };
 };
