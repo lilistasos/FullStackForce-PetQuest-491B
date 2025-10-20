@@ -71,7 +71,7 @@ export default function TabLayout() {
         }}
       />
       <Tab.Screen
-        name="Todo"
+        name="To-Do"
         component={TodoScreen}
         options={{
           title: '',

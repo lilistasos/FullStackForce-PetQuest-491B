@@ -24,13 +24,14 @@ const ToDoScreen = ()=> {
     newDate.setDate(newDate.getDate() + days);
     setCurrentDate(newDate);
 }
-//Format dates
-  const formattedDate = currentDate.toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  }); 
+//Format date in a 3 line stagger
+const weekday = currentDate.toLocaleDateString("en-US", { weekday: "long" });
+const monthDay = currentDate.toLocaleDateString("en-US", {
+  month: "long",
+  day: "numeric",
+});
+const year = currentDate.getFullYear();
+
   const categories = [
     { id: "Homework", title: "Homework" },
     { id: "Chores", title: "Chores" },
@@ -39,7 +40,7 @@ const ToDoScreen = ()=> {
   ];
   const renderCategory = (category: { id: string; title: string }) => {
     const isExpanded = expanded[category.id];
-    const visibleTasks = isExpanded ? 6 : 3;
+    const visibleTasks = isExpanded ? 6 : 3; // shows three tasks then can expand into more
 
     return (
       <View style={styles.card}>
@@ -58,120 +59,136 @@ const ToDoScreen = ()=> {
           <Text style={styles.cardTitle}>{category.title}</Text>
         </TouchableOpacity>
 
-        {/* Expanded View (Blank Task Slots) */}
-        {isExpanded && (
-          <View style={styles.taskList}>
-            {[...Array(3)].map((_, i) => (
-              <View key={i} style={styles.taskItem}>
-                <Ionicons name="ellipse-outline" size={18} color="gray" />
-                <View style={styles.taskLine} />
-              </View>
-            ))}
-          </View>
-        )}
+        {/* Placeholder Task Lines */}
+        <View style={styles.taskList}>
+          {[...Array(visibleTasks)].map((_, i) => (
+            <View key={i} style={styles.taskItem}>
+              <Ionicons name="ellipse-outline" size={18} color="gray" />
+              <View style={styles.taskLine} />
+            </View>
+          ))}
+        </View>
       </View>
     );
   };
 
-  return (
-    <SafeAreaView style={styles.container}>
-      {/* Header Section */}
-      <View style={styles.header}>
-        <Text style={styles.title}>To-Do</Text>
-
-        {/* Date Navigation */}
-        <View style={styles.dateContainer}>
-          <TouchableOpacity onPress={() => changeDate(-1)}>
-            <Ionicons name="chevron-back" size={24} color="black" />
-          </TouchableOpacity>
-
-          <View style={styles.dateTextWrapper}>
-            <Text style={styles.dateText}>{formattedDate}</Text>
+    return (
+      <SafeAreaView style={styles.container}>
+        {/* Header Section */}
+        <View style={styles.header}>
+          {/* Top row: avatar + date + arrows */}
+          <View style={styles.topRow}>
+            {/* Avatar */}
+            <Image
+              source={{
+                uri: "https://cdn-icons-png.flaticon.com/512/1067/1067840.png",
+              }}
+              style={styles.avatar}
+            />
+  
+            {/* Date (centered + stacked) */}
+            <View style={styles.dateSection}>
+              <Text style={styles.weekday}>{weekday}</Text>
+              <Text style={styles.monthDay}>{monthDay},</Text>
+              <Text style={styles.year}>{year}</Text>
+            </View>
+  
+            {/* Date navigation arrows */}
+            <View style={styles.arrowContainer}>
+              <TouchableOpacity onPress={() => changeDate(-1)}>
+                <Ionicons name="chevron-back" size={26} color="#0077B6" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => changeDate(1)}>
+                <Ionicons name="chevron-forward" size={26} color="#0077B6" />
+              </TouchableOpacity>
+            </View>
           </View>
-
-          <TouchableOpacity onPress={() => changeDate(1)}>
-            <Ionicons name="chevron-forward" size={24} color="black" />
-          </TouchableOpacity>
         </View>
-      </View>
-
-      {/* Task Categories List */}
-      <FlatList
-        data={categories}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => renderCategory(item)}
-        contentContainerStyle={{ paddingBottom: 100 }}
-      />
-    </SafeAreaView>
-  );
-};
-
-export default ToDoScreen;
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-    paddingHorizontal: 20,
-  },
-  header: {
-    alignItems: "center",
-    marginTop: 20,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: "600",
-    color: "#000",
-    marginBottom: 8,
-  },
-  dateContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 12,
-  },
-  dateTextWrapper: {
-    backgroundColor: "#E8F4FA",
-    borderRadius: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  dateText: {
-    fontSize: 16,
-    color: "#333",
-  },
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 12,
-    marginVertical: 8,
-    borderWidth: 1,
-    borderColor: "#ccc",
-  },
-  cardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  cardTitle: {
-    marginLeft: 8,
-    fontSize: 18,
-    fontWeight: "600",
-  },
-  taskList: {
-    marginTop: 10,
-    paddingLeft: 24,
-  },
-  taskItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginVertical: 6,
-  },
-  taskLine: {
-    height: 1,
-    backgroundColor: "#ddd",
-    flex: 1,
-    marginLeft: 8,
-  },
-});
+  
+        {/* Task Categories */}
+        <FlatList
+          data={categories}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => renderCategory(item)}
+          contentContainerStyle={{ paddingBottom: 100 }}
+        />
+      </SafeAreaView>
+    );
+  };
+  
+  export default ToDoScreen;
+  
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: "#fff",
+      paddingHorizontal: 20,
+    },
+    header: {
+      marginTop: 20,
+    },
+    topRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    avatar: {
+      width: 60,
+      height: 60,
+      borderRadius: 30,
+    },
+    dateSection: {
+      alignItems: "center",
+      flex: 1,
+    },
+    weekday: {
+      fontSize: 20,
+      fontWeight: "700",
+      color: "#000",
+    },
+    monthDay: {
+      fontSize: 18,
+      color: "#333",
+    },
+    year: {
+      fontSize: 18,
+      color: "#333",
+    },
+    arrowContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    card: {
+      backgroundColor: "#fff",
+      borderRadius: 12,
+      padding: 12,
+      marginVertical: 8,
+      borderWidth: 1,
+      borderColor: "#ccc",
+    },
+    cardHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    cardTitle: {
+      marginLeft: 8,
+      fontSize: 18,
+      fontWeight: "600",
+    },
+    taskList: {
+      marginTop: 10,
+      paddingLeft: 24,
+    },
+    taskItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginVertical: 6,
+    },
+    taskLine: {
+      height: 1,
+      backgroundColor: "#ddd",
+      flex: 1,
+      marginLeft: 8,
+    },
+  });
