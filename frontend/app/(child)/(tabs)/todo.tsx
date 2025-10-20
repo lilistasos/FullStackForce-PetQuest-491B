@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, FlatList, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, FlatList, StyleSheet,  Image, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -14,6 +14,7 @@ const ToDoScreen = ()=> {
   const [expanded, setExpanded] = useState<{ [key: string]: boolean }>({
     Homework: false, // All categories are collaspsed at first
     Chores: false,
+    Extracurriculars: false,
     Completed: false,
 });
 // Helper functions for changing date
@@ -33,10 +34,12 @@ const ToDoScreen = ()=> {
   const categories = [
     { id: "Homework", title: "Homework" },
     { id: "Chores", title: "Chores" },
+    { id: "Extracurriculars", title: "Extracurriculars" },
     { id: "Completed", title: "Completed" },
   ];
   const renderCategory = (category: { id: string; title: string }) => {
     const isExpanded = expanded[category.id];
+    const visibleTasks = isExpanded ? 6 : 3;
 
     return (
       <View style={styles.card}>
