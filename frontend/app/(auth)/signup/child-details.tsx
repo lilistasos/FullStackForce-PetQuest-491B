@@ -11,23 +11,23 @@ export default function ChildDetailsScreen() {
   const [dob, setDob] = useState("");
   const [familyCode, setFamilyCode] = useState("");
 
-    const handleCreateAccount = () =>{
-      if (!email) {
-        Alert.alert("Error", "Email is missing, go back and ensure email was submitted.")
-        return;
-      }
-      if (!name.trim() || !password.trim() || !confirmPassword.trim() || dob.trim()){
-        Alert.alert("Error", "Please fill in Non Optional fields.")
-        return;
-      }
-      if (password !== confirmPassword){
-        Alert.alert("Error", "Passwords do not match, ensure that passwords match.")
-        return;
-      }  
-      if (password.length < 6) {
-        Alert.alert("Error", "Passwords must be at least 6 characters.")
-        return;
-      }
+  const handleCreateAccount = () =>{
+    if (!email) {
+      Alert.alert("Error", "Email is missing, go back and ensure email was submitted.")
+      return;
+    }
+    if (!name.trim() || !password.trim() || !confirmPassword.trim() || !dob.trim()){
+      Alert.alert("Error", "Please fill in Non Optional fields.")
+      return;
+    }
+    if (password !== confirmPassword){
+      Alert.alert("Error", "Passwords do not match, ensure that passwords match.")
+      return;
+    }  
+    if (password.length < 6) {
+      Alert.alert("Error", "Passwords must be at least 6 characters.")
+      return;
+    }
 
     // Date Checking
     const dobRegex = /^(0[1-9]|1[0-2])\/(0[1-9]|[12]\d|3[01])\/(19|20)\d\d$/;
@@ -50,10 +50,12 @@ export default function ChildDetailsScreen() {
       return;
     }
       
-      // If No Errors, Proceed
-      router.replace("/(child)/(tabs)/calendar")
-  
-    }
+    // If No Errors, Proceed
+    router.push({
+      pathname: "/(auth)/signup/verification",
+      params: {email, role: "child"},
+    });
+}
 
   return (
     <View style={styles.container}>
