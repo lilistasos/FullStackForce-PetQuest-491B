@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, FlatList } from "react-native";
 import { useRouter } from "expo-router";
 import { IconSymbol } from "@/components/ui/icon-symbol";
+import { usePet } from "@/contexts/PetContext";
 
 interface AccessoryItem {
   id: string;
@@ -17,17 +18,13 @@ interface AccessoriesData {
 
 export default function CustomizeScreen() {
   const router = useRouter();
+  const { selectedPet } = usePet();
   const [selectedCategory, setSelectedCategory] = useState<keyof AccessoriesData>("hats");
   const [visibleRows, setVisibleRows] = useState(2);
   const [userAccessories, setUserAccessories] = useState<AccessoriesData>({
     hats: [{ id: "none", name: "None", icon: "∅" }],
     accessories: [{ id: "none", name: "None", icon: "∅" }]
   });
-
-  const pet = {
-    name: "Pet Name!",
-    image: require("@/assets/images/pdragon.png"),
-  };
 
   const loadUserAccessories = async () => {
     return {
@@ -89,7 +86,7 @@ export default function CustomizeScreen() {
 
       <View style={styles.imageContainer}>
         <Image 
-          source={pet.image} 
+          source={selectedPet.image} 
           style={styles.petImage} 
           resizeMode="contain"
           blurRadius={0}

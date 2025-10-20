@@ -1,23 +1,20 @@
 import React from "react";
 import { View, Text, Image, TouchableOpacity, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
+import { usePet } from "@/contexts/PetContext";
 
 export default function PetScreen() {
   const router = useRouter();
-
-  const pet = {
-    name: "Pet Name!",
-    image: require("@/assets/images/green-dragon.png"),
-  };
+  const { selectedPet } = usePet();
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.petName}>{pet.name}</Text>
+        <Text style={styles.petName}>{selectedPet.name}</Text>
       </View>
 
       <View style={styles.imageContainer}>
-        <Image source={pet.image} style={styles.petImage} resizeMode="contain" />
+        <Image source={selectedPet.image} style={styles.petImage} resizeMode="contain" />
       </View>
 
       <View style={styles.buttonContainer}>
