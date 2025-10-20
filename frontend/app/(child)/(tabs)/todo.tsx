@@ -17,6 +17,10 @@ const ToDoScreen = ()=> {
     Extracurriculars: false,
     Completed: false,
 });
+
+  const [tasks, setTasks] = useState<Task[]>([
+    { id: "1", text: "Read ch.1", completed: false, category: "Homework"}
+  ]);
 // Helper functions for changing date
 // Able to move back and forth between days 
   const changeDate = (days: number) => {
@@ -31,6 +35,10 @@ const monthDay = currentDate.toLocaleDateString("en-US", {
   day: "numeric",
 });
 const year = currentDate.getFullYear();
+
+  const toggleComplete = (taskId: string) =>{
+    
+  };
 
   const categories = [
     { id: "Homework", title: "Homework" },
