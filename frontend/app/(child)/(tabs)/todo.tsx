@@ -1,5 +1,7 @@
 import React, { useState } from "react";
-import { View, Text, FlatList, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, TouchableOpacity, FlatList, StyleSheet } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 
 const todo = ()=> {
 
@@ -68,4 +70,46 @@ const todo = ()=> {
       </View>
     );
   };
+  return (
+    <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.title}>To-Do</Text>
+        <View style={styles.dateContainer}>
+          <TouchableOpacity onPress={() => changeDate(-1)}>
+            <Ionicons name="chevron-back" size={24} color="black" />
+          </TouchableOpacity>
+
+          <View style={styles.dateTextWrapper}>
+            <Text style={styles.dateText}>{formattedDate}</Text>
+          </View>
+
+          <TouchableOpacity onPress={() => changeDate(1)}>
+            <Ionicons name="chevron-forward" size={24} color="black" />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Task Categories */}
+      <FlatList
+        data={categories}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => renderCategory(item)}
+        contentContainerStyle={{ paddingBottom: 100 }}
+      />
+    </SafeAreaView>
+  );
+};
+export default todo;
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "white",
+    paddingHorizontal: 16,
+  },
+  header: {
+    alignItems: "center",
+    marginTop: 20,
+  },
 };
