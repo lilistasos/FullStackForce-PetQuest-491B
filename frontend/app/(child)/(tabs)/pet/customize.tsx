@@ -18,7 +18,7 @@ interface AccessoriesData {
 
 export default function CustomizeScreen() {
   const router = useRouter();
-  const { selectedPet } = usePet();
+  const { selectedPet, selectedAccessories, setSelectedAccessories } = usePet();
   const [selectedCategory, setSelectedCategory] = useState<keyof AccessoriesData>("hats");
   const [visibleRows, setVisibleRows] = useState(2);
   const [userAccessories, setUserAccessories] = useState<AccessoriesData>({
@@ -28,8 +28,16 @@ export default function CustomizeScreen() {
 
   const loadUserAccessories = async () => {
     return {
-      hats: [{ id: "none", name: "None", icon: "∅" }],
-      accessories: [{ id: "none", name: "None", icon: "∅" }]
+      hats: [
+        { id: "none", name: "None", icon: "∅" },
+        { id: "cap", name: "Baseball Cap", icon: "" },
+        { id: "top-hat", name: "Top Hat", icon: "" },
+      ],
+      accessories: [
+        { id: "none", name: "None", icon: "∅" },
+        { id: "glasses", name: "Sunglasses", icon: "" },
+        { id: "football", name: "Football", icon: "" },
+      ]
     };
   };
 
@@ -37,11 +45,51 @@ export default function CustomizeScreen() {
     loadUserAccessories().then(setUserAccessories);
   }, []);
 
+  const handleAccessorySelect = (item: AccessoryItem) => {
+    setSelectedAccessories({
+      ...selectedAccessories,
+      [selectedCategory]: item.id
+    });
+  };
+
   const renderAccessoryItem = ({ item, index }: { item: AccessoryItem; index: number }) => (
     <TouchableOpacity 
-      style={[styles.accessoryItem, item.isEmpty && styles.emptyItem]}
-      disabled={item.isEmpty}>
-      {!item.isEmpty && <Text style={styles.accessoryIcon}>{item.icon}</Text>}
+      style={[
+        styles.accessoryItem, 
+        item.isEmpty && styles.emptyItem,
+        selectedAccessories[selectedCategory] === item.id && styles.selectedAccessoryItem
+      ]}
+      disabled={item.isEmpty}
+      onPress={() => handleAccessorySelect(item)}>
+      {!item.isEmpty && (
+        item.id === "cap" ? (
+          <Image 
+            source={require("@/assets/images/bbhat.png")} 
+            style={styles.accessoryImage}
+            resizeMode="contain"
+          />
+        ) : item.id === "top-hat" ? (
+          <Image 
+            source={require("@/assets/images/tophat.png")} 
+            style={styles.accessoryImage}
+            resizeMode="contain"
+          />
+        ) : item.id === "glasses" ? (
+          <Image 
+            source={require("@/assets/images/sunglasses.png")} 
+            style={styles.accessoryImage}
+            resizeMode="contain"
+          />
+        ) : item.id === "football" ? (
+          <Image 
+            source={require("@/assets/images/football.png")} 
+            style={styles.accessoryImage}
+            resizeMode="contain"
+          />
+        ) : (
+          <Text style={styles.accessoryIcon}>{item.icon}</Text>
+        )
+      )}
     </TouchableOpacity>
   );
 
@@ -114,12 +162,7 @@ export default function CustomizeScreen() {
       <View style={styles.gridContainer}>
         <View style={styles.grid}>
           {getVisibleItems().map((item, index) => (
-            <TouchableOpacity 
-              key={item.id} 
-              style={[styles.accessoryItem, item.isEmpty && styles.emptyItem]}
-              disabled={item.isEmpty}>
-              {!item.isEmpty && <Text style={styles.accessoryIcon}>{item.icon}</Text>}
-            </TouchableOpacity>
+            renderAccessoryItem({ item, index })
           ))}
         </View>
         
@@ -200,7 +243,7 @@ const styles = StyleSheet.create({
   },
   accessoryItem: {
     width: "30%",
-    height: 90,
+    height: 110,
     backgroundColor: "#FFFFFF",
     marginBottom: 15,
     borderRadius: 4,
@@ -209,12 +252,20 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "#52AFDD",
   },
+  selectedAccessoryItem: {
+    borderWidth: 4,
+    borderColor: "#52AFDD",
+  },
   emptyItem: {
     backgroundColor: "#F8F8F8",
     borderColor: "#E0E0E0",
   },
   accessoryIcon: {
     fontSize: 40,
+  },
+  accessoryImage: {
+    width: 80,
+    height: 80,
   },
   loadMoreButton: {
     backgroundColor: "#52AFDD",
