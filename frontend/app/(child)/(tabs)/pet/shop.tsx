@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Modal } from "react-native";
 import { useRouter } from "expo-router";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 
@@ -20,6 +20,8 @@ export default function ShopScreen() {
   const router = useRouter();
   const [selectedTab, setSelectedTab] = useState<keyof ShopData>("pets");
   const [userCoins, setUserCoins] = useState(100);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [itemToBuy, setItemToBuy] = useState<ShopItem | null>(null);
 
   const shopItems: ShopData = {
     pets: [
@@ -36,12 +38,25 @@ export default function ShopScreen() {
     ]
   };
 
-  const handlePurchase = (item: ShopItem) => {
+  const handlePurchaseClick = (item: ShopItem) => {
     if (!item.owned && userCoins >= item.price) {
-      setUserCoins(userCoins - item.price);
-      // Update item to owned
-      console.log(`Purchased ${item.name} for ${item.price} coins`);
+      setItemToBuy(item);
+      setShowConfirmModal(true);
     }
+  };
+
+  const confirmPurchase = () => {
+    if (itemToBuy) {
+      setUserCoins(userCoins - itemToBuy.price);
+      // Update item to owned - you would typically update the shopItems state here
+      setShowConfirmModal(false);
+      setItemToBuy(null);
+    }
+  };
+
+  const cancelPurchase = () => {
+    setShowConfirmModal(false);
+    setItemToBuy(null);
   };
 
   const renderShopItem = (item: ShopItem) => (
@@ -96,7 +111,7 @@ export default function ShopScreen() {
           item.owned ? styles.ownedButton : styles.buyButton,
           !item.owned && userCoins < item.price && styles.disabledButton
         ]}
-        onPress={() => handlePurchase(item)}
+        onPress={() => handlePurchaseClick(item)}
         disabled={item.owned || (!item.owned && userCoins < item.price)}>
         <Text style={[
           styles.buttonText,
@@ -163,6 +178,54 @@ export default function ShopScreen() {
           {shopItems[selectedTab].map(renderShopItem)}
         </View>
       </View>
+
+      {/* Confirmation Modal */}
+      <Modal
+        visible={showConfirmModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={cancelPurchase}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            {/* X button in top right */}
+            <TouchableOpacity 
+              style={styles.closeButton}
+              onPress={cancelPurchase}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              activeOpacity={0.7}
+            >
+              <IconSymbol 
+                name="xmark" 
+                size={24} 
+                color="#000" 
+                weight="medium"
+              />
+            </TouchableOpacity>
+
+            <Text style={styles.modalTitle}>Confirm Purchase</Text>
+            <Text style={styles.modalMessage}>
+              Are you sure you would like to buy?
+            </Text>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.noButton]}
+                onPress={cancelPurchase}
+              >
+                <Text style={styles.noButtonText}>No</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.yesButton]}
+                onPress={confirmPurchase}
+              >
+                <Text style={styles.yesButtonText}>Yes</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -314,5 +377,77 @@ const styles = StyleSheet.create({
   },
   disabledButtonText: {
     color: "#999",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContainer: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    padding: 20,
+    margin: 20,
+    minWidth: 300,
+    position: "relative",
+  },
+  closeButton: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    padding: 10,
+    minWidth: 44,
+    minHeight: 44,
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 1,
+  },
+  modalTitle: {
+    fontFamily: "monospace",
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#000",
+    textAlign: "center",
+    marginBottom: 15,
+    marginTop: 10,
+  },
+  modalMessage: {
+    fontFamily: "monospace",
+    fontSize: 16,
+    color: "#000",
+    textAlign: "center",
+    marginBottom: 25,
+    lineHeight: 22,
+  },
+  modalButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 15,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  noButton: {
+    backgroundColor: "#FFCCCC",
+  },
+  yesButton: {
+    backgroundColor: "#90EE90",
+  },
+  noButtonText: {
+    fontFamily: "monospace",
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#000",
+  },
+  yesButtonText: {
+    fontFamily: "monospace",
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#000",
   },
 });
