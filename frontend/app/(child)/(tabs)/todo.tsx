@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, FlatList, StyleSheet } from "react-native
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
-const todo = ()=> {
+const ToDoScreen = ()=> {
 
 // Current Date State
 // useState hook to store the current date and update it... allows the app to display and maipulate the date dynamically 
@@ -40,7 +40,7 @@ const todo = ()=> {
 
     return (
       <View style={styles.card}>
-        {/* Header row */}
+        {/* Header Row (Category Title + Arrow) */}
         <TouchableOpacity
           style={styles.cardHeader}
           onPress={() =>
@@ -55,10 +55,9 @@ const todo = ()=> {
           <Text style={styles.cardTitle}>{category.title}</Text>
         </TouchableOpacity>
 
-        {/* Expanded area */}
+        {/* Expanded View (Blank Task Slots) */}
         {isExpanded && (
           <View style={styles.taskList}>
-            {/* 3 blank task slots */}
             {[...Array(3)].map((_, i) => (
               <View key={i} style={styles.taskItem}>
                 <Ionicons name="ellipse-outline" size={18} color="gray" />
@@ -70,11 +69,14 @@ const todo = ()=> {
       </View>
     );
   };
+
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
+      {/* Header Section */}
       <View style={styles.header}>
         <Text style={styles.title}>To-Do</Text>
+
+        {/* Date Navigation */}
         <View style={styles.dateContainer}>
           <TouchableOpacity onPress={() => changeDate(-1)}>
             <Ionicons name="chevron-back" size={24} color="black" />
@@ -90,7 +92,7 @@ const todo = ()=> {
         </View>
       </View>
 
-      {/* Task Categories */}
+      {/* Task Categories List */}
       <FlatList
         data={categories}
         keyExtractor={(item) => item.id}
@@ -100,16 +102,73 @@ const todo = ()=> {
     </SafeAreaView>
   );
 };
-export default todo;
+
+export default ToDoScreen;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "white",
-    paddingHorizontal: 16,
+    backgroundColor: "#fff",
+    paddingHorizontal: 20,
   },
   header: {
     alignItems: "center",
     marginTop: 20,
   },
-};
+  title: {
+    fontSize: 22,
+    fontWeight: "600",
+    color: "#000",
+    marginBottom: 8,
+  },
+  dateContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
+  dateTextWrapper: {
+    backgroundColor: "#E8F4FA",
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dateText: {
+    fontSize: 16,
+    color: "#333",
+  },
+  card: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 12,
+    marginVertical: 8,
+    borderWidth: 1,
+    borderColor: "#ccc",
+  },
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  cardTitle: {
+    marginLeft: 8,
+    fontSize: 18,
+    fontWeight: "600",
+  },
+  taskList: {
+    marginTop: 10,
+    paddingLeft: 24,
+  },
+  taskItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 6,
+  },
+  taskLine: {
+    height: 1,
+    backgroundColor: "#ddd",
+    flex: 1,
+    marginLeft: 8,
+  },
+});
