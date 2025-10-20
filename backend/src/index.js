@@ -27,6 +27,7 @@ function isAtLeastAge(dateOfBirth, minYears) {
   return dateOfBirth <= min;
 }
 
+// Schemas
 const RegisterSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
@@ -48,6 +49,17 @@ const RegisterSchema = z.object({
 const LoginSchema = z.object({
   email: z.string().email(),
   password: z.string(),
+});
+
+const UpdateProfileSchema = z.object({
+  firstName: z.string().min(1).optional(),
+  lastName: z.string().min(1).optional(),
+  dateOfBirth: IsoDateString.optional(),
+});
+
+const ResetPasswordSchema = z.object({
+  token: z.string(),
+  newPassword: z.string().min(8),
 });
 
 function validate(schema, data) {
@@ -92,11 +104,26 @@ function generateToken({ id, email }) {
   return jwt.sign({ sub: id, email }, process.env.JWT_SECRET, { expiresIn: '7d' });
 }
 
+function authMiddleware(req, res, next) {
+  try {
+    const auth = req.headers.authorization;
+    if (!auth?.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Missing or invalid token' });
+    }
+    const token = auth.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch {
+    return res.status(401).json({ error: 'Invalid or expired token' });
+  }
+}
+
 // Data Helpers
 async function findUserByEmail(email) {
   const { rows } = await pool.query(
     `SELECT id, email, password_hash, first_name AS "firstName", last_name AS "lastName",
-            date_of_birth AS "dateOfBirth", created_at AS "createdAt"
+            role, family_code AS "familyCode", date_of_birth AS "dateOfBirth", created_at AS "createdAt"
      FROM users
      WHERE email = $1`,
     [email]
@@ -104,21 +131,37 @@ async function findUserByEmail(email) {
   return rows[0] || null;
 }
 
-async function createUser({ email, passwordHash, firstName, lastName, dateOfBirth }) {
-  const dob = dateOfBirth.toISOString().slice(0, 10);
+async function findUserById(id) {
   const { rows } = await pool.query(
-    `INSERT INTO users (email, password_hash, first_name, last_name, date_of_birth)
-     VALUES ($1, $2, $3, $4, $5)
+    `SELECT id, email, first_name AS "firstName", last_name AS "lastName",
+            role, family_code AS "familyCode", date_of_birth AS "dateOfBirth", created_at AS "createdAt"
+     FROM users
+     WHERE id = $1`,
+    [id]
+  );
+  return rows[0] || null;
+}
+
+function generateFamilyCode() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+}
+
+async function createUser({ email, passwordHash, firstName, lastName, role, familyCode, dateOfBirth }) {
+  const dob = dateOfBirth ? dateOfBirth.toISOString().slice(0, 10) : null;
+  const { rows } = await pool.query(
+    `INSERT INTO users (email, password_hash, first_name, last_name, role, family_code, date_of_birth)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
      RETURNING id, email, first_name AS "firstName", last_name AS "lastName",
-               date_of_birth AS "dateOfBirth", created_at AS "createdAt"`,
-    [email, passwordHash, firstName, lastName, dob]
+               role, family_code AS "familyCode", date_of_birth AS "dateOfBirth", created_at AS "createdAt"`,
+    [email, passwordHash, firstName, lastName, role, familyCode || null, dob]
   );
   return rows[0];
 }
 
 // Register Function
 async function registerUser(payload) {
-  const { email, password, firstName, lastName, dateOfBirth } = validate(RegisterSchema, payload);
+  const { email, password, firstName, lastName, role, familyCode, dateOfBirth } = validate(RegisterSchema, payload);
 
   const exists = await findUserByEmail(email);
   if (exists) {
@@ -127,8 +170,36 @@ async function registerUser(payload) {
     throw err;
   }
 
+  let finalFamilyCode = familyCode;
+  if (role === 'parent') {
+    finalFamilyCode = generateFamilyCode();
+  } else if (role === 'child') {
+    if (!familyCode) {
+      const err = new Error('Family code is required for child accounts.');
+      err.status = 400;
+      throw err;
+    }
+    const { rows } = await pool.query(
+      `SELECT id FROM users WHERE family_code = $1 AND role = 'parent'`,
+      [familyCode]
+    );
+    if (rows.length === 0) {
+      const err = new Error('Invalid family code. Parent not found.');
+      err.status = 400;
+      throw err;
+    }
+  }
+
   const passwordHash = await hashPassword(password);
-  const user = await createUser({ email, passwordHash, firstName, lastName, dateOfBirth });
+  const user = await createUser({
+    email,
+    passwordHash,
+    firstName,
+    lastName,
+    role,
+    familyCode: finalFamilyCode,
+    dateOfBirth });
+
   const token = generateToken(user);
   return { user, token };
 }
@@ -188,6 +259,97 @@ app.post('/api/auth/login', async (req, res) => {
   } catch (err) {
     const status = err.status || 500;
     console.error('Login error:', err);
+    res.status(status).json({ error: err.message || 'Server error' });
+  }
+});
+
+// Forgot Password, Generate link and token for resetting password
+app.post('/api/auth/forgot-password', async (req, res) => {
+  const { email } = req.body;
+  try {
+    const user = await findUserByEmail(email);
+    if (!user) return res.status(404).json({ error: 'No account found with that email.' });
+
+    const token = crypto.randomBytes(20).toString('hex');
+    const expires = new Date(Date.now() + 3600000); // 1 hour
+
+    await pool.query(
+      `UPDATE users SET reset_token = $1, reset_expires = $2 WHERE email = $3`,
+      [token, expires, email]
+    );
+
+    // Update later on with correct email sending logic
+    // console.log(`🔗 Password reset link: https://yourapp/reset-password/${token}`);
+
+    res.json({ message: 'Password reset link sent to email (check console for demo).' });
+  } catch (err) {
+    console.error('Forgot password error:', err);
+    res.status(500).json({ error: 'Server error during password reset.' });
+  }
+});
+
+// Reset Password
+app.post('/api/auth/reset-password', async (req, res) => {
+  try {
+    const { token, newPassword } = validate(ResetPasswordSchema, req.body);
+
+    const { rows } = await pool.query(
+      `SELECT id FROM users WHERE reset_token = $1 AND reset_expires > NOW()`,
+      [token]
+    );
+    if (rows.length === 0) {
+      return res.status(400).json({ error: 'Invalid or expired token.' });
+    }
+
+    const passwordHash = await hashPassword(newPassword);
+
+    await pool.query(
+      `UPDATE users
+       SET password_hash = $1, reset_token = NULL, reset_expires = NULL
+       WHERE id = $2`,
+      [passwordHash, rows[0].id]
+    );
+
+    res.json({ message: 'Password successfully reset. You can now log in.' });
+  } catch (err) {
+    const status = err.status || 500;
+    console.error('Reset password error:', err);
+    res.status(status).json({ error: err.message || 'Server error resetting password.' });
+  }
+});
+
+// Profile Routes
+app.get('/api/users/me', authMiddleware, async (req, res) => {
+  try {
+    const user = await findUserById(req.user.sub);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json(user);
+  } catch (err) {
+    console.error('GET /me error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.put('/api/users/me', authMiddleware, async (req, res) => {
+  try {
+    const data = validate(UpdateProfileSchema, req.body);
+    const dob = data.dateOfBirth ? data.dateOfBirth.toISOString().slice(0, 10) : null;
+
+    const { rows } = await pool.query(
+      `UPDATE users
+       SET first_name = COALESCE($1, first_name),
+           last_name = COALESCE($2, last_name),
+           date_of_birth = COALESCE($3, date_of_birth)
+       WHERE id = $4
+       RETURNING id, email, first_name AS "firstName", last_name AS "lastName",
+                 role, family_code AS "familyCode", date_of_birth AS "dateOfBirth", created_at AS "createdAt"`,
+      [data.firstName || null, data.lastName || null, dob, req.user.sub]
+    );
+
+    res.json(rows[0]);
+  } catch (err) {
+    const status = err.status || 500;
+    console.error('PUT /me error:', err);
     res.status(status).json({ error: err.message || 'Server error' });
   }
 });
