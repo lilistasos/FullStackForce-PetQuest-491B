@@ -25,10 +25,10 @@ export default function CalendarView() {
   const [isExpanded, setExpanded] = useState(false);
 
   const toggle = (name) => {
-    setExpanded(prev => ({
-      ...prev, [name]: !prev[name],
-    }));
-    //setExpanded(!isExpanded);
+    // setExpanded(prev => ({
+    //   ...prev, [name]: !prev[name],
+    // }));
+    setExpanded(!isExpanded);
   }
   
   const renderItem = React.useCallback(({item}) => {
