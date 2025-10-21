@@ -5,7 +5,8 @@ import { useState } from "react";
 export default function PersonalDetailsScreen() {
   const router = useRouter();
   const { email } = useLocalSearchParams<{ email: string }>();
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [dob, setDob] = useState("");
@@ -15,7 +16,7 @@ export default function PersonalDetailsScreen() {
       Alert.alert("Error", "Email is missing, go back and ensure email was submitted.")
       return;
     }
-    if (!name.trim() || !password.trim() || !confirmPassword.trim() || !dob.trim()){
+    if (!firstName.trim() || !lastName.trim() || !password.trim() || !confirmPassword.trim() || !dob.trim()){
       Alert.alert("Error", "Please fill in every field.")
       return;
     }
@@ -60,8 +61,10 @@ export default function PersonalDetailsScreen() {
     <View style={styles.container}>
       <Text style={styles.title}>Personal Details</Text>
 
-      <TextInput style={styles.input} placeholder="Name" value={name} onChangeText={setName} />
-      
+      <TextInput style={styles.input} placeholder="First Name" value={firstName} onChangeText={setFirstName} />
+
+      <TextInput style={styles.input} placeholder="Last Name" value={lastName} onChangeText={setLastName} />
+
       <TextInput
         style={styles.input}
         placeholder="Password"
