@@ -25,7 +25,7 @@ export default function ShopScreen() {
 
   const shopItems: ShopData = {
     pets: [
-      { id: "cat", name: "Cat", icon: "", price: 50, owned: false },
+      { id: "cat", name: "Cat", icon: "", price: 50, owned: true },
       { id: "dog", name: "Dog", icon: "", price: 50, owned: false },
       { id: "bird", name: "Bird", icon: "", price: 40, owned: false },
       { id: "fish", name: "Fish", icon: "", price: 30, owned: false },
@@ -98,6 +98,15 @@ export default function ShopScreen() {
             />
             <Text style={styles.itemPrice}>{item.price}</Text>
           </>
+        ) : item.id === "cat" ? (
+          <>
+            <Image 
+              source={require("@/assets/images/cat.png")} 
+              style={styles.itemImage}
+              resizeMode="contain"
+            />
+            <Text style={styles.itemPrice}>{item.price}</Text>
+          </>
         ) : (
           <>
             <Text style={styles.itemTitle}>{item.name}</Text>
@@ -118,7 +127,7 @@ export default function ShopScreen() {
           item.owned ? styles.ownedButtonText : styles.buyButtonText,
           !item.owned && userCoins < item.price && styles.disabledButtonText
         ]}>
-          {item.owned ? "OWN" : "Buy"}
+          {item.owned ? "OWN" : "BUY"}
         </Text>
       </TouchableOpacity>
     </View>
