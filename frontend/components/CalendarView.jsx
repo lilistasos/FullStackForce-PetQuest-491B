@@ -22,12 +22,13 @@ export default function CalendarView() {
     },
   ]);
   
-  const [isExpanded, setExpanded] = useState({});
+  const [isExpanded, setExpanded] = useState(false);
 
   const toggle = (name) => {
     setExpanded(prev => ({
       ...prev, [name]: !prev[name],
     }));
+    //setExpanded(!isExpanded);
   }
   
   const renderItem = React.useCallback(({item}) => {
@@ -50,11 +51,11 @@ export default function CalendarView() {
         </Card>
       </TouchableOpacity>
      
-       { isExpanded[item.name] && (
+       {/* { isExpanded[item.name] && (
         <View style={{padding: 10, backgroundColor: '#f0f0f0'}}>
         <Text>{item.description}</Text>
         </View>
-      )}
+      )} */}
      </View>
      );
 }, []);
