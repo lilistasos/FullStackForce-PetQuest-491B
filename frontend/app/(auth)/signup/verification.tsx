@@ -4,55 +4,68 @@ import { useState } from "react";
 
 export default function VerificationScreen(){
     const router = useRouter();
-    const {email, role} = useLocalSearchParams<{ email: string; role: string }>();
+    const {email, role, password, familyCode, firstName, lastName} = useLocalSearchParams();
     const [code, setCode] = useState("");
     const [isCodeSent, setIsCodeSent] = useState(false);
+    const API_URL = "https://your-api-url.com/api/auth"; //API thing? goes here
 
     const handleSendCode = async () => {
-        if (!email) {
-        Alert.alert("Error", "No email found. Please go back and enter your details again.");
-        return;
-        }
-
         try {
-            //Simulating Sending Code Here (Replace with the necessary API calls later)
-            console.log(`Sending verification code to ${email}`);
+            const response = await fetch(`${API_URL}/send-code`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email }),
+            });
+
+            const data = await response.json();
+            if (response.ok) {
             setIsCodeSent(true);
-            Alert.alert("A verification code has been sent to ${email}.")
-        }
-        catch{
-            Alert.alert("Error", "Failed to send a verification code, Please try again.")
+            Alert.alert("Success", data.message);
+            } else {
+            Alert.alert("Error", data.error || "Failed to send verification code.");
+            }
+        } catch {
+            Alert.alert("Error", "Network error while sending code.");
         }
     };
 
     const handleVerification = async () => {
-        if (code.trim() === "") {
-            Alert.alert("Error", "Please enter the verification code.");
+        try {
+        const verifyResponse = await fetch(`${API_URL}/verify-code`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, code }),
+        });
+
+        const verifyData = await verifyResponse.json();
+        if (!verifyResponse.ok) {
+            Alert.alert("Error", verifyData.error || "Invalid verification code.");
             return;
         }
-    try{
-        //Simulating a successful input, Replace with necessary API calls later
-        console.log('Verifying code ${code} for ${email}');
 
-        //Simulating verification success
-        if(code === "123456"){
-            Alert.alert("Success", "Email successfully verified!");
-            if (role === "individual") {
-                router.replace("/(indv)/(tabs)/calendar");
-            }
-            if (role === "parent") {
-                router.replace("/(parent)/(tabs)/calendar");
-            }
-            if (role === "child") {
-                router.replace("/(child)/(tabs)/calendar");
-            }
-            }
-        else{
-            Alert.alert("Error", "Invalid verification code. Please Try Again.")
+        const registerResponse = await fetch(`${API_URL}/register`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+            email,
+            password,
+            firstName: firstName,
+            lastName: lastName,
+            role,
+            familyCode: familyCode || null,
+            }),
+        });
+
+        const registerData = await registerResponse.json();
+        if (registerResponse.ok) {
+            Alert.alert("Success", "Account created successfully!");
+            if (role === "parent") router.replace("/(parent)/(tabs)/calendar");
+            else router.replace("/(child)/(tabs)/pet");
+        } else {
+            Alert.alert("Error", registerData.error || "Failed to create account.");
         }
-    }
-    catch{
-        Alert.alert("Error", "Verfication Failed, Please wait a moment and try again.")
+        } catch {
+        Alert.alert("Error", "Network error during verification.");
         }
     };
 

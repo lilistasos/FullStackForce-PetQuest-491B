@@ -54,7 +54,7 @@ export default function ChildDetailsScreen() {
     // If No Errors, Proceed
     router.push({
       pathname: "/(auth)/signup/verification",
-      params: {email, role: "child"},
+      params: {email, role: "child", firstName, lastName, password, familyCode, dob},
     });
 }
 

@@ -53,7 +53,7 @@ export default function PersonalDetailsScreen() {
     // If No Errors, Proceed
     router.push({
       pathname: "/(auth)/signup/verification",
-      params: {email, role: "individual"},
+      params: {email, role: "individual", firstName, lastName, password, dob},
     });
   }
 
