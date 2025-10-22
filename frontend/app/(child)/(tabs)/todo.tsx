@@ -3,6 +3,15 @@ import { View, Text, TouchableOpacity, FlatList, StyleSheet,  Image, ScrollView 
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
+// Defines what a task looks like
+type Task = {
+  id: string;
+  text: string;
+  completed: boolean;
+  category: string;
+  originalCategory?: string;
+};
+
 const ToDoScreen = ()=> {
 
 // Current Date State
@@ -18,9 +27,30 @@ const ToDoScreen = ()=> {
     Completed: false,
 });
 
-  const [tasks, setTasks] = useState<Task[]>([
-    { id: "1", text: "Read ch.1", completed: false, category: "Homework"}
-  ]);
+const [tasksByDate, setTasksByDate] = useState<{
+  [key: string]: Task[];
+}>({
+  "2025-10-20": [
+    { id: "1", text: "Read ch.1", completed: false, category: "Homework" },
+    { id: "2", text: "Clean kitchen", completed: false, category: "Chores" },
+    { id: "3", text: "Clean room", completed: false, category: "Chores" },
+    { id: "4", text: "Wash dishes", completed: false, category: "Chores" },
+    { id: "5", text: "Laundry", completed: false, category: "Chores" },
+  ],
+  "2025-10-21": [
+    { id: "6", text: "Math worksheet", completed: false, category: "Homework" },
+    { id: "7", text: "Soccer practice", completed: false, category: "Extracurriculars" },
+  ],
+  "2025-10-22": [
+    { id: "8", text: "Take out trash", completed: false, category: "Chores" },
+  ],
+});
+
+// Converts current date to a string
+const formatDateKey = (date: Date) => date.toISOString().split("T")[0];
+const formattedKey = formatDateKey(currentDate);
+const tasks = tasksByDate[formattedKey] || [];
+
 // Helper functions for changing date
 // Able to move back and forth between days 
   const changeDate = (days: number) => {
@@ -36,10 +66,36 @@ const monthDay = currentDate.toLocaleDateString("en-US", {
 });
 const year = currentDate.getFullYear();
 
-  const toggleComplete = (taskId: string) =>{
-    
-  };
+// When a user taps tasks it is moved to completed and can be moved back if not
+const toggleComplete = (taskId: string) => {
+  setTasksByDate((prev) => {
+    const updatedDayTasks = (prev[formattedKey] || []).map((task) => {
+      if (task.id === taskId) {
+        if (task.completed && task.category === "Completed" && task.originalCategory) {
+          // unmark completed → move back to original
+          return {
+            ...task,
+            completed: false,
+            category: task.originalCategory,
+            originalCategory: undefined,
+          };
+        } else if (!task.completed && task.category !== "Completed") {
+          // mark as completed → move to Completed section
+          return {
+            ...task,
+            completed: true,
+            originalCategory: task.category,
+            category: "Completed",
+          };
+        }
+      }
+      return task;
+    });
+    return { ...prev, [formattedKey]: updatedDayTasks };
+  });
+};
 
+// The four categories for tasks
   const categories = [
     { id: "Homework", title: "Homework" },
     { id: "Chores", title: "Chores" },
@@ -48,7 +104,10 @@ const year = currentDate.getFullYear();
   ];
   const renderCategory = (category: { id: string; title: string }) => {
     const isExpanded = expanded[category.id];
-    const visibleTasks = isExpanded ? 6 : 3; // shows three tasks then can expand into more
+    const categoryTasks = tasks.filter((t) => t.category === category.id);
+    const visibleTasks = isExpanded ? categoryTasks : categoryTasks.slice(0, 3);
+    const hiddenCount = categoryTasks.length - visibleTasks.length;
+
 
     return (
       <View style={styles.card}>
@@ -67,136 +126,184 @@ const year = currentDate.getFullYear();
           <Text style={styles.cardTitle}>{category.title}</Text>
         </TouchableOpacity>
 
-        {/* Placeholder Task Lines */}
+        {/* Task List ; displays expanded or unexpanded list*/}
+        
         <View style={styles.taskList}>
-          {[...Array(visibleTasks)].map((_, i) => (
-            <View key={i} style={styles.taskItem}>
-              <Ionicons name="ellipse-outline" size={18} color="gray" />
-              <View style={styles.taskLine} />
-            </View>
-          ))}
+          {visibleTasks.length > 0 ? (
+            visibleTasks.map((task) => (
+              <View key={task.id} style={styles.taskItem}>
+                <TouchableOpacity onPress={() => toggleComplete(task.id)}>
+                  <Ionicons
+                    name={
+                      task.completed ? "checkmark-circle" : "ellipse-outline"
+                    }
+                    size={20}
+                    color={task.completed ? "#0077B6" : "gray"}
+                  />
+                </TouchableOpacity>
+                <Text
+                  style={[
+                    styles.taskText,
+                    task.completed && { textDecorationLine: "line-through" },
+                  ]}
+                >
+                  {task.text}
+                </Text>
+              </View>
+            ))
+          ) : (
+            <Text style={styles.emptyText}>No tasks yet</Text>
+          )}
+          {/* Fine print for hidden tasks */}
+          {!isExpanded && hiddenCount > 0 && (
+            <Text style={styles.moreText}>+{hiddenCount} more task{hiddenCount > 1 ? "s" : ""}</Text>
+          )}
         </View>
       </View>
     );
   };
 
-    return (
-      <SafeAreaView style={styles.container}>
-        {/* Header Section */}
-        <View style={styles.header}>
-          {/* Top row: avatar + date + arrows */}
-          <View style={styles.topRow}>
-            {/* Avatar */}
-            <Image
-              source={{
-                uri: "https://cdn-icons-png.flaticon.com/512/1067/1067840.png",
-              }}
-              style={styles.avatar}
-            />
-  
-            {/* Date (centered + stacked) */}
-            <View style={styles.dateSection}>
-              <Text style={styles.weekday}>{weekday}</Text>
-              <Text style={styles.monthDay}>{monthDay},</Text>
-              <Text style={styles.year}>{year}</Text>
-            </View>
-  
-            {/* Date navigation arrows */}
-            <View style={styles.arrowContainer}>
-              <TouchableOpacity onPress={() => changeDate(-1)}>
-                <Ionicons name="chevron-back" size={26} color="#0077B6" />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => changeDate(1)}>
-                <Ionicons name="chevron-forward" size={26} color="#0077B6" />
-              </TouchableOpacity>
-            </View>
+
+  return (
+    <SafeAreaView style={styles.container}>
+      {/* Top bar */}
+      <View style={styles.topBar}>
+      </View>
+
+      {/* Header Section */}
+      <View style={styles.header}>
+        <View style={styles.topRow}>
+          {/* Avatar */}
+          <Image
+            source={{
+              uri: "https://cdn-icons-png.flaticon.com/512/1067/1067840.png",
+            }}
+            style={styles.avatar}
+          />
+
+          {/* Date (centered + stacked) */}
+          <View style={styles.dateSection}>
+            <Text style={styles.weekday}>{weekday}</Text>
+            <Text style={styles.monthDay}>{monthDay},</Text>
+            <Text style={styles.year}>{year}</Text>
+          </View>
+
+          {/* Date navigation arrows */}
+          <View style={styles.arrowContainer}>
+            <TouchableOpacity onPress={() => changeDate(-1)}>
+              <Ionicons name="chevron-back" size={26} color="#0077B6" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => changeDate(1)}>
+              <Ionicons name="chevron-forward" size={26} color="#0077B6" />
+            </TouchableOpacity>
           </View>
         </View>
-  
-        {/* Task Categories */}
-        <FlatList
-          data={categories}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => renderCategory(item)}
-          contentContainerStyle={{ paddingBottom: 100 }}
-        />
-      </SafeAreaView>
-    );
-  };
-  
-  export default ToDoScreen;
-  
-  const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: "#fff",
-      paddingHorizontal: 20,
-    },
-    header: {
-      marginTop: 20,
-    },
-    topRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-    },
-    avatar: {
-      width: 60,
-      height: 60,
-      borderRadius: 30,
-    },
-    dateSection: {
-      alignItems: "center",
-      flex: 1,
-    },
-    weekday: {
-      fontSize: 20,
-      fontWeight: "700",
-      color: "#000",
-    },
-    monthDay: {
-      fontSize: 18,
-      color: "#333",
-    },
-    year: {
-      fontSize: 18,
-      color: "#333",
-    },
-    arrowContainer: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 8,
-    },
-    card: {
-      backgroundColor: "#fff",
-      borderRadius: 12,
-      padding: 12,
-      marginVertical: 8,
-      borderWidth: 1,
-      borderColor: "#ccc",
-    },
-    cardHeader: {
-      flexDirection: "row",
-      alignItems: "center",
-    },
-    cardTitle: {
-      marginLeft: 8,
-      fontSize: 18,
-      fontWeight: "600",
-    },
-    taskList: {
-      marginTop: 10,
-      paddingLeft: 24,
-    },
-    taskItem: {
-      flexDirection: "row",
-      alignItems: "center",
-      marginVertical: 6,
-    },
-    taskLine: {
-      height: 1,
-      backgroundColor: "#ddd",
-      flex: 1,
-      marginLeft: 8,
-    },
-  });
+      </View>
+
+      {/* Task Categories; renders all categories vertically,flatlist for efficient scrolling */}
+      <FlatList
+        data={categories}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => renderCategory(item)}
+        contentContainerStyle={{ paddingBottom: 100 }}
+      />
+    </SafeAreaView>
+  );
+};
+
+export default ToDoScreen;
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#fff",
+    paddingHorizontal: 20,
+  },
+  topBar: {
+    alignItems: "center",
+    marginTop: 15,
+  },
+  topTitle: {
+    fontSize: 28,
+    fontWeight: "700",
+    color: "#000",
+  },
+  header: {
+    marginTop: 10,
+  },
+  topRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  avatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+  },
+  dateSection: {
+    alignItems: "center",
+    flex: 1,
+  },
+  weekday: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#000",
+  },
+  monthDay: {
+    fontSize: 18,
+    color: "#333",
+  },
+  year: {
+    fontSize: 18,
+    color: "#333",
+  },
+  arrowContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  card: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 12,
+    marginVertical: 8,
+    borderWidth: 1,
+    borderColor: "#ccc",
+  },
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  cardTitle: {
+    marginLeft: 8,
+    fontSize: 18,
+    fontWeight: "600",
+  },
+  taskList: {
+    marginTop: 10,
+    paddingLeft: 24,
+  },
+  taskItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 6,
+  },
+  taskText: {
+    marginLeft: 8,
+    fontSize: 16,
+    color: "#333",
+  },
+  emptyText: {
+    fontStyle: "italic",
+    color: "#aaa",
+    marginLeft: 30,
+    marginTop: 6,
+  },
+  moreText: {
+    marginTop: 4,
+    fontSize: 12,
+    color: "#888",
+    fontStyle: "italic",
+  },
+});
