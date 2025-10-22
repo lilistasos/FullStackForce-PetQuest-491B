@@ -2,70 +2,94 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from "reac
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 
-export default function VerificationScreen(){
+export default function VerificationScreen() {
     const router = useRouter();
-    const {email, role, password, familyCode, firstName, lastName} = useLocalSearchParams();
+    const { email, role, password, familyCode, firstName, lastName, dob } = useLocalSearchParams();
+    console.log("Verification screen params:", email, role, password, familyCode, firstName, lastName);
     const [code, setCode] = useState("");
     const [isCodeSent, setIsCodeSent] = useState(false);
-    const API_URL = "https://your-api-url.com/api/auth"; //API thing? goes here
+    const [generatedCode, setGeneratedCode] = useState("");
+    const API_URL = "http://10.0.2.2:4000/api/auth"; //API thing? goes here
 
     const handleSendCode = async () => {
         try {
             const response = await fetch(`${API_URL}/send-code`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email }),
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email }),
             });
 
-            const data = await response.json();
-            if (response.ok) {
-            setIsCodeSent(true);
-            Alert.alert("Success", data.message);
-            } else {
-            Alert.alert("Error", data.error || "Failed to send verification code.");
-            }
-        } catch {
-            Alert.alert("Error", "Network error while sending code.");
-        }
-    };
+    const data = await response.json();
+
+    if (response.ok) {
+      setIsCodeSent(true);
+      Alert.alert("Success", data.message);
+    } else {
+      Alert.alert("Error", data.error || "Failed to send verification code.");
+    }
+  } catch (err) {
+    console.error("Send code error:", err);
+    Alert.alert("Error", "Network error while sending code.");
+  }
+};
 
     const handleVerification = async () => {
         try {
-        const verifyResponse = await fetch(`${API_URL}/verify-code`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, code }),
-        });
+            const verifyResponse = await fetch(`${API_URL}/verify-code`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, code }),
+            });
 
-        const verifyData = await verifyResponse.json();
-        if (!verifyResponse.ok) {
-            Alert.alert("Error", verifyData.error || "Invalid verification code.");
-            return;
-        }
+            const verifyData = await verifyResponse.json();
+            if (!verifyResponse.ok) {
+                Alert.alert("Error", verifyData.error || "Invalid verification code.");
+                return;
+            }
 
-        const registerResponse = await fetch(`${API_URL}/register`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-            email,
-            password,
-            firstName: firstName,
-            lastName: lastName,
-            role,
-            familyCode: familyCode || null,
-            }),
-        });
+            const formattedDob =
+                typeof dob === "string" && dob.includes("/")
+                    ? dob.split("/").reverse().join("-")
+                    : dob || null;
 
-        const registerData = await registerResponse.json();
-        if (registerResponse.ok) {
-            Alert.alert("Success", "Account created successfully!");
-            if (role === "parent") router.replace("/(parent)/(tabs)/calendar");
-            else router.replace("/(child)/(tabs)/pet");
-        } else {
-            Alert.alert("Error", registerData.error || "Failed to create account.");
-        }
-        } catch {
-        Alert.alert("Error", "Network error during verification.");
+            const registerBody: any = {
+                email,
+                password,
+                firstName,
+                lastName,
+                role,
+            };
+
+            if (formattedDob) {
+                registerBody.dateOfBirth = formattedDob;
+            }
+
+            const familyCodeValue = Array.isArray(familyCode) ? familyCode[0] : familyCode;
+
+            if (familyCodeValue && familyCodeValue !== "") {
+                registerBody.familyCode = familyCodeValue.toUpperCase();
+            }
+
+            // Register the user
+            const registerResponse = await fetch(`${API_URL}/register`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(registerBody),
+            });
+
+            const registerData = await registerResponse.json();
+
+            if (registerResponse.ok) {
+                Alert.alert("Success", "Account created successfully!");
+                if (role === "parent") router.replace("/(parent)/(tabs)/calendar");
+                else if (role === "child") router.replace("/(child)/(tabs)/pet");
+                else router.replace("/(indv)/(tabs)/calendar");
+            } else {
+                Alert.alert("Error", registerData.error || "Failed to create account.");
+            }
+        } catch (err) {
+            console.error("Verification error:", err);
+            Alert.alert("Error", "Network error during verification.");
         }
     };
 

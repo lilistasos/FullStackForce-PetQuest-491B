@@ -6,12 +6,40 @@ export default function LoginScreen() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [message, setMessage] = useState("");
 
-  const handleLogin = () => {
-    // TODO: Add actual login logic here (API call, validation, etc.)
-    // After successful login:
+  const handleLogin = async () => {
+  setMessage("");
+
+  if (!email || !password) {
+    setMessage("Please enter both email and password");
+    return;
+  }
+
+  try {
+    const res = await fetch("http://10.0.2.2:4000/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+
+    console.log("Response status:", res.status);
+    const data = await res.json();
+    console.log("Response data:", data);
+
+    if (!res.ok) {
+      setMessage(data.error || "Login failed");
+      return;
+    }
+
+    setMessage("Login successful!");
     router.replace("/(indv)/(tabs)/calendar");
-  };
+  } catch (err) {
+    console.log("Error:", err);
+    setMessage("Unable to connect to the server");
+  }
+};
+
 
   return (
     <View style={styles.container}>

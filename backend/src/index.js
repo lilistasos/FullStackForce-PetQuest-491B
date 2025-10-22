@@ -34,7 +34,7 @@ const RegisterSchema = z.object({
   firstName: z.string().min(1),
   lastName: z.string().min(1),
   role: z.enum(['parent', 'child', 'individual']),
-  familyCode: z.string().length(6).optional(),
+  familyCode: z.string().length(6).nullable().optional(),
   dateOfBirth: IsoDateString.optional(),
 }).refine((data) => {
   if (data.role === 'parent' || data.role === 'individual') {
@@ -263,60 +263,92 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// Forgot Password, Generate link and token for resetting password
+// Temporary in-memory verification system (for console testing)
+const verificationCodes = {}; // store email-code pairs
+
+// Send verification code — prints to console
+app.post('/api/auth/send-code', async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).json({ error: 'Email is required.' });
+  }
+
+  // Generate random 6-digit code
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  verificationCodes[email] = code;
+
+  // Log code in backend console for testing
+  console.log(`📩 Verification code for ${email}: ${code}`);
+
+  res.json({ message: `Verification code generated (check server console).` });
+});
+
+// Verify the code entered by the user
+app.post('/api/auth/verify-code', async (req, res) => {
+  const { email, code } = req.body;
+  if (!email || !code) {
+    return res.status(400).json({ error: 'Email and code are required.' });
+  }
+
+  if (verificationCodes[email] !== code) {
+    return res.status(400).json({ error: 'Invalid or expired verification code.' });
+  }
+
+  //Remove code after success
+  delete verificationCodes[email];
+  res.json({ message: 'Verification successful!' });
+});
+
+
+// In-memory password reset codes (temporary)
+const resetCodes = {};
+
+// Request reset code — no email, just console log(backend)
 app.post('/api/auth/forgot-password', async (req, res) => {
   const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email is required.' });
+
   try {
     const user = await findUserByEmail(email);
     if (!user) return res.status(404).json({ error: 'No account found with that email.' });
 
-    const token = crypto.randomBytes(20).toString('hex');
-    const expires = new Date(Date.now() + 3600000); // 1 hour
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    resetCodes[email] = code;
 
-    await pool.query(
-      `UPDATE users SET reset_token = $1, reset_expires = $2 WHERE email = $3`,
-      [token, expires, email]
-    );
-
-    // Update later on with correct email sending logic
-    // console.log(`🔗 Password reset link: https://yourapp/reset-password/${token}`);
-
-    res.json({ message: 'Password reset link sent to email (check console for demo).' });
+    console.log(`🔐 Password reset code for ${email}: ${code}`);
+    res.json({ message: 'Password reset code generated. Check console.' });
   } catch (err) {
-    console.error('Forgot password error:', err);
-    res.status(500).json({ error: 'Server error during password reset.' });
+    console.error('Error generating reset code:', err);
+    res.status(500).json({ error: 'Server error during password reset request.' });
   }
 });
 
-// Reset Password
+// Reset password using code (in-app)
 app.post('/api/auth/reset-password', async (req, res) => {
+  const { email, code, newPassword } = req.body;
+  if (!email || !code || !newPassword) {
+    return res.status(400).json({ error: 'Email, code, and new password are required.' });
+  }
+
+  if (resetCodes[email] !== code) {
+    return res.status(400).json({ error: 'Invalid or expired reset code.' });
+  }
+
   try {
-    const { token, newPassword } = validate(ResetPasswordSchema, req.body);
-
-    const { rows } = await pool.query(
-      `SELECT id FROM users WHERE reset_token = $1 AND reset_expires > NOW()`,
-      [token]
-    );
-    if (rows.length === 0) {
-      return res.status(400).json({ error: 'Invalid or expired token.' });
-    }
-
     const passwordHash = await hashPassword(newPassword);
-
     await pool.query(
-      `UPDATE users
-       SET password_hash = $1, reset_token = NULL, reset_expires = NULL
-       WHERE id = $2`,
-      [passwordHash, rows[0].id]
+      `UPDATE users SET password_hash = $1 WHERE email = $2`,
+      [passwordHash, email]
     );
 
-    res.json({ message: 'Password successfully reset. You can now log in.' });
+    delete resetCodes[email];
+    res.json({ message: 'Password successfully reset.' });
   } catch (err) {
-    const status = err.status || 500;
-    console.error('Reset password error:', err);
-    res.status(status).json({ error: err.message || 'Server error resetting password.' });
+    console.error('Error resetting password:', err);
+    res.status(500).json({ error: 'Server error resetting password.' });
   }
 });
+
 
 // Profile Routes
 app.get('/api/users/me', authMiddleware, async (req, res) => {
