@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { View, Text, Button, FlatList, TouchableOpacity, Alert } from "react-native"
-import { api } from "@/lib/api"
+//import { api } from "@/lib/api"
 import { useAuth } from "@/hooks/useAuth"
 import { useRouter } from "expo-router"
 

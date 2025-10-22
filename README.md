@@ -6,8 +6,6 @@ Our goal is to help parents educate their children on the importance of time man
 
 ---
 
-## Features
-
 ## Tech Stack
 
 ### Frontend Languages
@@ -19,10 +17,8 @@ Our goal is to help parents educate their children on the importance of time man
 * Expo
 
 ### Backend
-* Databases
-*
-*
-*
+* Node.js
+* SQL
 
 ### Libraries
 
