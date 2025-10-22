@@ -4,7 +4,7 @@
     "slug": "frontend",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/example.png",
+    "icon": "./assets/images/green-dragon.png",
     "scheme": "frontend",
     "userInterfaceStyle": "automatic",
     "splash": {

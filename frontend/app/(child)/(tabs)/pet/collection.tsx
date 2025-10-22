@@ -9,6 +9,7 @@ interface CollectionItem {
   name: string;
   icon: string;
   selected?: boolean;
+  owned: boolean;
 }
 
 export default function CollectionScreen() {
@@ -16,12 +17,12 @@ export default function CollectionScreen() {
   const { selectedPet, setSelectedPet } = usePet();
 
   const collectionItems: CollectionItem[] = [
-    { id: "dragon", name: "Dragon", icon: "" },
-    { id: "cat", name: "Cat", icon: "" },
-    { id: "bird", name: "Bird", icon: "" },
-    { id: "dog", name: "Dog", icon: "" },
-    { id: "rabbit", name: "Rabbit", icon: "" },
-    { id: "hamster", name: "Hamster", icon: "" },
+    { id: "dragon", name: "Dragon", icon: "", owned: true },
+    { id: "cat", name: "Cat", icon: "", owned: true },
+    { id: "bird", name: "Bird", icon: "", owned: false },
+    { id: "dog", name: "Dog", icon: "", owned: false },
+    { id: "rabbit", name: "Rabbit", icon: "", owned: false },
+    { id: "hamster", name: "Hamster", icon: "", owned: false },
   ];
 
   const getPetImage = (petId: string) => {
@@ -36,12 +37,15 @@ export default function CollectionScreen() {
   };
 
   const handlePetSelect = (petId: string) => {
-    const petName = collectionItems.find(item => item.id === petId)?.name || "Unknown";
-    setSelectedPet({
-      id: petId,
-      name: petName,
-      image: getPetImage(petId)
-    });
+    const pet = collectionItems.find(item => item.id === petId);
+    // Only allow selection if the pet is owned
+    if (pet && pet.owned) {
+      setSelectedPet({
+        id: petId,
+        name: pet.name,
+        image: getPetImage(petId)
+      });
+    }
   };
 
   const renderCollectionItem = (item: CollectionItem) => (
@@ -49,25 +53,37 @@ export default function CollectionScreen() {
       key={item.id} 
       style={styles.itemContainer}
       onPress={() => handlePetSelect(item.id)}
+      disabled={!item.owned}
+      activeOpacity={item.owned ? 0.7 : 1}
     >
       <View style={[
         styles.itemBox,
-        selectedPet.id === item.id && styles.selectedItemBox
+        selectedPet.id === item.id && item.owned && styles.selectedItemBox,
+        !item.owned && styles.unownedItemBox
       ]}>
         {item.id === "dragon" ? (
           <Image 
             source={require("@/assets/images/pdragon.png")} 
-            style={styles.itemImage}
+            style={[
+              styles.itemImage,
+              !item.owned && styles.grayedOutImage
+            ]}
             resizeMode="contain"
           />
         ) : item.id === "cat" ? (
           <Image 
             source={require("@/assets/images/cat.png")} 
-            style={styles.itemImage}
+            style={[
+              styles.itemImage,
+              !item.owned && styles.grayedOutImage
+            ]}
             resizeMode="contain"
           />
-        ) : (
+        ) : item.owned ? (
           <Text style={styles.itemTitle}>{item.name}</Text>
+        ) : (
+          // Empty box for unowned pets - no text
+          null
         )}
       </View>
     </TouchableOpacity>
@@ -148,6 +164,10 @@ const styles = StyleSheet.create({
     borderWidth: 4,
     borderColor: "#52AFDD",
   },
+  unownedItemBox: {
+    backgroundColor: "#F5F5F5",
+    borderColor: "#CCCCCC",
+  },
   itemTitle: {
     fontFamily: "monospace",
     fontSize: 14,
@@ -155,8 +175,14 @@ const styles = StyleSheet.create({
     color: "#000",
     textAlign: "center",
   },
+  grayedOutText: {
+    color: "#999999",
+  },
   itemImage: {
     width: 120,
     height: 120,
+  },
+  grayedOutImage: {
+    opacity: 0.4,
   },
 });

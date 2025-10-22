@@ -52,8 +52,9 @@ export default function CustomizeScreen() {
     });
   };
 
-  const renderAccessoryItem = ({ item, index }: { item: AccessoryItem; index: number }) => (
+  const renderAccessoryItem = ({ item, index, key }: { item: AccessoryItem; index: number; key: string | number }) => (
     <TouchableOpacity 
+      key={key}
       style={[
         styles.accessoryItem, 
         item.isEmpty && styles.emptyItem,
@@ -161,9 +162,9 @@ export default function CustomizeScreen() {
 
       <View style={styles.gridContainer}>
         <View style={styles.grid}>
-          {getVisibleItems().map((item, index) => (
-            renderAccessoryItem({ item, index })
-          ))}
+          {getVisibleItems().map((item, index) => 
+            renderAccessoryItem({ item, index, key: item.id || index })
+          )}
         </View>
         
         {userAccessories[selectedCategory].length > visibleRows * 3 && (
