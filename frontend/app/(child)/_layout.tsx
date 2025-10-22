@@ -90,18 +90,9 @@ export default function ChildLayout() {
         options={{
 
           title: 'Pet',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="calendar" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="pawprint.fill" color={color} />,
         }}
       />
-      <Tabs.Screen
-        name="(tabs)/To-Do"
-  
-        options={{
-          title: 'To-Do',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="list.bullet" color={color} />,
-        }}
-      />
-  
       <Tabs.Screen
         name="(tabs)/calendar"
         options={{
