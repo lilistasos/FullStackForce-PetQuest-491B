@@ -20,19 +20,19 @@ export default function PetScreen() {
       <View style={styles.buttonContainer}>
         <TouchableOpacity 
           style={styles.button}
-          onPress={() => router.push("./customize")}>
+          onPress={() => router.push("/(child)/(tabs)/pet/customize")}>
           <Text style={styles.buttonText}>Customize</Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
           style={styles.button}
-          onPress={() => router.push("./shop")}>
+          onPress={() => router.push("/(child)/(tabs)/pet/shop")}>
           <Text style={styles.buttonText}>Shop</Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
           style={styles.button}
-          onPress={() => router.push("./collection")}>
+          onPress={() => router.push("/(child)/(tabs)/pet/collection")}>
           <Text style={styles.buttonText}>Collection</Text>
         </TouchableOpacity>
       </View>

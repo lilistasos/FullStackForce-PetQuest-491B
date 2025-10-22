@@ -7,7 +7,6 @@ import { useNavigationState } from '@react-navigation/native';
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import HamburgerMenu from '@/components/HamburgerMenu';
-import { PetProvider } from '@/contexts/PetContext';
 
 export default function ChildLayout() {
   const [headerTitle, setHeaderTitle] = useState('Pet');
@@ -54,7 +53,7 @@ export default function ChildLayout() {
   }, [navigationState]);
 
   return (
-    <PetProvider>
+    <>
       <HamburgerMenu 
         visible={menuVisible} 
         onClose={() => setMenuVisible(false)}
@@ -115,6 +114,6 @@ export default function ChildLayout() {
         }}
       />
     </Tabs>
-    </PetProvider>
+    </>
   );
 }

@@ -1,8 +1,7 @@
 // components/CalendarView.js
 import React, {useState, useCallback} from "react";
-import { View, StyleSheet, TouchableOpacity } from "react-native";
+import { View, StyleSheet, TouchableOpacity, Text } from "react-native";
 import { Calendar, WeekCalendar, CalendarProvider, Agenda, AgendaList } from "react-native-calendars";
-import {Card, Text, Avatar } from "react-native-paper"
 
 
 export default function CalendarView() {
@@ -24,18 +23,20 @@ export default function CalendarView() {
     console.log("renderItem: ", item);
      return (
       <TouchableOpacity style={styles.item}>
-        <Card>
-          <Card.Content>
-            <View style={styles.row}>
-              <Text>{item.name}</Text>
-              <Avatar.Text label={item.name ? item.name[0]?.toUpperCase() : "?"}/>
-              {/* {item.data.map((data, index) => (
-                <Text key={index}>{'${data.name} - {data.time}'}</Text>
-              ))} */}
+        <View style={styles.card}>
+          <View style={styles.row}>
+            <Text style={styles.itemName}>{item.name}</Text>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>
+                {item.name ? item.name[0]?.toUpperCase() : "?"}
+              </Text>
             </View>
-            {/* <Text>{item.time}</Text> */}
-          </Card.Content>
-        </Card>
+            {/* {item.data.map((data, index) => (
+              <Text key={index}>{'${data.name} - {data.time}'}</Text>
+            ))} */}
+          </View>
+          {/* <Text>{item.time}</Text> */}
+        </View>
       </TouchableOpacity>
     );
   }, []);
@@ -100,10 +101,41 @@ const styles = StyleSheet.create({
       marginRight:10,
       marginTop:17
     },
+    card: {
+      backgroundColor: 'white',
+      borderRadius: 8,
+      padding: 12,
+      shadowColor: '#000',
+      shadowOffset: {
+        width: 0,
+        height: 1,
+      },
+      shadowOpacity: 0.22,
+      shadowRadius: 2.22,
+      elevation: 3,
+    },
     row: {
       flexDirection: 'row', 
       justifyContent: 'space-between', 
       alignItems: 'center',
+    },
+    itemName: {
+      fontSize: 16,
+      fontWeight: '500',
+      color: '#333',
+    },
+    avatar: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: '#52AFDD',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    avatarText: {
+      color: 'white',
+      fontSize: 16,
+      fontWeight: 'bold',
     },
     line: {
       height: 1,

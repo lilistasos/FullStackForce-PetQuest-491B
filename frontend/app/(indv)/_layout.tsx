@@ -7,7 +7,6 @@ import { useNavigationState } from '@react-navigation/native';
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import HamburgerMenu from '@/components/HamburgerMenu';
-import { PetProvider } from '@/contexts/PetContext';
 
 export default function IndvLayout() {
   const [headerTitle, setHeaderTitle] = useState('Calendar');
@@ -56,7 +55,7 @@ export default function IndvLayout() {
   }, [navigationState]);
 
   return (
-    <PetProvider>
+    <>
       <HamburgerMenu 
         visible={menuVisible} 
         onClose={() => setMenuVisible(false)}
@@ -123,6 +122,6 @@ export default function IndvLayout() {
         }}
       />
     </Tabs>
-    </PetProvider>
+    </>
   );
 }
