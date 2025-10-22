@@ -88,6 +88,7 @@ export default function ChildLayout() {
       <Tabs.Screen
         name="(tabs)/pet"
         options={{
+
           title: 'Pet',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="pawprint.fill" color={color} />,
         }}
