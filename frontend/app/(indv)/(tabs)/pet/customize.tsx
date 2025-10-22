@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
   },
   backButton: {
-    backgroundColor: "#52AFDD",
+    backgroundColor: "#7B4FDD",
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 8,
@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   selectedCategory: {
-    backgroundColor: "#52AFDD",
+    backgroundColor: "#7B4FDD",
   },
   categoryText: {
     fontFamily: "monospace",
@@ -251,11 +251,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
-    borderColor: "#52AFDD",
+    borderColor: "#7B4FDD",
   },
   selectedAccessoryItem: {
     borderWidth: 4,
-    borderColor: "#52AFDD",
+    borderColor: "#7B4FDD",
   },
   emptyItem: {
     backgroundColor: "#F8F8F8",
@@ -269,7 +269,7 @@ const styles = StyleSheet.create({
     height: 80,
   },
   loadMoreButton: {
-    backgroundColor: "#52AFDD",
+    backgroundColor: "#7B4FDD",
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,

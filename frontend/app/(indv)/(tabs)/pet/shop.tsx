@@ -302,7 +302,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   backButton: {
-    backgroundColor: "#52AFDD",
+    backgroundColor: "#7B4FDD",
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 8,
@@ -340,7 +340,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   selectedTab: {
-    backgroundColor: "#52AFDD",
+    backgroundColor: "#7B4FDD",
   },
   tabText: {
     fontFamily: "monospace",
@@ -375,7 +375,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
-    borderColor: "#52AFDD",
+    borderColor: "#7B4FDD",
     padding: 10,
   },
   itemTitle: {
