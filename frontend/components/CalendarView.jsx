@@ -1,8 +1,8 @@
 // components/CalendarView.js
 import React, {useState, useCallback} from "react";
-import { View, StyleSheet, TouchableOpacity, Button, Alert, Modal } from "react-native";
-import { Calendar, WeekCalendar, CalendarProvider, AgendaList } from "react-native-calendars";
-import {Card, Text, Avatar, Checkbox } from "react-native-paper"
+import { View, StyleSheet, TouchableOpacity, Alert, Modal } from "react-native";
+import { WeekCalendar, CalendarProvider, AgendaList } from "react-native-calendars";
+import {Card, Text, } from "react-native-paper"
 
 export default function CalendarView() {
   
@@ -48,7 +48,14 @@ export default function CalendarView() {
     );
   };
 
-
+  // const renderSectionHeader = React.useCallback(({sectionTitle}) => {
+  //   //if (!section || !section.title) return null;
+  //   return (
+  //     <View style = {{backgroundColor: '#f0f0f0', padding: 5, borderBottomWidth: 1, borderBottomColor: '#d3d3d3'}}>
+  //       <Text style={{fontFamily: 'monospace', fontSize: 16, fontWeight: 'bold'}}>{sectionTitle}</Text>
+  //     </View>
+  //   );
+  // }, [])
 
   const renderItem = React.useCallback(({item}) => {
     console.log("renderItem: ", item);
@@ -59,13 +66,8 @@ export default function CalendarView() {
           <Card.Content>
             <View style={styles.row}>
               <Text style={[styles.itemText, item.complete && {textDecorationLine: 'line-through'}]}>{item.name}</Text>
-              {/* <Avatar.Text label={item.name ? item.name[0]?.toUpperCase() : "?"}/> */}
-              <Text>{item.time}</Text>
-              {/* {item.data.map((data, index) => (
-                <Text key={index}>{'${data.name} - {data.time}'}</Text>
-              ))} */}
+              <Text style={[styles.itemText, item.complete && {textDecorationLine: 'line-through'}]}>{item.time}</Text>
             </View>
-            {/* <Text>{item.time}</Text> */}
           </Card.Content>
         </Card>
       </TouchableOpacity>
@@ -100,6 +102,7 @@ export default function CalendarView() {
    
    
     <CalendarProvider date={currentDate}>
+      <View style={{backgroundColor: '#d3d3d3'}}>
       <WeekCalendar
         current={currentDate}
         onDayPress={(day) => {console.log("Selected day", day); setCurrentDate(day.dateString);}}
@@ -119,12 +122,15 @@ export default function CalendarView() {
           <AgendaList
           sections={items.filter(section => section.title === currentDate)}
           renderItem={renderItem}
+          //renderSectionHeader={renderSectionHeader}
         />
         ) : (
           <View>
             <Text style={styles.emptyTask}>No tasks for today</Text>
           </View>
         )}
+        </View>
+
         <Modal
           animationType="slide"
           transparent={true}
@@ -169,7 +175,9 @@ const styles = StyleSheet.create({
       borderRadius:5,
       padding:10,
       marginRight:10,
-      marginTop:17
+      marginTop:17,
+      marginBottom: 5,
+      marginLeft: 10
     },
     row: {
       flexDirection: 'row',
