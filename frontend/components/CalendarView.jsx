@@ -1,69 +1,108 @@
 // components/CalendarView.js
 import React, {useState, useCallback} from "react";
-import { View, StyleSheet, TouchableOpacity, Text } from "react-native";
-import { Calendar, WeekCalendar, CalendarProvider, Agenda, AgendaList } from "react-native-calendars";
-
+import { View, StyleSheet, TouchableOpacity, Alert, Modal } from "react-native";
+import { WeekCalendar, CalendarProvider, AgendaList } from "react-native-calendars";
+import {Card, Text, } from "react-native-paper"
 
 export default function CalendarView() {
-  console.log("calendar");
-  const [currentDate, setCurrentDate] = useState(
-    () => new Date().toISOString().split("T")[0]
-  );
+  
+  const now = new Date();
+  const [currentDate, setCurrentDate] = useState(() => new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().split("T")[0]);
+
  
   const [items, setItems] = useState([{
-    title: '2025-10-19', data: [{name: "Meeting", description: "Meeting with friend", time: "10:00 am"}, 
-      {name: "Lunch", time:"12:00"},
+    title: '2025-10-21', data: [{name: "Meeting", id: '1', description: "Meeting with friend", time: "10:00 am", points: 15, complete: false},
+      {name: "Lunch", id: '2', time:"12:00", points: 10, complete: false},
     ],},
     {
-      title: '2025-10-20', data: [{name: "Study", description: "study for test", time: "12:00 pm"}],
+      title: '2025-10-22', data: [{name: "Study", id: '3', description: "study for test", time: "12:00 pm", points: 30, complete: false},
+        {name: "HW", id: '4', description: "Do math hw", time: "4:00 pm", points: 20, complete: false}
+      ],
     },
   ]);
-  
-  const renderItem = React.useCallback((item) => {
-    console.log("renderItem: ", item);
-     return (
-      <TouchableOpacity style={styles.item}>
-        <View style={styles.card}>
-          <View style={styles.row}>
-            <Text style={styles.itemName}>{item.name}</Text>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {item.name ? item.name[0]?.toUpperCase() : "?"}
-              </Text>
-            </View>
-            {/* {item.data.map((data, index) => (
-              <Text key={index}>{'${data.name} - {data.time}'}</Text>
-            ))} */}
-          </View>
-          {/* <Text>{item.time}</Text> */}
-        </View>
-      </TouchableOpacity>
-    );
+ 
+  const [isExpanded, setExpanded] = useState({});
+  const todayAgenda = items.filter(section => section.title === currentDate);
+  const [modal, setModal] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
+
+  const toggleExpand = useCallback((name) => {
+    setExpanded((prev) => ({
+      ...prev, [name]: !prev[name],
+    }));
   }, []);
 
-  // const renderItem = useCallback((item) => {
-  //   console.log("renderItem: ", item)
+  const toggleComplete = (date, itemId) => {
+    setItems(prevItems => 
+      prevItems.map(section => {
+        if (section.title === date) {
+          return {
+            ...section,
+            data: section.data.map(item => 
+              item.id === itemId ? {...item, complete: !item.complete} : item
+            ),
+          };
+        }
+        return section;
+      })
+    );
+  };
+
+  // const renderSectionHeader = React.useCallback(({sectionTitle}) => {
+  //   //if (!section || !section.title) return null;
   //   return (
-  //     <View>
-  //       <Text>{item.name}</Text>
+  //     <View style = {{backgroundColor: '#f0f0f0', padding: 5, borderBottomWidth: 1, borderBottomColor: '#d3d3d3'}}>
+  //       <Text style={{fontFamily: 'monospace', fontSize: 16, fontWeight: 'bold'}}>{sectionTitle}</Text>
   //     </View>
   //   );
-  // }, []);
+  // }, [])
+
+  const renderItem = React.useCallback(({item}) => {
+    console.log("renderItem: ", item);
+     return (
+      <View>
+      <TouchableOpacity style={styles.item} onPress={() => {setSelectedItem(item); setModal(true);}}>
+        <Card>
+          <Card.Content>
+            <View style={styles.row}>
+              <Text style={[styles.itemText, item.complete && {textDecorationLine: 'line-through'}]}>{item.name}</Text>
+              <Text style={[styles.itemText, item.complete && {textDecorationLine: 'line-through'}]}>{item.time}</Text>
+            </View>
+          </Card.Content>
+        </Card>
+      </TouchableOpacity>
+     
+        
+      
+     
+      {/* { isExpanded[item.name] && (
+        <View style={{padding: 10, backgroundColor: '#f0f0f0'}}>
+        <Text>{item.description}</Text>
+        <Text>Points: {item.points}</Text>
+        <Button>
+          title="Complete"
+          onPress={() => {Alert.alert("Task Completed", "You have earned " + item.points + " points"); toggleComplete(currentDate, item.id);
+            console.log(item.complete);
+          }}
+          color="#008000"
+        </Button>
+        </View>
+      )}  */}
+
+
+     </View>
+     );
+}, [isExpanded, setModal, toggleComplete, currentDate]);
+
 
   const onDateChanged = () => {
     console.log("onDateChanged");
   }
   return (
-    
-
-    // <Agenda
-    //         items={items}
-    //         loadItemsForMonth={loadItems}
-    //         renderItem={renderItem}
-    //         selected='2025-10-18'          
-    //       />  
+   
    
     <CalendarProvider date={currentDate}>
+      <View style={{backgroundColor: '#d3d3d3'}}>
       <WeekCalendar
         current={currentDate}
         onDayPress={(day) => {console.log("Selected day", day); setCurrentDate(day.dateString);}}
@@ -73,20 +112,56 @@ export default function CalendarView() {
         theme={{
           todayTextColor: "#52AFDD",
           selectedDayBackgroundColor: "#52AFDD",
+          textDayFontFamily: 'monospace',
+          textMonthFontFamily: 'monospace',
+          textDayHeaderFontFamily: 'monospace',
         }} />
-        
-        {/* <Agenda
-            items={items}
-            //loadItemsForMonth={loadItems}
-            //renderItem={renderItem}
-            selected='2025-10-18'          
-          />   */}
+       
         <View style={styles.line}/>
-        <AgendaList
+        { todayAgenda.length > 0 ? (
+          <AgendaList
           sections={items.filter(section => section.title === currentDate)}
-          renderItem={({item}) => renderItem(item)}
+          renderItem={renderItem}
+          //renderSectionHeader={renderSectionHeader}
         />
-        
+        ) : (
+          <View>
+            <Text style={styles.emptyTask}>No tasks for today</Text>
+          </View>
+        )}
+        </View>
+
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={modal}
+          onRequestClose={() => {
+           setModal(!modal);
+       }}
+      >
+      {selectedItem && (
+       <View style={styles.modalView}>
+         <View style={styles.modalContent}>
+          <Text style={styles.modalTitle}>{selectedItem.name}</Text>
+          <Text style={styles.modalText}>Description: {selectedItem.description}</Text>
+          <Text style={styles.modalText}>Points: {selectedItem.points}</Text>
+          <View style={styles.buttonsContainer}>
+          <TouchableOpacity style={styles.closeButton} onPress={() => setModal(!modal)} >
+            <Text style={{color: 'white'}}>Close</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.completeButton} onPress={() => {
+            Alert.alert("Task Completed", `You have earned ${selectedItem.points} + points `); 
+            toggleComplete(currentDate, selectedItem.id);
+            console.log(selectedItem.complete);}}>
+            <Text style={{color: 'white'}}>Complete</Text>
+          </TouchableOpacity>
+          </View>
+        </View>
+
+      </View>
+      )}
+        </Modal>
+       
     </CalendarProvider>
    
   );
@@ -99,47 +174,70 @@ const styles = StyleSheet.create({
       borderRadius:5,
       padding:10,
       marginRight:10,
-      marginTop:17
-    },
-    card: {
-      backgroundColor: 'white',
-      borderRadius: 8,
-      padding: 12,
-      shadowColor: '#000',
-      shadowOffset: {
-        width: 0,
-        height: 1,
-      },
-      shadowOpacity: 0.22,
-      shadowRadius: 2.22,
-      elevation: 3,
+      marginTop:17,
+      marginBottom: 5,
+      marginLeft: 10
     },
     row: {
-      flexDirection: 'row', 
-      justifyContent: 'space-between', 
+      flexDirection: 'row',
+      justifyContent: 'space-between',
       alignItems: 'center',
-    },
-    itemName: {
-      fontSize: 16,
-      fontWeight: '500',
-      color: '#333',
-    },
-    avatar: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
-      backgroundColor: '#52AFDD',
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    avatarText: {
-      color: 'white',
-      fontSize: 16,
-      fontWeight: 'bold',
     },
     line: {
       height: 1,
       backgroundColor: '#D3D3D3',
       width: '100%',
+    },
+    modalView: {
+      flex:1, 
+      justifyContent:'center', 
+      alignItems:'center', 
+      marginTop:22
+    },
+    modalContent: {
+      backgroundColor:'white', 
+      padding:20, 
+      alignItems:'center'
+    },
+    buttonsContainer: {
+      flexDirection:'row', 
+      justifyContent:'space-between', 
+      paddingHorizontal: 40, 
+      marginTop:20, 
+      width: '100%'
+    },
+    closeButton: {
+      backgroundColor:"#FF0000", 
+      padding: 10, 
+      marginHorizontal:10, 
+      borderRadius: 5
+    },
+    completeButton: {
+      backgroundColor:"#008000", 
+      padding: 10, 
+      marginHorizontal:10, 
+      borderRadius: 5
+    },
+    itemText: {
+      fontWeight: 'bold',
+      fontFamily: 'monospace',
+      fontSize: 16
+    },
+    modalTitle: {
+      fontSize: 20,
+      fontWeight: 'bold',
+      fontFamily: 'monospace',
+      marginBottom: 10
+    },
+    modalText: {
+      fontSize: 16,
+      fontFamily: 'monospace',
+      marginBottom: 20
+    },
+    emptyTask: {
+      textAlign: 'center', 
+      fontFamily: 'monospace', 
+      marginTop: 20,
+      fontSize: 16
     }
   });
