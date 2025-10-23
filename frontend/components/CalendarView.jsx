@@ -47,7 +47,6 @@ export default function CalendarView() {
       })
     );
   };
- {/*toggleExpand(item.name)*/}
 
 
 
@@ -59,7 +58,7 @@ export default function CalendarView() {
         <Card>
           <Card.Content>
             <View style={styles.row}>
-              <Text style={{textDecorationLine: item.complete ? 'line-through': 'none'}}>{item.name}</Text>
+              <Text style={[styles.itemText, item.complete && {textDecorationLine: 'line-through'}]}>{item.name}</Text>
               {/* <Avatar.Text label={item.name ? item.name[0]?.toUpperCase() : "?"}/> */}
               <Text>{item.time}</Text>
               {/* {item.data.map((data, index) => (
@@ -91,7 +90,7 @@ export default function CalendarView() {
 
      </View>
      );
-}, [isExpanded, setModal]);
+}, [isExpanded, setModal, toggleComplete, currentDate]);
 
 
   const onDateChanged = () => {
@@ -110,6 +109,9 @@ export default function CalendarView() {
         theme={{
           todayTextColor: "#52AFDD",
           selectedDayBackgroundColor: "#52AFDD",
+          textDayFontFamily: 'monospace',
+          textMonthFontFamily: 'monospace',
+          textDayHeaderFontFamily: 'monospace',
         }} />
        
         <View style={styles.line}/>
@@ -120,7 +122,7 @@ export default function CalendarView() {
         />
         ) : (
           <View>
-            <Text style={{textAlign: 'center'}}>No tasks for today</Text>
+            <Text style={styles.emptyTask}>No tasks for today</Text>
           </View>
         )}
         <Modal
@@ -132,18 +134,22 @@ export default function CalendarView() {
        }}
       >
       {selectedItem && (
-       <View style={{flex:1, justifyContent:'center', alignItems:'center', marginTop:22}}>
-         <View style={{backgroundColor:'white', padding:20, alignItems:'center'}}>
-          <Text>{selectedItem.name}</Text>
-          <Text>Description: {selectedItem.description}</Text>
-          <Text>Points: {selectedItem.points}</Text>
-          <TouchableOpacity style={{backgroundColor:"#FF0000"}} onPress={() => setModal(!modal)} >
-            <Text>Close</Text>
+       <View style={styles.modalView}>
+         <View style={styles.modalContent}>
+          <Text style={styles.modalTitle}>{selectedItem.name}</Text>
+          <Text style={styles.modalText}>Description: {selectedItem.description}</Text>
+          <Text style={styles.modalText}>Points: {selectedItem.points}</Text>
+          <View style={styles.buttonsContainer}>
+          <TouchableOpacity style={styles.closeButton} onPress={() => setModal(!modal)} >
+            <Text style={{color: 'white'}}>Close</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={{backgroundColor:"#008000"}} onPress={() => {Alert.alert("Task Completed", `You have earned ${selectedItem.points} + points `); toggleComplete(currentDate, selectedItem.id);
+          <TouchableOpacity style={styles.completeButton} onPress={() => {
+            Alert.alert("Task Completed", `You have earned ${selectedItem.points} + points `); 
+            toggleComplete(currentDate, selectedItem.id);
             console.log(selectedItem.complete);}}>
-            <Text>Complete</Text>
+            <Text style={{color: 'white'}}>Complete</Text>
           </TouchableOpacity>
+          </View>
         </View>
 
       </View>
@@ -174,5 +180,57 @@ const styles = StyleSheet.create({
       height: 1,
       backgroundColor: '#D3D3D3',
       width: '100%',
+    },
+    modalView: {
+      flex:1, 
+      justifyContent:'center', 
+      alignItems:'center', 
+      marginTop:22
+    },
+    modalContent: {
+      backgroundColor:'white', 
+      padding:20, 
+      alignItems:'center'
+    },
+    buttonsContainer: {
+      flexDirection:'row', 
+      justifyContent:'space-between', 
+      paddingHorizontal: 40, 
+      marginTop:20, 
+      width: '100%'
+    },
+    closeButton: {
+      backgroundColor:"#FF0000", 
+      padding: 10, 
+      marginHorizontal:10, 
+      borderRadius: 5
+    },
+    completeButton: {
+      backgroundColor:"#008000", 
+      padding: 10, 
+      marginHorizontal:10, 
+      borderRadius: 5
+    },
+    itemText: {
+      fontWeight: 'bold',
+      fontFamily: 'monospace',
+      fontSize: 16
+    },
+    modalTitle: {
+      fontSize: 20,
+      fontWeight: 'bold',
+      fontFamily: 'monospace',
+      marginBottom: 10
+    },
+    modalText: {
+      fontSize: 16,
+      fontFamily: 'monospace',
+      marginBottom: 20
+    },
+    emptyTask: {
+      textAlign: 'center', 
+      fontFamily: 'monospace', 
+      marginTop: 20,
+      fontSize: 16
     }
   });
