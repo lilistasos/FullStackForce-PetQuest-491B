@@ -6,9 +6,11 @@ import { useNavigationState } from '@react-navigation/native';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import HamburgerMenu from '@/components/HamburgerMenu';
 
 export default function IndvLayout() {
-  const [headerTitle, setHeaderTitle] = useState('Pet');
+  const [headerTitle, setHeaderTitle] = useState('Calendar');
+  const [menuVisible, setMenuVisible] = useState(false);
 
   const navigationState = useNavigationState(state => state);
 
@@ -29,7 +31,17 @@ export default function IndvLayout() {
       const tabName = activeTabRoute.name || '';
       
       if (tabName === '(tabs)/pet') {
-        setHeaderTitle('Pet');
+        if (activeTabRoute.state && activeTabRoute.state.routes && activeTabRoute.state.index !== undefined) {
+          const petRoute = activeTabRoute.state.routes[activeTabRoute.state.index];
+          const petPageName = petRoute?.name || 'index';
+          
+          if (petPageName === 'customize') setHeaderTitle('Customize');
+          else if (petPageName === 'shop') setHeaderTitle('Shop');
+          else if (petPageName === 'collection') setHeaderTitle('Collection');
+          else setHeaderTitle('Pet');
+        } else {
+          setHeaderTitle('Pet');
+        }
       } else if (tabName === '(tabs)/calendar') {
         setHeaderTitle('Calendar');
       } else if (tabName === '(tabs)/todo') {
@@ -43,31 +55,37 @@ export default function IndvLayout() {
   }, [navigationState]);
 
   return (
-    <Tabs
-      initialRouteName="(tabs)/pet"
-      screenOptions={{
-        tabBarActiveTintColor: "#FFFFFF",
-        tabBarInactiveTintColor: "#000000ff",
-        tabBarStyle: { backgroundColor: "#7B4FDD" },
-        headerStyle: { backgroundColor: "#7B4FDD" },
-        headerTintColor: "#000000ff",
-        headerTitleStyle: { fontWeight: "bold" },
-        tabBarButton: HapticTab,
-        headerTitleAlign: 'center',
-        tabBarShowLabel: false,
-        headerTitle: headerTitle,
-        headerLeft: () => (
-          <TouchableOpacity style={{ marginLeft: 15 }} onPress={() => {}}>
-            <Ionicons name="menu" size={24} color="black" />
-          </TouchableOpacity>
-        ),
-        headerRight: () => (
-          <TouchableOpacity style={{ marginRight: 15 }} onPress={() => {}}>
-            <Ionicons name="notifications-outline" size={24} color="black" />
-          </TouchableOpacity>
-        ),
-      }}
-    >
+    <>
+      <HamburgerMenu 
+        visible={menuVisible} 
+        onClose={() => setMenuVisible(false)}
+        backgroundColor="#7B4FDD"
+      />
+      <Tabs
+        initialRouteName="(tabs)/calendar"
+        screenOptions={{
+          tabBarActiveTintColor: "#FFFFFF",
+          tabBarInactiveTintColor: "#000000ff",
+          tabBarStyle: { backgroundColor: "#7B4FDD" },
+          headerStyle: { backgroundColor: "#7B4FDD" },
+          headerTintColor: "#000000ff",
+          headerTitleStyle: { fontWeight: "bold" },
+          tabBarButton: HapticTab,
+          headerTitleAlign: 'center',
+          tabBarShowLabel: false,
+          headerTitle: headerTitle,
+          headerLeft: () => (
+            <TouchableOpacity style={{ marginLeft: 15 }} onPress={() => setMenuVisible(true)}>
+              <Ionicons name="menu" size={24} color="black" />
+            </TouchableOpacity>
+          ),
+          headerRight: () => (
+            <TouchableOpacity style={{ marginRight: 15 }} onPress={() => {}}>
+              <Ionicons name="notifications-outline" size={24} color="black" />
+            </TouchableOpacity>
+          ),
+        }}
+      >
       <Tabs.Screen
         name="(tabs)/calendar"
         options={{
@@ -104,5 +122,6 @@ export default function IndvLayout() {
         }}
       />
     </Tabs>
+    </>
   );
 }

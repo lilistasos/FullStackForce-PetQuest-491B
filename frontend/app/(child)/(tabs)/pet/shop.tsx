@@ -22,13 +22,12 @@ export default function ShopScreen() {
   const [userCoins, setUserCoins] = useState(100);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [itemToBuy, setItemToBuy] = useState<ShopItem | null>(null);
-
-  const shopItems: ShopData = {
+  const [shopItems, setShopItems] = useState<ShopData>({
     pets: [
-      { id: "cat", name: "Cat", icon: "", price: 50, owned: false },
+      { id: "cat", name: "Cat", icon: "", price: 50, owned: true },
       { id: "dog", name: "Dog", icon: "", price: 50, owned: false },
-      { id: "bird", name: "Bird", icon: "", price: 40, owned: false },
-      { id: "fish", name: "Fish", icon: "", price: 30, owned: false },
+      { id: "lion", name: "Lion", icon: "", price: 75, owned: false },
+      { id: "unicorn", name: "Unicorn", icon: "", price: 100, owned: false },
     ],
     customization: [
       { id: "cap", name: "Baseball Cap", icon: "", price: 15, owned: true },
@@ -36,7 +35,7 @@ export default function ShopScreen() {
       { id: "glasses", name: "Sunglasses", icon: "", price: 20, owned: false },
       { id: "football", name: "Football", icon: "", price: 10, owned: true },
     ]
-  };
+  });
 
   const handlePurchaseClick = (item: ShopItem) => {
     if (!item.owned && userCoins >= item.price) {
@@ -48,7 +47,24 @@ export default function ShopScreen() {
   const confirmPurchase = () => {
     if (itemToBuy) {
       setUserCoins(userCoins - itemToBuy.price);
-      // Update item to owned - you would typically update the shopItems state here
+      
+      // Update the item to owned in the shopItems state
+      setShopItems(prevItems => {
+        const updatedItems = { ...prevItems };
+        const currentTab = selectedTab;
+        const itemIndex = updatedItems[currentTab].findIndex(item => item.id === itemToBuy.id);
+        
+        if (itemIndex !== -1) {
+          updatedItems[currentTab] = [...updatedItems[currentTab]];
+          updatedItems[currentTab][itemIndex] = {
+            ...updatedItems[currentTab][itemIndex],
+            owned: true
+          };
+        }
+        
+        return updatedItems;
+      });
+      
       setShowConfirmModal(false);
       setItemToBuy(null);
     }
@@ -98,6 +114,42 @@ export default function ShopScreen() {
             />
             <Text style={styles.itemPrice}>{item.price}</Text>
           </>
+        ) : item.id === "cat" ? (
+          <>
+            <Image 
+              source={require("@/assets/images/cat.png")} 
+              style={styles.itemImage}
+              resizeMode="contain"
+            />
+            <Text style={styles.itemPrice}>{item.price}</Text>
+          </>
+        ) : item.id === "dog" ? (
+          <>
+            <Image 
+              source={require("@/assets/images/fbdog.png")} 
+              style={styles.itemImage}
+              resizeMode="contain"
+            />
+            <Text style={styles.itemPrice}>{item.price}</Text>
+          </>
+        ) : item.id === "lion" ? (
+          <>
+            <Image 
+              source={require("@/assets/images/lion.png")} 
+              style={styles.itemImage}
+              resizeMode="contain"
+            />
+            <Text style={styles.itemPrice}>{item.price}</Text>
+          </>
+        ) : item.id === "unicorn" ? (
+          <>
+            <Image 
+              source={require("@/assets/images/unicorn.png")} 
+              style={styles.itemImage}
+              resizeMode="contain"
+            />
+            <Text style={styles.itemPrice}>{item.price}</Text>
+          </>
         ) : (
           <>
             <Text style={styles.itemTitle}>{item.name}</Text>
@@ -118,7 +170,7 @@ export default function ShopScreen() {
           item.owned ? styles.ownedButtonText : styles.buyButtonText,
           !item.owned && userCoins < item.price && styles.disabledButtonText
         ]}>
-          {item.owned ? "OWN" : "Buy"}
+          {item.owned ? "OWN" : "BUY"}
         </Text>
       </TouchableOpacity>
     </View>

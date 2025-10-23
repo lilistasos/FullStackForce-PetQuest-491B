@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
   },
   backButton: {
-    backgroundColor: "#52AFDD",
+    backgroundColor: "#7B4FDD",
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 8,
@@ -157,12 +157,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
-    borderColor: "#52AFDD",
+    borderColor: "#7B4FDD",
     padding: 10,
   },
   selectedItemBox: {
     borderWidth: 4,
-    borderColor: "#52AFDD",
+    borderColor: "#7B4FDD",
   },
   unownedItemBox: {
     backgroundColor: "#F5F5F5",

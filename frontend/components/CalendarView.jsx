@@ -167,7 +167,6 @@ export default function CalendarView() {
   );
 }
 
-
 const styles = StyleSheet.create({
     item: {
       backgroundColor: 'white',
