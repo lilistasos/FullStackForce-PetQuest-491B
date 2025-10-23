@@ -55,12 +55,11 @@ export default function IndvLayout() {
   }, [navigationState]);
 
   return (
-    <>
-      <HamburgerMenu 
-        visible={menuVisible} 
-        onClose={() => setMenuVisible(false)}
-        backgroundColor="#7B4FDD"
-      />
+    <HamburgerMenu 
+      visible={menuVisible} 
+      onClose={() => setMenuVisible(false)}
+      backgroundColor="#7B4FDD"
+    >
       <Tabs
         initialRouteName="(tabs)/calendar"
         screenOptions={{
@@ -122,6 +121,6 @@ export default function IndvLayout() {
         }}
       />
     </Tabs>
-    </>
+    </HamburgerMenu>
   );
 }
