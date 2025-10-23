@@ -53,12 +53,11 @@ export default function ChildLayout() {
   }, [navigationState]);
 
   return (
-    <>
-      <HamburgerMenu 
-        visible={menuVisible} 
-        onClose={() => setMenuVisible(false)}
-        backgroundColor="#52AFDD"
-      />
+    <HamburgerMenu 
+      visible={menuVisible} 
+      onClose={() => setMenuVisible(false)}
+      backgroundColor="#52AFDD"
+    >
       <Tabs
       initialRouteName="(tabs)/pet"
       screenOptions={{
@@ -114,6 +113,6 @@ export default function ChildLayout() {
         }}
       />
     </Tabs>
-    </>
+    </HamburgerMenu>
   );
 }
