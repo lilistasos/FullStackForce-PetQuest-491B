@@ -156,14 +156,6 @@ export default function HamburgerMenu({ visible, onClose, backgroundColor = '#52
 
           <TouchableOpacity 
             style={styles.menuItem}
-            onPress={handleSettings}
-          >
-            <IconSymbol name="gearshape.fill" size={24} color="#000" style={styles.menuIcon} />
-            <Text style={styles.menuText}>Settings</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.menuItem}
             onPress={handleHelp}
           >
             <IconSymbol name="questionmark.circle.fill" size={24} color="#000" style={styles.menuIcon} />
@@ -176,6 +168,14 @@ export default function HamburgerMenu({ visible, onClose, backgroundColor = '#52
           >
             <IconSymbol name="bubble.left.and.bubble.right.fill" size={24} color="#000" style={styles.menuIcon} />
             <Text style={styles.menuText}>Feedback</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={handleSettings}
+          >
+            <IconSymbol name="gearshape.fill" size={24} color="#000" style={styles.menuIcon} />
+            <Text style={styles.menuText}>Settings</Text>
           </TouchableOpacity>
         </View>
 

@@ -6,9 +6,11 @@ import { useNavigationState } from '@react-navigation/native';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import HamburgerMenu from '@/components/HamburgerMenu';
 
 export default function ParentLayout() {
   const [headerTitle, setHeaderTitle] = useState('Calendar');
+  const [menuVisible, setMenuVisible] = useState(false);
 
   const navigationState = useNavigationState(state => state);
 
@@ -41,24 +43,29 @@ export default function ParentLayout() {
   }, [navigationState]);
 
   return (
-    <Tabs
-      initialRouteName="(tabs)/calendar"
-      screenOptions={{
-        tabBarActiveTintColor: "#FFFFFF",
-        tabBarInactiveTintColor: "#000000ff",
-        tabBarStyle: { backgroundColor: "#dd4f4fff" },
-        headerStyle: { backgroundColor: "#dd4f4fff" },
-        headerTintColor: "#000000ff",
-        headerTitleStyle: { fontWeight: "bold" },
-        tabBarButton: HapticTab,
-        headerTitleAlign: 'center',
-        tabBarShowLabel: false,
-        headerTitle: headerTitle,
-        headerLeft: () => (
-          <TouchableOpacity style={{ marginLeft: 15 }} onPress={() => {}}>
-            <Ionicons name="menu" size={24} color="black" />
-          </TouchableOpacity>
-        ),
+    <HamburgerMenu 
+      visible={menuVisible} 
+      onClose={() => setMenuVisible(false)}
+      backgroundColor="#dd4f4f"
+    >
+      <Tabs
+        initialRouteName="(tabs)/calendar"
+        screenOptions={{
+          tabBarActiveTintColor: "#FFFFFF",
+          tabBarInactiveTintColor: "#000000ff",
+          tabBarStyle: { backgroundColor: "#dd4f4fff" },
+          headerStyle: { backgroundColor: "#dd4f4fff" },
+          headerTintColor: "#000000ff",
+          headerTitleStyle: { fontWeight: "bold" },
+          tabBarButton: HapticTab,
+          headerTitleAlign: 'center',
+          tabBarShowLabel: false,
+          headerTitle: headerTitle,
+          headerLeft: () => (
+            <TouchableOpacity style={{ marginLeft: 15 }} onPress={() => setMenuVisible(true)}>
+              <Ionicons name="menu" size={24} color="black" />
+            </TouchableOpacity>
+          ),
         headerRight: () => (
           <TouchableOpacity style={{ marginRight: 15 }} onPress={() => {}}>
             <Ionicons name="notifications-outline" size={24} color="black" />
@@ -95,5 +102,6 @@ export default function ParentLayout() {
         }}
       />
     </Tabs>
+    </HamburgerMenu>
   );
 }
