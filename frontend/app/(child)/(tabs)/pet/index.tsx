@@ -2,15 +2,17 @@ import React from "react";
 import { View, Text, Image, TouchableOpacity, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { usePet } from "@/contexts/PetContext";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export default function PetScreen() {
   const router = useRouter();
   const { selectedPet } = usePet();
+  const { colors } = useTheme();
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
-        <Text style={styles.petName}>{selectedPet.name}</Text>
+        <Text style={[styles.petName, { color: colors.text }]}>{selectedPet.name}</Text>
       </View>
 
       <View style={styles.imageContainer}>
@@ -19,21 +21,21 @@ export default function PetScreen() {
 
       <View style={styles.buttonContainer}>
         <TouchableOpacity 
-          style={styles.button}
+          style={[styles.button, { backgroundColor: colors.primary }]}
           onPress={() => router.push("/(child)/(tabs)/pet/customize")}>
-          <Text style={styles.buttonText}>Customize</Text>
+          <Text style={[styles.buttonText, { color: colors.text }]}>Customize</Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
-          style={styles.button}
+          style={[styles.button, { backgroundColor: colors.primary }]}
           onPress={() => router.push("/(child)/(tabs)/pet/shop")}>
-          <Text style={styles.buttonText}>Shop</Text>
+          <Text style={[styles.buttonText, { color: colors.text }]}>Shop</Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
-          style={styles.button}
+          style={[styles.button, { backgroundColor: colors.primary }]}
           onPress={() => router.push("/(child)/(tabs)/pet/collection")}>
-          <Text style={styles.buttonText}>Collection</Text>
+          <Text style={[styles.buttonText, { color: colors.text }]}>Collection</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -43,7 +45,6 @@ export default function PetScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
     alignItems: "center",
   },
   header: {
@@ -75,7 +76,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
   },
   button: {
-    backgroundColor: "#52AFDD",
     width: "100%",
     paddingVertical: 12,
     borderRadius: 8,
@@ -86,6 +86,5 @@ const styles = StyleSheet.create({
   buttonText: {
     fontFamily: "monospace",
     fontSize: 24,
-    color: "#000",
   },
 });
