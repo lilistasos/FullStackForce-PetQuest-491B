@@ -7,6 +7,9 @@ const jwt = require('jsonwebtoken');
 const { z } = require('zod');
 const crypto = require('crypto');
 
+const sgMail = require('@sendgrid/mail')
+sgMail.setApiKey(process.env.SENDGRID_API_KEY)
+
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -277,10 +280,23 @@ app.post('/api/auth/send-code', async (req, res) => {
   const code = Math.floor(100000 + Math.random() * 900000).toString();
   verificationCodes[email] = code;
 
-  // Log code in backend console for testing
-  console.log(`📩 Verification code for ${email}: ${code}`);
+  const msg = {
+    to: email,
+    from: process.env.SENDGRID_FROM_EMAIL || 'calvin.chau01@student.csulb.edu',
+    subject: 'Your Pet Quest Verification Code',
+    text: 'Your verification code is: ${code}',
+    html: '<p>Your verification code is: <strong>${code}</strong></p>',
+  };
 
-  res.json({ message: `Verification code generated (check server console).` });
+  try{
+    await sgMail.send(msg);
+    console.log('Sent verification code to ${email}');
+    res.json({message: 'Verification Code sent to your email'});
+  } catch (err){
+    console.error('SendGrid error:', err.response?.body || err.message);
+    res.status(500).json({error: 'Failed to send verification email.'});
+  }
+
 });
 
 // Verify the code entered by the user
