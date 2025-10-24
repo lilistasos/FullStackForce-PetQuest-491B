@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/hooks/useAuth';
@@ -7,7 +7,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 
 export default function AccountScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { colors } = useTheme();
 
   const handleEditProfile = () => {
@@ -15,9 +15,40 @@ export default function AccountScreen() {
     console.log('Navigate to edit profile page');
   };
 
+  const handleNotifications = () => {
+    // TODO: Navigate to notifications page when it's created
+    console.log('Navigate to notifications page');
+  };
+
   const handleSettings = () => {
     // TODO: Navigate to settings page when it's created
     console.log('Navigate to settings page');
+  };
+
+  const handleSubscription = () => {
+    // TODO: Navigate to subscription page when it's created
+    console.log('Navigate to subscription page');
+  };
+
+  const handleLogout = () => {
+    Alert.alert(
+      "Sign Out",
+      "Are you sure you want to sign out? You'll need to log in again to access your account.",
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "Sign Out",
+          style: "destructive",
+          onPress: async () => {
+            await logout();
+            router.replace('/(auth)/login');
+          }
+        }
+      ]
+    );
   };
 
 
@@ -47,11 +78,35 @@ export default function AccountScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity 
+          style={[styles.button, { borderColor: colors.primary }]}
+          onPress={handleNotifications}
+        >
+          <Ionicons name="notifications-outline" size={20} color={colors.primary} style={styles.buttonIcon} />
+          <Text style={[styles.buttonText, { color: colors.primary }]}>Notifications</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
           style={[styles.settingsButton, { borderColor: colors.primary }]}
           onPress={handleSettings}
         >
           <Ionicons name="settings-outline" size={20} color={colors.primary} style={styles.settingsIcon} />
           <Text style={[styles.settingsText, { color: colors.primary }]}>Settings</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[styles.button, { borderColor: colors.primary }]}
+          onPress={handleSubscription}
+        >
+          <Ionicons name="card-outline" size={20} color={colors.primary} style={styles.buttonIcon} />
+          <Text style={[styles.buttonText, { color: colors.primary }]}>Subscription</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[styles.logoutButton, { borderColor: '#ff4444' }]}
+          onPress={handleLogout}
+        >
+          <Ionicons name="log-out-outline" size={20} color="#ff4444" style={styles.logoutIcon} />
+          <Text style={[styles.logoutText, { color: '#ff4444' }]}>Sign Out</Text>
         </TouchableOpacity>
 
       </View>
@@ -97,14 +152,14 @@ const styles = StyleSheet.create({
   button: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     backgroundColor: '#f0f0f0',
-    paddingVertical: 12,
+    paddingVertical: 16,
     paddingHorizontal: 20,
     borderRadius: 8,
     borderWidth: 2,
-    width: '80%',
-    marginBottom: 30,
+    width: '90%',
+    marginVertical: 20,
+    position: 'relative',
   },
   buttonIcon: {
     marginRight: 8,
@@ -112,18 +167,20 @@ const styles = StyleSheet.create({
   buttonText: {
     fontSize: 16,
     fontWeight: 'bold',
+    flex: 1,
+    textAlign: 'center',
   },
   settingsButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     backgroundColor: '#f0f0f0',
-    paddingVertical: 12,
+    paddingVertical: 16,
     paddingHorizontal: 20,
     borderRadius: 8,
     borderWidth: 2,
-    width: '80%',
-    marginBottom: 20,
+    width: '90%',
+    marginVertical: 20,
+    position: 'relative',
   },
   settingsIcon: {
     marginRight: 8,
@@ -131,5 +188,28 @@ const styles = StyleSheet.create({
   settingsText: {
     fontSize: 16,
     fontWeight: 'bold',
+    flex: 1,
+    textAlign: 'center',
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0f0f0',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    borderWidth: 2,
+    width: '90%',
+    marginVertical: 20,
+    position: 'relative',
+  },
+  logoutIcon: {
+    marginRight: 8,
+  },
+  logoutText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    flex: 1,
+    textAlign: 'center',
   },
 });

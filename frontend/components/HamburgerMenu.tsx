@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, Animated, Dimensions, Image, Alert, Switch } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Animated, Dimensions, Image, Switch } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -69,28 +69,6 @@ export default function HamburgerMenu({ visible, onClose, backgroundColor = '#52
     }, 300);
   };
 
-  const handleSignOut = () => {
-    Alert.alert(
-      "Sign Out",
-      "Are you sure you want to sign out? You'll need to log in again to access your account.",
-      [
-        {
-          text: "Cancel",
-          style: "cancel"
-        },
-        {
-          text: "Sign Out",
-          style: "destructive",
-          onPress: () => {
-            onClose();
-            setTimeout(() => {
-              router.replace('/(auth)/signup' as any);
-            }, 300);
-          }
-        }
-      ]
-    );
-  };
 
   const handleAchievements = () => {
     onClose();
@@ -186,15 +164,6 @@ export default function HamburgerMenu({ visible, onClose, backgroundColor = '#52
           </View>
         </View>
 
-        <View style={[styles.footer, { borderTopColor: colors.border }]}>
-          <TouchableOpacity 
-            style={styles.signOutButton}
-            onPress={handleSignOut}
-          >
-            <Ionicons name="log-out-outline" size={24} color="#fff" style={styles.menuIcon} />
-            <Text style={styles.signOutText}>Sign Out</Text>
-          </TouchableOpacity>
-        </View>
       </Animated.View>
 
       {/* Main content that slides */}
@@ -322,27 +291,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-  },
-  footer: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0, 0, 0, 0.1)',
-    paddingTop: 20,
-  },
-  signOutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#d9534f',
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    justifyContent: 'center',
-  },
-  signOutText: {
-    fontSize: 18,
-    color: '#fff',
-    fontWeight: 'bold',
   },
 });
 
