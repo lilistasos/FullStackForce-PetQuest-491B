@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Modal } from "react-native";
 import { useRouter } from "expo-router";
 import { IconSymbol } from "@/components/ui/icon-symbol";
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface ShopItem {
   id: string;
@@ -18,6 +19,7 @@ interface ShopData {
 
 export default function ShopScreen() {
   const router = useRouter();
+  const { colors } = useTheme();
   const [selectedTab, setSelectedTab] = useState<keyof ShopData>("pets");
   const [userCoins, setUserCoins] = useState(100);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -177,19 +179,19 @@ export default function ShopScreen() {
   );
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
         <TouchableOpacity 
-          style={styles.backButton}
+          style={[styles.backButton, { backgroundColor: colors.primary }]}
           onPress={() => router.back()}>
           <IconSymbol 
             name="chevron.left" 
             size={24} 
-            color="#000" 
+            color={colors.text} 
             weight="medium"
           />
         </TouchableOpacity>
-        <Text style={styles.dateText}>
+        <Text style={[styles.dateText, { color: colors.text }]}>
           {new Date().toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'short',
@@ -203,7 +205,7 @@ export default function ShopScreen() {
           })}
         </Text>
         <View style={styles.coinsContainer}>
-          <Text style={styles.coinsText}>{userCoins}</Text>
+          <Text style={[styles.coinsText, { color: colors.text }]}>{userCoins}</Text>
         </View>
       </View>
 
@@ -285,7 +287,6 @@ export default function ShopScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
   },
   header: {
     width: "100%",
@@ -302,7 +303,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   backButton: {
-    backgroundColor: "#52AFDD",
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 8,

@@ -1,9 +1,10 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, Animated, Dimensions, Image, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Animated, Dimensions, Image, Alert, Switch } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/hooks/useAuth';
+import { useTheme } from '@/contexts/ThemeContext';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const DRAWER_WIDTH = SCREEN_WIDTH * 0.75;
@@ -18,6 +19,7 @@ interface HamburgerMenuProps {
 export default function HamburgerMenu({ visible, onClose, backgroundColor = '#52AFDD', children }: HamburgerMenuProps) {
   const router = useRouter();
   const { user } = useAuth();
+  const { isDarkMode, toggleDarkMode, colors } = useTheme();
   const slideAnim = React.useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const contentAnim = React.useRef(new Animated.Value(0)).current;
   const [modalVisible, setModalVisible] = React.useState(false);
@@ -102,10 +104,10 @@ export default function HamburgerMenu({ visible, onClose, backgroundColor = '#52
     console.log('Navigate to help page');
   };
 
-  const handleSettings = () => {
-    onClose();
-    // TODO: Navigate to settings page when it's created
-    console.log('Navigate to settings page');
+  const handleDarkModeToggle = (value: boolean) => {
+    if (value !== isDarkMode) {
+      toggleDarkMode();
+    }
   };
 
   const handleFeedback = () => {
@@ -127,12 +129,12 @@ export default function HamburgerMenu({ visible, onClose, backgroundColor = '#52
           }
         ]}
       >
-        <View style={styles.header}>
-          <Text style={styles.headerText}>PetQuest</Text>
+        <View style={[styles.header, { borderBottomColor: colors.border }]}>
+          <Text style={[styles.headerText, { color: colors.text }]}>PetQuest</Text>
         </View>
 
         {/* User Profile Section */}
-        <View style={styles.profileSection}>
+        <View style={[styles.profileSection, { borderBottomColor: colors.border }]}>
           <View style={styles.profileImageContainer}>
             <Image 
               source={require('@/assets/images/icon.png')} 
@@ -140,7 +142,7 @@ export default function HamburgerMenu({ visible, onClose, backgroundColor = '#52
               defaultSource={require('@/assets/images/icon.png')}
             />
           </View>
-          <Text style={styles.profileName}>
+          <Text style={[styles.profileName, { color: colors.text }]}>
             {user?.name || 'User'}
           </Text>
         </View>
@@ -150,36 +152,41 @@ export default function HamburgerMenu({ visible, onClose, backgroundColor = '#52
             style={styles.menuItem}
             onPress={handleAchievements}
           >
-            <IconSymbol name="trophy.fill" size={24} color="#000" style={styles.menuIcon} />
-            <Text style={styles.menuText}>Achievements</Text>
+            <IconSymbol name="trophy.fill" size={24} color={colors.text} style={styles.menuIcon} />
+            <Text style={[styles.menuText, { color: colors.text }]}>Achievements</Text>
           </TouchableOpacity>
 
           <TouchableOpacity 
             style={styles.menuItem}
             onPress={handleHelp}
           >
-            <IconSymbol name="questionmark.circle.fill" size={24} color="#000" style={styles.menuIcon} />
-            <Text style={styles.menuText}>Help Center</Text>
+            <IconSymbol name="questionmark.circle.fill" size={24} color={colors.text} style={styles.menuIcon} />
+            <Text style={[styles.menuText, { color: colors.text }]}>Help Center</Text>
           </TouchableOpacity>
 
           <TouchableOpacity 
             style={styles.menuItem}
             onPress={handleFeedback}
           >
-            <IconSymbol name="bubble.left.and.bubble.right.fill" size={24} color="#000" style={styles.menuIcon} />
-            <Text style={styles.menuText}>Feedback</Text>
+            <IconSymbol name="bubble.left.and.bubble.right.fill" size={24} color={colors.text} style={styles.menuIcon} />
+            <Text style={[styles.menuText, { color: colors.text }]}>Feedback</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={styles.menuItem}
-            onPress={handleSettings}
-          >
-            <IconSymbol name="gearshape.fill" size={24} color="#000" style={styles.menuIcon} />
-            <Text style={styles.menuText}>Settings</Text>
-          </TouchableOpacity>
+          <View style={styles.darkModeItem}>
+            <View style={styles.darkModeLabel}>
+              <IconSymbol name="moon.fill" size={24} color={colors.text} style={styles.menuIcon} />
+              <Text style={[styles.menuText, { color: colors.text }]}>Dark Mode</Text>
+            </View>
+            <Switch
+              value={isDarkMode}
+              onValueChange={handleDarkModeToggle}
+              trackColor={{ false: '#767577', true: colors.primary }}
+              thumbColor={isDarkMode ? '#fff' : '#f4f3f4'}
+            />
+          </View>
         </View>
 
-        <View style={styles.footer}>
+        <View style={[styles.footer, { borderTopColor: colors.border }]}>
           <TouchableOpacity 
             style={styles.signOutButton}
             onPress={handleSignOut}
@@ -195,6 +202,7 @@ export default function HamburgerMenu({ visible, onClose, backgroundColor = '#52
         style={[
           styles.contentContainer,
           {
+            backgroundColor: colors.background,
             transform: [{ translateX: contentAnim }]
           }
         ]}
@@ -225,7 +233,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: '#fff',
   },
   backdrop: {
     position: 'absolute',
@@ -259,7 +266,6 @@ const styles = StyleSheet.create({
   headerText: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#000',
   },
   profileSection: {
     alignItems: 'center',
@@ -286,7 +292,6 @@ const styles = StyleSheet.create({
   profileName: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#000',
     textAlign: 'center',
   },
   menuItems: {
@@ -304,8 +309,19 @@ const styles = StyleSheet.create({
   },
   menuText: {
     fontSize: 18,
-    color: '#000',
     fontWeight: '500',
+  },
+  darkModeItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+  },
+  darkModeLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
   footer: {
     paddingHorizontal: 20,

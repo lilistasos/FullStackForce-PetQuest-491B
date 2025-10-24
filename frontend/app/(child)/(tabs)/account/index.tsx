@@ -3,10 +3,12 @@ import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/hooks/useAuth';
+import { useTheme } from '@/contexts/ThemeContext';
 
 export default function AccountScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const { colors } = useTheme();
 
   const handleEditProfile = () => {
     // TODO: Navigate to edit profile page when it's created
@@ -18,8 +20,9 @@ export default function AccountScreen() {
     console.log('Navigate to settings page');
   };
 
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Profile Section */}
       <View style={styles.profileSection}>
         <View style={styles.profileHeaderContainer}>
@@ -30,26 +33,27 @@ export default function AccountScreen() {
               defaultSource={require('@/assets/images/icon.png')}
             />
           </View>
-          <Text style={styles.profileName}>
+          <Text style={[styles.profileName, { color: colors.text }]}>
             {user?.name || 'User'}
           </Text>
         </View>
 
         <TouchableOpacity 
-          style={styles.button}
+          style={[styles.button, { borderColor: colors.primary }]}
           onPress={handleEditProfile}
         >
-          <Ionicons name="pencil-outline" size={20} color="#52AFDD" style={styles.buttonIcon} />
-          <Text style={styles.buttonText}>Edit Profile</Text>
+          <Ionicons name="pencil-outline" size={20} color={colors.primary} style={styles.buttonIcon} />
+          <Text style={[styles.buttonText, { color: colors.primary }]}>Edit Profile</Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
-          style={styles.settingsButton}
+          style={[styles.settingsButton, { borderColor: colors.primary }]}
           onPress={handleSettings}
         >
-          <Ionicons name="settings-outline" size={20} color="#52AFDD" style={styles.settingsIcon} />
-          <Text style={styles.settingsText}>Settings</Text>
+          <Ionicons name="settings-outline" size={20} color={colors.primary} style={styles.settingsIcon} />
+          <Text style={[styles.settingsText, { color: colors.primary }]}>Settings</Text>
         </TouchableOpacity>
+
       </View>
     </View>
   );
@@ -58,7 +62,6 @@ export default function AccountScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
   },
   profileSection: {
     paddingTop: 20,
@@ -90,7 +93,6 @@ const styles = StyleSheet.create({
   profileName: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#000',
   },
   button: {
     flexDirection: 'row',
@@ -101,7 +103,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 8,
     borderWidth: 2,
-    borderColor: '#52AFDD',
     width: '80%',
     marginBottom: 30,
   },
@@ -111,7 +112,6 @@ const styles = StyleSheet.create({
   buttonText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#52AFDD',
   },
   settingsButton: {
     flexDirection: 'row',
@@ -122,7 +122,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 8,
     borderWidth: 2,
-    borderColor: '#52AFDD',
     width: '80%',
     marginBottom: 20,
   },
@@ -132,6 +131,5 @@ const styles = StyleSheet.create({
   settingsText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#52AFDD',
   },
 });
