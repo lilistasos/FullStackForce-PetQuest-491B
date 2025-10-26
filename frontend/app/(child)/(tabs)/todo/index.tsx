@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, FlatList, StyleSheet,  Image, ScrollView } from "react-native";
+import { View, Text, TouchableOpacity, FlatList, StyleSheet,  Image, ScrollView, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -10,6 +10,8 @@ type Task = {
   completed: boolean;
   category: string;
   originalCategory?: string;
+  description: string;
+  points: number;
 };
 
 const ToDoScreen = ()=> {
@@ -17,6 +19,14 @@ const ToDoScreen = ()=> {
 // Current Date State
 // useState hook to store the current date and update it... allows the app to display and maipulate the date dynamically 
   const [currentDate, setCurrentDate] = useState(new Date());
+
+  //const [showDetails, setShowDetails] = useState(false);
+  const [showDetails, setShowDetails] = useState<string | null>(null);
+
+  const handlePressTask = (taskId: string) => {
+  setShowDetails((prev) => (prev === taskId ? null : taskId)
+  );
+}
 
 // States for Categories
 // expanded state object to track which categories are currently expanded or collapsed
@@ -31,18 +41,18 @@ const [tasksByDate, setTasksByDate] = useState<{
   [key: string]: Task[];
 }>({
   "2025-10-20": [
-    { id: "1", text: "Read ch.1", completed: false, category: "Homework" },
-    { id: "2", text: "Clean kitchen", completed: false, category: "Chores" },
-    { id: "3", text: "Clean room", completed: false, category: "Chores" },
-    { id: "4", text: "Wash dishes", completed: false, category: "Chores" },
-    { id: "5", text: "Laundry", completed: false, category: "Chores" },
+    { id: "1", text: "Read ch.1", completed: false, category: "Homework", description: "Read chapter 1 of history textbook", points: 10 },
+    { id: "2", text: "Clean kitchen", completed: false, category: "Chores", description: "Wash dishes and wipe counters", points: 5 },
+    { id: "3", text: "Clean room", completed: false, category: "Chores", description: "Tidy up and vacuum", points: 5 },
+    { id: "4", text: "Wash dishes", completed: false, category: "Chores", description: "Clean dirty dishes", points: 5 },
+    { id: "5", text: "Laundry", completed: false, category: "Chores", description: "Wash and fold clothes", points: 5 },
   ],
   "2025-10-21": [
-    { id: "6", text: "Math worksheet", completed: false, category: "Homework" },
-    { id: "7", text: "Soccer practice", completed: false, category: "Extracurriculars" },
+    { id: "6", text: "Math worksheet", completed: false, category: "Homework", description: "Complete assigned math worksheet", points: 10 },
+    { id: "7", text: "Soccer practice", completed: false, category: "Extracurriculars", description: "Attend soccer practice", points: 15 },
   ],
   "2025-10-22": [
-    { id: "8", text: "Take out trash", completed: false, category: "Chores" },
+    { id: "8", text: "Take out trash", completed: false, category: "Chores", description: "Take out household trash", points: 5 },
   ],
 });
 
@@ -141,6 +151,8 @@ const toggleComplete = (taskId: string) => {
                     color={task.completed ? "#0077B6" : "gray"}
                   />
                 </TouchableOpacity>
+                <View style={{flex: 1, flexDirection: "column", marginLeft: 8}}>
+                <Pressable onPress={() => handlePressTask(task.id)}>
                 <Text
                   style={[
                     styles.taskText,
@@ -149,6 +161,14 @@ const toggleComplete = (taskId: string) => {
                 >
                   {task.text}
                 </Text>
+                </Pressable>
+                {showDetails === task.id && (
+                  <View style={{marginTop: 4}}>
+                    <Text style={{color: "#555"}}>Description: {task.description}</Text>
+                    <Text style={{color: "#555"}}>Points: {task.points}</Text>
+                  </View>
+                )}
+                </View>
               </View>
             ))
           ) : (
@@ -286,7 +306,7 @@ const styles = StyleSheet.create({
   },
   taskItem: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     marginVertical: 6,
   },
   taskText: {
