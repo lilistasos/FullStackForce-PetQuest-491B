@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-require('dotenv').config();
+require('dotenv').config({ path: '../.env' });
 const pool = require('./database');
 
 const jwt = require('jsonwebtoken');
@@ -9,6 +9,9 @@ const crypto = require('crypto');
 
 const sgMail = require('@sendgrid/mail')
 sgMail.setApiKey(process.env.SENDGRID_API_KEY)
+
+console.log('Loaded SendGrid Key:', process.env.SENDGRID_API_KEY);
+
 
 const app = express();
 app.use(cors());
@@ -271,6 +274,7 @@ const verificationCodes = {}; // store email-code pairs
 
 // Send verification code — prints to console
 app.post('/api/auth/send-code', async (req, res) => {
+  console.log('📩 /send-code called with:', req.body);
   const { email } = req.body;
   if (!email) {
     return res.status(400).json({ error: 'Email is required.' });
@@ -282,15 +286,15 @@ app.post('/api/auth/send-code', async (req, res) => {
 
   const msg = {
     to: email,
-    from: process.env.SENDGRID_FROM_EMAIL || 'calvin.chau01@student.csulb.edu',
+    from: process.env.SENDGRID_FROM_EMAIL || 'lolerpops1@gmail.com',
     subject: 'Your Pet Quest Verification Code',
-    text: 'Your verification code is: ${code}',
-    html: '<p>Your verification code is: <strong>${code}</strong></p>',
+    text: `Your verification code is: ${code}`,
+    html: `<p>Your verification code is: <strong>${code}</strong></p>`,
   };
 
   try{
     await sgMail.send(msg);
-    console.log('Sent verification code to ${email}');
+    console.log(`Sent verification code to ${email}: ${code}`);
     res.json({message: 'Verification Code sent to your email'});
   } catch (err){
     console.error('SendGrid error:', err.response?.body || err.message);

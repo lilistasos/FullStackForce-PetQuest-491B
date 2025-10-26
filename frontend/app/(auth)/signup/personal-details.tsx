@@ -24,8 +24,8 @@ export default function PersonalDetailsScreen() {
       Alert.alert("Error", "Passwords do not match, ensure that passwords match.")
       return;
     }  
-    if (password.length < 6) {
-      Alert.alert("Error", "Passwords must be at least 6 characters.")
+    if (password.length < 8) {
+      Alert.alert("Error", "Passwords must be at least 8 characters.")
       return;
     }
 

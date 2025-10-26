@@ -9,7 +9,7 @@ export default function VerificationScreen() {
     const [code, setCode] = useState("");
     const [isCodeSent, setIsCodeSent] = useState(false);
     const [generatedCode, setGeneratedCode] = useState("");
-    const API_URL = "http://10.0.2.2:4000/api/auth"; //API thing? goes here
+    const API_URL = "http://10.0.2.2:4000/api/auth"; // Change this to http://localhost:4000/api/auth if your are in web preview mode
 
     const handleSendCode = async () => {
         try {
