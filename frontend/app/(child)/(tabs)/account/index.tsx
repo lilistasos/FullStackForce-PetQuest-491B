@@ -15,8 +15,7 @@ export default function AccountScreen() {
   };
 
   const handleNotifications = () => {
-    // TODO: Navigate to notifications page when it's created
-    console.log('Navigate to notifications page');
+    router.push('/(child)/(tabs)/account/notifications');
   };
 
   const handleSettings = () => {
