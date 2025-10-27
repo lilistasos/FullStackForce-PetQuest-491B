@@ -52,7 +52,6 @@ export default function ChildLayout() {
           const accountPageName = accountRoute?.name || 'index';
           
           if (accountPageName === 'edit-profile') setHeaderTitle('Edit Profile');
-          else if (accountPageName === 'notifications') setHeaderTitle('Notification Preferences');
           else setHeaderTitle('Account');
         } else {
           setHeaderTitle('Account');

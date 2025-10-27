@@ -8,68 +8,25 @@ import * as ImagePicker from 'expo-image-picker';
 
 export default function EditProfileScreen() {
   const router = useRouter();
-  const { user, updateUser } = useAuth();
+  const { user } = useAuth();
   const { colors } = useTheme();
   
   const [username, setUsername] = useState(user?.name || '');
-  const [firstName, setFirstName] = useState(user?.firstName || '');
-  const [profileImage, setProfileImage] = useState(
-    user?.profileImageUri 
-      ? { uri: user.profileImageUri } 
-      : require('@/assets/images/icon.png')
-  );
+  const [firstName, setFirstName] = useState(user?.name?.split(' ')[0] || '');
+  const [profileImage, setProfileImage] = useState(require('@/assets/images/icon.png'));
   const [imageChanged, setImageChanged] = useState(false);
   
   // Check if any changes have been made
-  // Check if profileImage is a URI object (has uri property) or a require() number
-  const currentImageUri = (typeof profileImage === 'object' && profileImage !== null && 'uri' in profileImage) 
-    ? profileImage.uri 
-    : null;
-  const hasChanges = username !== (user?.name || '') || firstName !== (user?.firstName || '') || 
-                     (imageChanged && currentImageUri !== user?.profileImageUri);
+  const hasChanges = username !== (user?.name || '') || firstName !== (user?.name?.split(' ')[0] || '') || imageChanged;
 
-  const handleSaveProfile = async () => {
-    try {
-      // Get the profile image URI if it was changed
-      const currentImageUri = (typeof profileImage === 'object' && profileImage !== null && 'uri' in profileImage) 
-        ? profileImage.uri 
-        : null;
-      
-      const updates: { name?: string; firstName?: string; profileImageUri?: string } = {};
-      
-      // Save username as name field
-      const updatedName = username.trim();
-      if (updatedName) {
-        updates.name = updatedName;
+  const handleSaveProfile = () => {
+    // TODO: Implement save profile functionality
+    Alert.alert("Success", "Profile updated successfully!", [
+      {
+        text: "OK",
+        onPress: () => router.back()
       }
-      
-      // Save firstName separately
-      const updatedFirstName = firstName.trim();
-      if (updatedFirstName) {
-        updates.firstName = updatedFirstName;
-      }
-      
-      // Save the image if it was changed
-      if (imageChanged && currentImageUri) {
-        updates.profileImageUri = currentImageUri;
-      }
-      
-      if (Object.keys(updates).length > 0) {
-        await updateUser(updates);
-        // Reset imageChanged flag after successful save
-        setImageChanged(false);
-      }
-      
-      Alert.alert("Success", "Profile updated successfully!", [
-        {
-          text: "OK",
-          onPress: () => router.back()
-        }
-      ]);
-    } catch (error) {
-      console.error("Error updating profile:", error);
-      Alert.alert("Error", "Failed to update profile. Please try again.");
-    }
+    ]);
   };
 
   const handleEditPhoto = async () => {
