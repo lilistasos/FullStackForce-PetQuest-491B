@@ -11,8 +11,7 @@ export default function AccountScreen() {
   const { colors } = useTheme();
 
   const handleEditProfile = () => {
-    // TODO: Navigate to edit profile page when it's created
-    console.log('Navigate to edit profile page');
+    router.push('/(child)/(tabs)/account/edit-profile');
   };
 
   const handleNotifications = () => {
@@ -165,7 +164,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   buttonText: {
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: 'bold',
     flex: 1,
     textAlign: 'center',
@@ -186,7 +185,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   settingsText: {
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: 'bold',
     flex: 1,
     textAlign: 'center',
@@ -207,7 +206,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   logoutText: {
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: 'bold',
     flex: 1,
     textAlign: 'center',

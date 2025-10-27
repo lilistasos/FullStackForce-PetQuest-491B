@@ -45,7 +45,13 @@
           }
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow PetQuest to access your photos to upload a profile picture."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
