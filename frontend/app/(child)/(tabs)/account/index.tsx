@@ -23,11 +23,6 @@ export default function AccountScreen() {
     console.log('Navigate to settings page');
   };
 
-  const handleSubscription = () => {
-    // TODO: Navigate to subscription page when it's created
-    console.log('Navigate to subscription page');
-  };
-
   const handleLogout = () => {
     Alert.alert(
       "Sign Out",
@@ -57,7 +52,12 @@ export default function AccountScreen() {
         <View style={styles.profileHeaderContainer}>
           <View style={styles.profileImageContainer}>
             <Image 
-              source={require('@/assets/images/icon.png')} 
+              key={user?.profileImageUri || 'default'}
+              source={
+                user?.profileImageUri 
+                  ? { uri: user.profileImageUri } 
+                  : require('@/assets/images/icon.png')
+              }
               style={styles.profileImage}
               defaultSource={require('@/assets/images/icon.png')}
             />
@@ -89,14 +89,6 @@ export default function AccountScreen() {
         >
           <Ionicons name="settings-outline" size={20} color={colors.primary} style={styles.settingsIcon} />
           <Text style={[styles.settingsText, { color: colors.primary }]}>Settings</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={[styles.button, { borderColor: colors.primary }]}
-          onPress={handleSubscription}
-        >
-          <Ionicons name="card-outline" size={20} color={colors.primary} style={styles.buttonIcon} />
-          <Text style={[styles.buttonText, { color: colors.primary }]}>Subscription</Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
@@ -156,7 +148,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 2,
     width: '90%',
-    marginVertical: 20,
+    marginVertical: 24,
     position: 'relative',
   },
   buttonIcon: {
@@ -177,7 +169,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 2,
     width: '90%',
-    marginVertical: 20,
+    marginVertical: 24,
     position: 'relative',
   },
   settingsIcon: {
@@ -198,7 +190,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 2,
     width: '90%',
-    marginVertical: 20,
+    marginVertical: 24,
     position: 'relative',
   },
   logoutIcon: {
