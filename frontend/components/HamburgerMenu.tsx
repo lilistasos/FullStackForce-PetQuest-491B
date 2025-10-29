@@ -1,8 +1,10 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, Animated, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Animated, Dimensions, Image, Switch } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { useAuth } from '@/hooks/useAuth';
+import { useTheme } from '@/contexts/ThemeContext';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const DRAWER_WIDTH = SCREEN_WIDTH * 0.75;
@@ -11,32 +13,54 @@ interface HamburgerMenuProps {
   visible: boolean;
   onClose: () => void;
   backgroundColor?: string;
+  children?: React.ReactNode;
 }
 
-export default function HamburgerMenu({ visible, onClose, backgroundColor = '#52AFDD' }: HamburgerMenuProps) {
+export default function HamburgerMenu({ visible, onClose, backgroundColor = '#52AFDD', children }: HamburgerMenuProps) {
   const router = useRouter();
+  const { user } = useAuth();
+  const { isDarkMode, toggleDarkMode, colors } = useTheme();
   const slideAnim = React.useRef(new Animated.Value(-DRAWER_WIDTH)).current;
+  const contentAnim = React.useRef(new Animated.Value(0)).current;
   const [modalVisible, setModalVisible] = React.useState(false);
 
   React.useEffect(() => {
     if (visible) {
       setModalVisible(true);
       slideAnim.setValue(-DRAWER_WIDTH);
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
+      contentAnim.setValue(0);
+      
+      // Animate both the menu sliding in and content sliding right
+      Animated.parallel([
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(contentAnim, {
+          toValue: DRAWER_WIDTH,
+          duration: 300,
+          useNativeDriver: true,
+        })
+      ]).start();
     } else {
-      Animated.timing(slideAnim, {
-        toValue: -DRAWER_WIDTH,
-        duration: 250,
-        useNativeDriver: true,
-      }).start(() => {
+      // Animate both the menu sliding out and content sliding back
+      Animated.parallel([
+        Animated.timing(slideAnim, {
+          toValue: -DRAWER_WIDTH,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+        Animated.timing(contentAnim, {
+          toValue: 0,
+          duration: 250,
+          useNativeDriver: true,
+        })
+      ]).start(() => {
         setModalVisible(false);
       });
     }
-  }, [visible, slideAnim]);
+  }, [visible, slideAnim, contentAnim]);
 
   const handleNavigate = (route: string) => {
     onClose();
@@ -45,100 +69,151 @@ export default function HamburgerMenu({ visible, onClose, backgroundColor = '#52
     }, 300);
   };
 
-  const handleSignOut = () => {
+
+  const handleAchievements = () => {
     onClose();
-    setTimeout(() => {
-      router.replace('/(auth)/signup' as any);
-    }, 300);
+    // TODO: Navigate to achievements page when it's created
+    console.log('Navigate to achievements page');
+  };
+
+  const handleHelp = () => {
+    onClose();
+    // TODO: Navigate to help page when it's created
+    console.log('Navigate to help page');
+  };
+
+  const handleDarkModeToggle = (value: boolean) => {
+    if (value !== isDarkMode) {
+      toggleDarkMode();
+    }
+  };
+
+  const handleFeedback = () => {
+    onClose();
+    // TODO: Navigate to feedback page when it's created
+    console.log('Navigate to feedback page');
   };
 
   return (
-    <Modal
-      transparent
-      visible={modalVisible}
-      animationType="none"
-      onRequestClose={onClose}
-    >
-      <View style={styles.overlay}>
-        <TouchableOpacity 
-          style={styles.backdrop} 
-          activeOpacity={1} 
-          onPress={onClose}
-        />
-        
-        <Animated.View 
-          style={[
-            styles.drawer,
-            { 
-              backgroundColor,
-              transform: [{ translateX: slideAnim }],
-              width: DRAWER_WIDTH 
-            }
-          ]}
-        >
-          <View style={styles.header}>
-            <Text style={styles.headerText}>Menu</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Ionicons name="close" size={28} color="#000" />
-            </TouchableOpacity>
+    <View style={styles.container}>
+      {/* Menu drawer - positioned behind content */}
+      <Animated.View 
+        style={[
+          styles.drawer,
+          { 
+            backgroundColor,
+            transform: [{ translateX: slideAnim }],
+            width: DRAWER_WIDTH 
+          }
+        ]}
+      >
+        <View style={[styles.header, { borderBottomColor: colors.border }]}>
+          <Text style={[styles.headerText, { color: colors.text }]}>PetQuest</Text>
+        </View>
+
+        {/* User Profile Section */}
+        <View style={[styles.profileSection, { borderBottomColor: colors.border }]}>
+          <View style={styles.profileImageContainer}>
+            <Image 
+              key={user?.profileImageUri || 'default'}
+              source={
+                user?.profileImageUri 
+                  ? { uri: user.profileImageUri } 
+                  : require('@/assets/images/icon.png')
+              }
+              style={styles.profileImage}
+              defaultSource={require('@/assets/images/icon.png')}
+            />
           </View>
+          <Text style={[styles.profileName, { color: colors.text }]}>
+            {user?.firstName || user?.name || 'User'}
+          </Text>
+        </View>
 
-          <View style={styles.menuItems}>
-            <TouchableOpacity 
-              style={styles.menuItem}
-              onPress={() => handleNavigate('/(child)/(tabs)/pet')}
-            >
-              <IconSymbol name="pawprint.fill" size={24} color="#000" style={styles.menuIcon} />
-              <Text style={styles.menuText}>Pet</Text>
-            </TouchableOpacity>
+        <View style={styles.menuItems}>
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={handleAchievements}
+          >
+            <IconSymbol name="trophy.fill" size={24} color={colors.text} style={styles.menuIcon} />
+            <Text style={[styles.menuText, { color: colors.text }]}>Achievements</Text>
+          </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={styles.menuItem}
-              onPress={() => handleNavigate('/(child)/(tabs)/calendar')}
-            >
-              <IconSymbol name="calendar" size={24} color="#000" style={styles.menuIcon} />
-              <Text style={styles.menuText}>Calendar</Text>
-            </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={handleHelp}
+          >
+            <IconSymbol name="questionmark.circle.fill" size={24} color={colors.text} style={styles.menuIcon} />
+            <Text style={[styles.menuText, { color: colors.text }]}>Help Center</Text>
+          </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={styles.menuItem}
-              onPress={() => handleNavigate('/(child)/(tabs)/todo')}
-            >
-              <IconSymbol name="list.bullet" size={24} color="#000" style={styles.menuIcon} />
-              <Text style={styles.menuText}>To-Do</Text>
-            </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={handleFeedback}
+          >
+            <IconSymbol name="bubble.left.and.bubble.right.fill" size={24} color={colors.text} style={styles.menuIcon} />
+            <Text style={[styles.menuText, { color: colors.text }]}>Feedback</Text>
+          </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={styles.menuItem}
-              onPress={() => handleNavigate('/(child)/(tabs)/account')}
-            >
-              <IconSymbol name="person.fill" size={24} color="#000" style={styles.menuIcon} />
-              <Text style={styles.menuText}>Account</Text>
-            </TouchableOpacity>
+          <View style={styles.darkModeItem}>
+            <View style={styles.darkModeLabel}>
+              <IconSymbol name="moon.fill" size={24} color={colors.text} style={styles.menuIcon} />
+              <Text style={[styles.menuText, { color: colors.text }]}>Dark Mode</Text>
+            </View>
+            <Switch
+              value={isDarkMode}
+              onValueChange={handleDarkModeToggle}
+              trackColor={{ false: '#767577', true: colors.primary }}
+              thumbColor={isDarkMode ? '#fff' : '#f4f3f4'}
+            />
           </View>
+        </View>
 
-          <View style={styles.footer}>
-            <TouchableOpacity 
-              style={styles.signOutButton}
-              onPress={handleSignOut}
-            >
-              <Ionicons name="log-out-outline" size={24} color="#fff" style={styles.menuIcon} />
-              <Text style={styles.signOutText}>Sign Out</Text>
-            </TouchableOpacity>
-          </View>
-        </Animated.View>
-      </View>
-    </Modal>
+      </Animated.View>
+
+      {/* Main content that slides */}
+      <Animated.View 
+        style={[
+          styles.contentContainer,
+          {
+            backgroundColor: colors.background,
+            transform: [{ translateX: contentAnim }]
+          }
+        ]}
+      >
+        {children}
+        {/* Backdrop overlay when menu is open */}
+        {visible && (
+          <TouchableOpacity 
+            style={styles.backdrop} 
+            activeOpacity={1} 
+            onPress={onClose}
+          />
+        )}
+      </Animated.View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
+  container: {
     flex: 1,
-    flexDirection: 'row',
+    position: 'relative',
+  },
+  contentContainer: {
+    flex: 1,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   backdrop: {
-    flex: 1,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   drawer: {
@@ -154,7 +229,7 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 60,
@@ -165,10 +240,33 @@ const styles = StyleSheet.create({
   headerText: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#000',
   },
-  closeButton: {
-    padding: 5,
+  profileSection: {
+    alignItems: 'center',
+    paddingVertical: 20,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  profileImageContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    overflow: 'hidden',
+    marginBottom: 12,
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+  },
+  profileName: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
   menuItems: {
     flex: 1,
@@ -185,29 +283,19 @@ const styles = StyleSheet.create({
   },
   menuText: {
     fontSize: 18,
-    color: '#000',
     fontWeight: '500',
   },
-  footer: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0, 0, 0, 0.1)',
-    paddingTop: 20,
-  },
-  signOutButton: {
+  darkModeItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#d9534f',
-    paddingVertical: 14,
+    justifyContent: 'space-between',
+    paddingVertical: 16,
     paddingHorizontal: 20,
-    borderRadius: 8,
-    justifyContent: 'center',
   },
-  signOutText: {
-    fontSize: 18,
-    color: '#fff',
-    fontWeight: 'bold',
+  darkModeLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
 });
 

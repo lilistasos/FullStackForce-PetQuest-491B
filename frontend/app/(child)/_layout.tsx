@@ -47,18 +47,26 @@ export default function ChildLayout() {
       } else if (tabName === '(tabs)/todo') {
         setHeaderTitle('To-Do');
       } else if (tabName === '(tabs)/account') {
-        setHeaderTitle('Account');
+        if (activeTabRoute.state && activeTabRoute.state.routes && activeTabRoute.state.index !== undefined) {
+          const accountRoute = activeTabRoute.state.routes[activeTabRoute.state.index];
+          const accountPageName = accountRoute?.name || 'index';
+          
+          if (accountPageName === 'edit-profile') setHeaderTitle('Edit Profile');
+          else if (accountPageName === 'notifications') setHeaderTitle('Notification Preferences');
+          else setHeaderTitle('Account');
+        } else {
+          setHeaderTitle('Account');
+        }
       }
     }
   }, [navigationState]);
 
   return (
-    <>
-      <HamburgerMenu 
-        visible={menuVisible} 
-        onClose={() => setMenuVisible(false)}
-        backgroundColor="#52AFDD"
-      />
+    <HamburgerMenu 
+      visible={menuVisible} 
+      onClose={() => setMenuVisible(false)}
+      backgroundColor="#52AFDD"
+    >
       <Tabs
       initialRouteName="(tabs)/pet"
       screenOptions={{
@@ -114,6 +122,6 @@ export default function ChildLayout() {
         }}
       />
     </Tabs>
-    </>
+    </HamburgerMenu>
   );
 }

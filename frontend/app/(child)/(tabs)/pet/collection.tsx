@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image } from "rea
 import { useRouter } from "expo-router";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { usePet } from "@/contexts/PetContext";
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface CollectionItem {
   id: string;
@@ -15,6 +16,7 @@ interface CollectionItem {
 export default function CollectionScreen() {
   const router = useRouter();
   const { selectedPet, setSelectedPet } = usePet();
+  const { colors } = useTheme();
 
   const collectionItems: CollectionItem[] = [
     { id: "dragon", name: "Dragon", icon: "", owned: true },
@@ -80,7 +82,7 @@ export default function CollectionScreen() {
             resizeMode="contain"
           />
         ) : item.owned ? (
-          <Text style={styles.itemTitle}>{item.name}</Text>
+          <Text style={[styles.itemTitle, { color: colors.text }]}>{item.name}</Text>
         ) : (
           // Empty box for unowned pets - no text
           null
@@ -90,15 +92,15 @@ export default function CollectionScreen() {
   );
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
         <TouchableOpacity 
-          style={styles.backButton}
+          style={[styles.backButton, { backgroundColor: colors.primary }]}
           onPress={() => router.back()}>
           <IconSymbol 
             name="chevron.left" 
             size={24} 
-            color="#000" 
+            color={colors.text} 
             weight="medium"
           />
         </TouchableOpacity>
@@ -116,7 +118,6 @@ export default function CollectionScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
   },
   header: {
     width: "100%",
@@ -126,7 +127,6 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
   },
   backButton: {
-    backgroundColor: "#52AFDD",
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 8,
@@ -172,7 +172,6 @@ const styles = StyleSheet.create({
     fontFamily: "monospace",
     fontSize: 14,
     fontWeight: "bold",
-    color: "#000",
     textAlign: "center",
   },
   grayedOutText: {
