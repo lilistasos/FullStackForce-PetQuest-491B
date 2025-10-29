@@ -115,13 +115,18 @@ export default function HamburgerMenu({ visible, onClose, backgroundColor = '#52
         <View style={[styles.profileSection, { borderBottomColor: colors.border }]}>
           <View style={styles.profileImageContainer}>
             <Image 
-              source={require('@/assets/images/icon.png')} 
+              key={user?.profileImageUri || 'default'}
+              source={
+                user?.profileImageUri 
+                  ? { uri: user.profileImageUri } 
+                  : require('@/assets/images/icon.png')
+              }
               style={styles.profileImage}
               defaultSource={require('@/assets/images/icon.png')}
             />
           </View>
           <Text style={[styles.profileName, { color: colors.text }]}>
-            {user?.name || 'User'}
+            {user?.firstName || user?.name || 'User'}
           </Text>
         </View>
 
@@ -244,22 +249,22 @@ const styles = StyleSheet.create({
     borderBottomColor: 'rgba(0, 0, 0, 0.1)',
   },
   profileImageContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     overflow: 'hidden',
-    marginBottom: 10,
+    marginBottom: 12,
     backgroundColor: '#f0f0f0',
     justifyContent: 'center',
     alignItems: 'center',
   },
   profileImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
   },
   profileName: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: 'bold',
     textAlign: 'center',
   },
