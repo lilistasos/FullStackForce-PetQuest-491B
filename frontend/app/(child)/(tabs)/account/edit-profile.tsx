@@ -16,7 +16,7 @@ export default function EditProfileScreen() {
   const [profileImage, setProfileImage] = useState(
     user?.profileImageUri 
       ? { uri: user.profileImageUri } 
-      : require('@/assets/images/icon.png')
+      : require('@/assets/images/defaultpp.jpg')
   );
   const [imageChanged, setImageChanged] = useState(false);
   
@@ -129,7 +129,7 @@ export default function EditProfileScreen() {
             <Image 
               source={profileImage} 
               style={styles.profileImage}
-              defaultSource={require('@/assets/images/icon.png')}
+              defaultSource={require('@/assets/images/defaultpp.jpg')}
             />
           </View>
           <TouchableOpacity onPress={handleEditPhoto}>

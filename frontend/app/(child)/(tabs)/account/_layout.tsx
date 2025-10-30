@@ -6,6 +6,8 @@ export default function AccountLayout() {
       <Stack.Screen name="index" />
       <Stack.Screen name="edit-profile" />
       <Stack.Screen name="notifications" />
+      <Stack.Screen name="settings" />
+      <Stack.Screen name="account-details" />
     </Stack>
   );
 }

@@ -119,10 +119,10 @@ export default function HamburgerMenu({ visible, onClose, backgroundColor = '#52
               source={
                 user?.profileImageUri 
                   ? { uri: user.profileImageUri } 
-                  : require('@/assets/images/icon.png')
+                  : require('@/assets/images/defaultpp.jpg')
               }
               style={styles.profileImage}
-              defaultSource={require('@/assets/images/icon.png')}
+              defaultSource={require('@/assets/images/defaultpp.jpg')}
             />
           </View>
           <Text style={[styles.profileName, { color: colors.text }]}>

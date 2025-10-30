@@ -53,6 +53,8 @@ export default function ChildLayout() {
           
           if (accountPageName === 'edit-profile') setHeaderTitle('Edit Profile');
           else if (accountPageName === 'notifications') setHeaderTitle('Notification Preferences');
+          else if (accountPageName === 'settings') setHeaderTitle('Settings');
+          else if (accountPageName === 'account-details') setHeaderTitle('Account Details');
           else setHeaderTitle('Account');
         } else {
           setHeaderTitle('Account');
