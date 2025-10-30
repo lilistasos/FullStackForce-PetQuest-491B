@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, Image, TouchableOpacity, StyleSheet, Alert, Modal, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/hooks/useAuth';
@@ -9,6 +9,8 @@ export default function AccountScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const { colors } = useTheme();
+  const [showFamilyCodeModal, setShowFamilyCodeModal] = useState(false);
+  const [familyCode, setFamilyCode] = useState('');
 
   const handleEditProfile = () => {
     router.push('/(child)/(tabs)/account/edit-profile');
@@ -19,8 +21,22 @@ export default function AccountScreen() {
   };
 
   const handleSettings = () => {
-    // TODO: Navigate to settings page when it's created
-    console.log('Navigate to settings page');
+    setShowFamilyCodeModal(true);
+  };
+
+  const handleFamilyCodeSubmit = () => {
+    if (familyCode.length === 8) {
+      setShowFamilyCodeModal(false);
+      setFamilyCode('');
+      router.push('/(child)/(tabs)/account/settings');
+    } else {
+      Alert.alert('Invalid Code', 'Please enter an 8-digit family code.');
+    }
+  };
+
+  const handleFamilyCodeCancel = () => {
+    setShowFamilyCodeModal(false);
+    setFamilyCode('');
   };
 
   const handleLogout = () => {
@@ -56,39 +72,42 @@ export default function AccountScreen() {
               source={
                 user?.profileImageUri 
                   ? { uri: user.profileImageUri } 
-                  : require('@/assets/images/icon.png')
+                  : require('@/assets/images/defaultpp.jpg')
               }
               style={styles.profileImage}
-              defaultSource={require('@/assets/images/icon.png')}
+              defaultSource={require('@/assets/images/defaultpp.jpg')}
             />
           </View>
           <Text style={[styles.profileName, { color: colors.text }]}>
-            {user?.name || 'User'}
+            {user?.firstName || 'User'}
           </Text>
         </View>
 
         <TouchableOpacity 
-          style={[styles.button, { borderColor: colors.primary }]}
+          style={[styles.button, { borderColor: colors.border }]}
           onPress={handleEditProfile}
         >
-          <Ionicons name="pencil-outline" size={20} color={colors.primary} style={styles.buttonIcon} />
-          <Text style={[styles.buttonText, { color: colors.primary }]}>Edit Profile</Text>
+          <Ionicons name="pencil-outline" size={24} color={colors.primary} style={styles.buttonIcon} />
+          <Text style={[styles.buttonText, { color: colors.text }]}>Edit Profile</Text>
+          <Ionicons name="chevron-forward-outline" size={20} color={colors.text} />
         </TouchableOpacity>
 
         <TouchableOpacity 
-          style={[styles.button, { borderColor: colors.primary }]}
+          style={[styles.button, { borderColor: colors.border }]}
           onPress={handleNotifications}
         >
-          <Ionicons name="notifications-outline" size={20} color={colors.primary} style={styles.buttonIcon} />
-          <Text style={[styles.buttonText, { color: colors.primary }]}>Notifications</Text>
+          <Ionicons name="notifications-outline" size={24} color={colors.primary} style={styles.buttonIcon} />
+          <Text style={[styles.buttonText, { color: colors.text }]}>Notifications</Text>
+          <Ionicons name="chevron-forward-outline" size={20} color={colors.text} />
         </TouchableOpacity>
 
         <TouchableOpacity 
-          style={[styles.settingsButton, { borderColor: colors.primary }]}
+          style={[styles.settingsButton, { borderColor: colors.border }]}
           onPress={handleSettings}
         >
-          <Ionicons name="settings-outline" size={20} color={colors.primary} style={styles.settingsIcon} />
-          <Text style={[styles.settingsText, { color: colors.primary }]}>Settings</Text>
+          <Ionicons name="settings-outline" size={24} color={colors.primary} style={styles.settingsIcon} />
+          <Text style={[styles.settingsText, { color: colors.text }]}>Settings</Text>
+          <Ionicons name="chevron-forward-outline" size={20} color={colors.text} />
         </TouchableOpacity>
 
         <TouchableOpacity 
@@ -100,6 +119,51 @@ export default function AccountScreen() {
         </TouchableOpacity>
 
       </View>
+
+      {/* Family Code Modal */}
+      <Modal
+        visible={showFamilyCodeModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={handleFamilyCodeCancel}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Enter Family Code</Text>
+            <Text style={[styles.modalDescription, { color: colors.textSecondary }]}>
+              Please enter your 8-digit family code to access settings.
+            </Text>
+            <TextInput
+              style={[styles.familyCodeInput, { 
+                borderColor: colors.border, 
+                color: colors.text,
+                backgroundColor: colors.surface 
+              }]}
+              value={familyCode}
+              onChangeText={setFamilyCode}
+              keyboardType="numeric"
+              maxLength={8}
+              autoFocus={true}
+              placeholder="12345678"
+              placeholderTextColor={colors.textSecondary}
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={[styles.modalButton, { backgroundColor: '#f0f0f0' }]}
+                onPress={handleFamilyCodeCancel}
+              >
+                <Text style={[styles.modalButtonText, { color: colors.text }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.modalButton, { backgroundColor: colors.primary }]}
+                onPress={handleFamilyCodeSubmit}
+              >
+                <Text style={[styles.modalButtonText, { color: '#FFFFFF' }]}>Submit</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -109,7 +173,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   profileSection: {
-    paddingTop: 20,
+    paddingTop: 40,
     paddingHorizontal: 20,
     alignItems: 'center', // Keep for centering buttons
   },
@@ -144,12 +208,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#f0f0f0',
     paddingVertical: 16,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     borderRadius: 8,
-    borderWidth: 2,
+    borderWidth: 1,
     width: '90%',
     marginVertical: 24,
-    position: 'relative',
   },
   buttonIcon: {
     marginRight: 8,
@@ -158,6 +221,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     flex: 1,
+    marginLeft: 12,
     textAlign: 'center',
   },
   settingsButton: {
@@ -165,12 +229,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#f0f0f0',
     paddingVertical: 16,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     borderRadius: 8,
-    borderWidth: 2,
+    borderWidth: 1,
     width: '90%',
     marginVertical: 24,
-    position: 'relative',
   },
   settingsIcon: {
     marginRight: 8,
@@ -179,6 +242,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     flex: 1,
+    marginLeft: 12,
     textAlign: 'center',
   },
   logoutButton: {
@@ -186,12 +250,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#f0f0f0',
     paddingVertical: 16,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     borderRadius: 8,
-    borderWidth: 2,
+    borderWidth: 1,
     width: '90%',
     marginVertical: 24,
-    position: 'relative',
   },
   logoutIcon: {
     marginRight: 8,
@@ -200,6 +263,54 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     flex: 1,
+    marginLeft: 12,
     textAlign: 'center',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    borderRadius: 12,
+    padding: 24,
+    width: '80%',
+    maxWidth: 400,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  modalDescription: {
+    fontSize: 16,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  familyCodeInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 24,
+    textAlign: 'center',
+    letterSpacing: 4,
+    marginBottom: 20,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  modalButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
