@@ -176,13 +176,13 @@ export default function AccountDetailsScreen() {
             />
             <View style={styles.modalButtons}>
               <TouchableOpacity 
-                style={[styles.modalButton, { backgroundColor: '#f0f0f0' }]}
+                style={[styles.modalButton, styles.modalButtonFirst, { backgroundColor: '#f0f0f0' }]}
                 onPress={handleCancelDelete}
               >
                 <Text style={[styles.modalButtonText, { color: colors.text }]}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity 
-                style={[styles.modalButton, { backgroundColor: '#d9534f' }]}
+                style={[styles.modalButton, styles.modalButtonLast, { backgroundColor: '#d9534f' }]}
                 onPress={handleConfirmDelete}
               >
                 <Text style={[styles.modalButtonText, { color: '#FFFFFF' }]}>Confirm Delete</Text>
@@ -268,49 +268,62 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalContent: {
-    borderRadius: 12,
-    padding: 24,
+    borderRadius: 14,
+    padding: 0,
     width: '80%',
     maxWidth: 400,
+    overflow: 'hidden',
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 17,
+    fontWeight: '600',
     marginBottom: 8,
     textAlign: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 20,
   },
   modalDescription: {
-    fontSize: 16,
-    marginBottom: 20,
+    fontSize: 13,
+    marginBottom: 16,
     textAlign: 'center',
+    paddingHorizontal: 16,
+    lineHeight: 18,
   },
   deleteConfirmInput: {
-    borderWidth: 1,
-    borderRadius: 8,
+    borderWidth: 0.5,
+    borderRadius: 6,
     padding: 12,
-    fontSize: 18,
+    fontSize: 17,
     textAlign: 'center',
     marginBottom: 20,
+    marginHorizontal: 16,
   },
   modalButtons: {
+    borderTopWidth: 0.5,
+    borderTopColor: 'rgba(0, 0, 0, 0.15)',
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
+    height: 44,
   },
   modalButton: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalButtonFirst: {
+    borderRightWidth: 0.5,
+    borderRightColor: 'rgba(0, 0, 0, 0.15)',
+  },
+  modalButtonLast: {
+    borderRightWidth: 0,
   },
   modalButtonText: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 17,
+    fontWeight: '600',
   },
 });
 

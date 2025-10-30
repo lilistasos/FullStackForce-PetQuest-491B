@@ -7,10 +7,12 @@ import { useNavigationState } from '@react-navigation/native';
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import HamburgerMenu from '@/components/HamburgerMenu';
+import { useTheme } from '@/contexts/ThemeContext';
 
 export default function ChildLayout() {
   const [headerTitle, setHeaderTitle] = useState('Pet');
   const [menuVisible, setMenuVisible] = useState(false);
+  const { colors } = useTheme();
 
   const navigationState = useNavigationState(state => state);
 
@@ -55,6 +57,9 @@ export default function ChildLayout() {
           else if (accountPageName === 'notifications') setHeaderTitle('Notification Preferences');
           else if (accountPageName === 'settings') setHeaderTitle('Settings');
           else if (accountPageName === 'account-details') setHeaderTitle('Account Details');
+          else if (accountPageName === 'theme') setHeaderTitle('Theme');
+          else if (accountPageName === 'parental-controls') setHeaderTitle('Parental Controls');
+          else if (accountPageName === 'contact') setHeaderTitle('Contact');
           else setHeaderTitle('Account');
         } else {
           setHeaderTitle('Account');
@@ -67,15 +72,15 @@ export default function ChildLayout() {
     <HamburgerMenu 
       visible={menuVisible} 
       onClose={() => setMenuVisible(false)}
-      backgroundColor="#52AFDD"
+      backgroundColor={colors.primary}
     >
       <Tabs
       initialRouteName="(tabs)/pet"
       screenOptions={{
         tabBarActiveTintColor: "#FFFFFF",
         tabBarInactiveTintColor: "#555555",
-        tabBarStyle: { backgroundColor: "#52AFDD" },
-        headerStyle: { backgroundColor: "#52AFDD" },
+        tabBarStyle: { backgroundColor: colors.primary },
+        headerStyle: { backgroundColor: colors.primary },
         headerTintColor: "#000000ff",
         headerTitleStyle: { fontWeight: "bold" },
         tabBarButton: HapticTab,

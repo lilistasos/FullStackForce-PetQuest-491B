@@ -8,6 +8,9 @@ export default function AccountLayout() {
       <Stack.Screen name="notifications" />
       <Stack.Screen name="settings" />
       <Stack.Screen name="account-details" />
+      <Stack.Screen name="theme" />
+      <Stack.Screen name="parental-controls" />
+      <Stack.Screen name="contact" />
     </Stack>
   );
 }

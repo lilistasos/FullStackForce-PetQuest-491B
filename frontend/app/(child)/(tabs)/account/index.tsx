@@ -8,7 +8,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 export default function AccountScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
-  const { colors } = useTheme();
+  const { colors, isDarkMode } = useTheme();
   const [showFamilyCodeModal, setShowFamilyCodeModal] = useState(false);
   const [familyCode, setFamilyCode] = useState('');
 
@@ -84,7 +84,7 @@ export default function AccountScreen() {
         </View>
 
         <TouchableOpacity 
-          style={[styles.button, { borderColor: colors.border }]}
+          style={[styles.button, { backgroundColor: colors.surface, borderColor: colors.border }]}
           onPress={handleEditProfile}
         >
           <Ionicons name="pencil-outline" size={24} color={colors.primary} style={styles.buttonIcon} />
@@ -93,7 +93,7 @@ export default function AccountScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity 
-          style={[styles.button, { borderColor: colors.border }]}
+          style={[styles.button, { backgroundColor: colors.surface, borderColor: colors.border }]}
           onPress={handleNotifications}
         >
           <Ionicons name="notifications-outline" size={24} color={colors.primary} style={styles.buttonIcon} />
@@ -102,7 +102,7 @@ export default function AccountScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity 
-          style={[styles.settingsButton, { borderColor: colors.border }]}
+          style={[styles.settingsButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
           onPress={handleSettings}
         >
           <Ionicons name="settings-outline" size={24} color={colors.primary} style={styles.settingsIcon} />
@@ -111,7 +111,7 @@ export default function AccountScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity 
-          style={[styles.logoutButton, { borderColor: '#ff4444' }]}
+          style={[styles.logoutButton, { backgroundColor: isDarkMode ? '#2a1a1a' : '#fff5f5', borderColor: '#ff4444' }]}
           onPress={handleLogout}
         >
           <Ionicons name="log-out-outline" size={20} color="#ff4444" style={styles.logoutIcon} />
@@ -152,7 +152,7 @@ export default function AccountScreen() {
                 style={[styles.modalButton, { backgroundColor: '#f0f0f0' }]}
                 onPress={handleFamilyCodeCancel}
               >
-                <Text style={[styles.modalButtonText, { color: colors.text }]}>Cancel</Text>
+                <Text style={[styles.modalButtonText, { color: '#000000' }]}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={[styles.modalButton, { backgroundColor: colors.primary }]}
@@ -206,7 +206,6 @@ const styles = StyleSheet.create({
   button: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f0f0f0',
     paddingVertical: 16,
     paddingHorizontal: 16,
     borderRadius: 8,
@@ -227,7 +226,6 @@ const styles = StyleSheet.create({
   settingsButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f0f0f0',
     paddingVertical: 16,
     paddingHorizontal: 16,
     borderRadius: 8,
@@ -248,7 +246,6 @@ const styles = StyleSheet.create({
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f0f0f0',
     paddingVertical: 16,
     paddingHorizontal: 16,
     borderRadius: 8,
@@ -268,7 +265,7 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
     justifyContent: 'center',
     alignItems: 'center',
   },

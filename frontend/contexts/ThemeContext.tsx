@@ -2,9 +2,13 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+type PrimaryColorKey = 'red' | 'orange' | 'yellow' | 'green' | 'blue' | 'purple' | 'pink' | 'brown' | 'turquoise' | 'navy' | 'teal' | 'magenta';
+
 interface ThemeContextType {
   isDarkMode: boolean;
   toggleDarkMode: () => void;
+  primaryColor: PrimaryColorKey;
+  setPrimaryColor: (color: PrimaryColorKey) => void;
   colors: {
     background: string;
     surface: string;
@@ -18,13 +22,27 @@ interface ThemeContextType {
   };
 }
 
+const primaryColors: Record<PrimaryColorKey, string> = {
+  red: '#FF4444',
+  orange: '#FF8800',
+  yellow: '#FFBB33',
+  green: '#00C851',
+  blue: '#52AFDD',
+  purple: '#AA66CC',
+  pink: '#FF69B4',
+  brown: '#A0522D',
+  turquoise: '#40E0D0',
+  navy: '#1E3A8A',
+  teal: '#008080',
+  magenta: '#FF00FF',
+};
+
 const lightColors = {
   background: '#FFFFFF',
   surface: '#F8F9FA',
   text: '#000000',
   textSecondary: '#6C757D',
   border: 'rgba(0, 0, 0, 0.1)',
-  primary: '#52AFDD',
   secondary: '#6C757D',
   error: '#d9534f',
   success: '#5CB85C',
@@ -36,7 +54,6 @@ const darkColors = {
   text: '#FFFFFF',
   textSecondary: '#B0B0B0',
   border: 'rgba(255, 255, 255, 0.1)',
-  primary: '#52AFDD',
   secondary: '#B0B0B0',
   error: '#FF6B6B',
   success: '#4ECDC4',
@@ -55,6 +72,7 @@ export const useTheme = () => {
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const systemColorScheme = useColorScheme();
   const [isDarkMode, setIsDarkMode] = useState(systemColorScheme === 'dark');
+  const [primaryColor, setPrimaryColorState] = useState<PrimaryColorKey>('blue');
 
   useEffect(() => {
     // Load saved theme preference
@@ -63,6 +81,11 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const savedTheme = await AsyncStorage.getItem('theme');
         if (savedTheme) {
           setIsDarkMode(savedTheme === 'dark');
+        }
+        
+        const savedPrimaryColor = await AsyncStorage.getItem('primaryColor');
+        if (savedPrimaryColor && ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink', 'brown', 'turquoise', 'navy', 'teal', 'magenta'].includes(savedPrimaryColor)) {
+          setPrimaryColorState(savedPrimaryColor as PrimaryColorKey);
         }
       } catch (error) {
         console.log('Error loading theme:', error);
@@ -81,10 +104,23 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  const colors = isDarkMode ? darkColors : lightColors;
+  const setPrimaryColor = async (color: PrimaryColorKey) => {
+    setPrimaryColorState(color);
+    try {
+      await AsyncStorage.setItem('primaryColor', color);
+    } catch (error) {
+      console.log('Error saving primary color:', error);
+    }
+  };
+
+  const baseColors = isDarkMode ? darkColors : lightColors;
+  const colors = {
+    ...baseColors,
+    primary: primaryColors[primaryColor],
+  };
 
   return (
-    <ThemeContext.Provider value={{ isDarkMode, toggleDarkMode, colors }}>
+    <ThemeContext.Provider value={{ isDarkMode, toggleDarkMode, primaryColor, setPrimaryColor, colors }}>
       {children}
     </ThemeContext.Provider>
   );

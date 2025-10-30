@@ -9,6 +9,23 @@ import { useTheme } from '@/contexts/ThemeContext';
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const DRAWER_WIDTH = SCREEN_WIDTH * 0.75;
 
+// Function to calculate luminance and determine text color
+const getContrastColor = (backgroundColor: string): string => {
+  // Remove # if present
+  const hex = backgroundColor.replace('#', '');
+  
+  // Convert to RGB
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  
+  // Calculate relative luminance
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  
+  // Return black or white based on luminance
+  return luminance > 0.5 ? '#000000' : '#FFFFFF';
+};
+
 interface HamburgerMenuProps {
   visible: boolean;
   onClose: () => void;
@@ -23,6 +40,9 @@ export default function HamburgerMenu({ visible, onClose, backgroundColor = '#52
   const slideAnim = React.useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const contentAnim = React.useRef(new Animated.Value(0)).current;
   const [modalVisible, setModalVisible] = React.useState(false);
+  
+  // Get appropriate text color for hamburger menu
+  const hamburgerTextColor = getContrastColor(backgroundColor);
 
   React.useEffect(() => {
     if (visible) {
@@ -107,12 +127,12 @@ export default function HamburgerMenu({ visible, onClose, backgroundColor = '#52
           }
         ]}
       >
-        <View style={[styles.header, { borderBottomColor: colors.border }]}>
-          <Text style={[styles.headerText, { color: colors.text }]}>PetQuest</Text>
+        <View style={[styles.header, { borderBottomColor: 'rgba(0, 0, 0, 0.15)' }]}>
+          <Text style={[styles.headerText, { color: hamburgerTextColor }]}>PetQuest</Text>
         </View>
 
         {/* User Profile Section */}
-        <View style={[styles.profileSection, { borderBottomColor: colors.border }]}>
+        <View style={[styles.profileSection, { borderBottomColor: 'rgba(0, 0, 0, 0.15)' }]}>
           <View style={styles.profileImageContainer}>
             <Image 
               key={user?.profileImageUri || 'default'}
@@ -125,7 +145,7 @@ export default function HamburgerMenu({ visible, onClose, backgroundColor = '#52
               defaultSource={require('@/assets/images/defaultpp.jpg')}
             />
           </View>
-          <Text style={[styles.profileName, { color: colors.text }]}>
+          <Text style={[styles.profileName, { color: hamburgerTextColor }]}>
             {user?.firstName || user?.name || 'User'}
           </Text>
         </View>
@@ -135,35 +155,35 @@ export default function HamburgerMenu({ visible, onClose, backgroundColor = '#52
             style={styles.menuItem}
             onPress={handleAchievements}
           >
-            <IconSymbol name="trophy.fill" size={24} color={colors.text} style={styles.menuIcon} />
-            <Text style={[styles.menuText, { color: colors.text }]}>Achievements</Text>
+            <IconSymbol name="trophy.fill" size={24} color={hamburgerTextColor} style={styles.menuIcon} />
+            <Text style={[styles.menuText, { color: hamburgerTextColor }]}>Achievements</Text>
           </TouchableOpacity>
 
           <TouchableOpacity 
             style={styles.menuItem}
             onPress={handleHelp}
           >
-            <IconSymbol name="questionmark.circle.fill" size={24} color={colors.text} style={styles.menuIcon} />
-            <Text style={[styles.menuText, { color: colors.text }]}>Help Center</Text>
+            <IconSymbol name="questionmark.circle.fill" size={24} color={hamburgerTextColor} style={styles.menuIcon} />
+            <Text style={[styles.menuText, { color: hamburgerTextColor }]}>Help Center</Text>
           </TouchableOpacity>
 
           <TouchableOpacity 
             style={styles.menuItem}
             onPress={handleFeedback}
           >
-            <IconSymbol name="bubble.left.and.bubble.right.fill" size={24} color={colors.text} style={styles.menuIcon} />
-            <Text style={[styles.menuText, { color: colors.text }]}>Feedback</Text>
+            <IconSymbol name="bubble.left.and.bubble.right.fill" size={24} color={hamburgerTextColor} style={styles.menuIcon} />
+            <Text style={[styles.menuText, { color: hamburgerTextColor }]}>Feedback</Text>
           </TouchableOpacity>
 
           <View style={styles.darkModeItem}>
             <View style={styles.darkModeLabel}>
-              <IconSymbol name="moon.fill" size={24} color={colors.text} style={styles.menuIcon} />
-              <Text style={[styles.menuText, { color: colors.text }]}>Dark Mode</Text>
+              <IconSymbol name="moon.fill" size={24} color={hamburgerTextColor} style={styles.menuIcon} />
+              <Text style={[styles.menuText, { color: hamburgerTextColor }]}>Dark Mode</Text>
             </View>
             <Switch
               value={isDarkMode}
               onValueChange={handleDarkModeToggle}
-              trackColor={{ false: '#767577', true: colors.primary }}
+              trackColor={{ false: '#767577', true: hamburgerTextColor === '#FFFFFF' ? '#FFFFFF' : colors.primary }}
               thumbColor={isDarkMode ? '#fff' : '#f4f3f4'}
             />
           </View>

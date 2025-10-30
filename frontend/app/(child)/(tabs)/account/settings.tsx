@@ -12,6 +12,12 @@ export default function SettingsScreen() {
   const handleNavigate = (route: string) => {
     if (route === 'account') {
       router.push('/(child)/(tabs)/account/account-details');
+    } else if (route === 'theme') {
+      router.push('/(child)/(tabs)/account/theme');
+    } else if (route === 'parental-controls') {
+      router.push('/(child)/(tabs)/account/parental-controls');
+    } else if (route === 'contact') {
+      router.push('/(child)/(tabs)/account/contact');
     } else {
       // TODO: Navigate to other pages when created
       console.log(`Navigate to ${route}`);
@@ -40,7 +46,7 @@ export default function SettingsScreen() {
           <Text style={[styles.sectionTitle, { color: colors.text }]}>General</Text>
           
           <TouchableOpacity 
-            style={[styles.settingItem, { borderColor: colors.border }]}
+            style={[styles.settingItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
             onPress={() => handleNavigate('account')}
           >
             <Ionicons name="person-outline" size={24} color={colors.primary} />
@@ -49,7 +55,7 @@ export default function SettingsScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity 
-            style={[styles.settingItem, { borderColor: colors.border }]}
+            style={[styles.settingItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
             onPress={() => handleNavigate('theme')}
           >
             <Ionicons name="color-palette-outline" size={24} color={colors.primary} />
@@ -63,7 +69,7 @@ export default function SettingsScreen() {
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Parent-Child Settings</Text>
           
           <TouchableOpacity 
-            style={[styles.settingItem, { borderColor: colors.border }]}
+            style={[styles.settingItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
             onPress={() => handleNavigate('parental-controls')}
           >
             <Ionicons name="shield-outline" size={24} color={colors.primary} />
@@ -77,11 +83,20 @@ export default function SettingsScreen() {
           <Text style={[styles.sectionTitle, { color: colors.text }]}>About / Support</Text>
           
           <TouchableOpacity 
-            style={[styles.settingItem, { borderColor: colors.border }]}
+            style={[styles.settingItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
             onPress={() => handleNavigate('help-center')}
           >
             <Ionicons name="help-circle-outline" size={24} color={colors.primary} />
             <Text style={[styles.settingText, { color: colors.text }]}>Help Center</Text>
+            <Ionicons name="chevron-forward-outline" size={20} color={colors.text} />
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.settingItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            onPress={() => handleNavigate('contact')}
+          >
+            <Ionicons name="mail-outline" size={24} color={colors.primary} />
+            <Text style={[styles.settingText, { color: colors.text }]}>Contact</Text>
             <Ionicons name="chevron-forward-outline" size={20} color={colors.text} />
           </TouchableOpacity>
         </View>
@@ -130,7 +145,6 @@ const styles = StyleSheet.create({
   settingItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f0f0f0',
     paddingVertical: 16,
     paddingHorizontal: 16,
     borderRadius: 8,
