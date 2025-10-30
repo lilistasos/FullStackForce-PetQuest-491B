@@ -11,6 +11,8 @@ export default function AccountLayout() {
       <Stack.Screen name="theme" />
       <Stack.Screen name="parental-controls" />
       <Stack.Screen name="contact" />
+      <Stack.Screen name="help-center" />
+      <Stack.Screen name="achievements" />
     </Stack>
   );
 }

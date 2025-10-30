@@ -18,6 +18,8 @@ export default function SettingsScreen() {
       router.push('/(child)/(tabs)/account/parental-controls');
     } else if (route === 'contact') {
       router.push('/(child)/(tabs)/account/contact');
+    } else if (route === 'help-center') {
+      router.push('/(child)/(tabs)/account/help-center');
     } else {
       // TODO: Navigate to other pages when created
       console.log(`Navigate to ${route}`);
@@ -72,8 +74,8 @@ export default function SettingsScreen() {
             style={[styles.settingItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
             onPress={() => handleNavigate('parental-controls')}
           >
-            <Ionicons name="shield-outline" size={24} color={colors.primary} />
-            <Text style={[styles.settingText, { color: colors.text }]}>Parental Controls</Text>
+            <Ionicons name="timer-outline" size={24} color={colors.primary} />
+            <Text style={[styles.settingText, { color: colors.text }]}>Screen Time</Text>
             <Ionicons name="chevron-forward-outline" size={20} color={colors.text} />
           </TouchableOpacity>
         </View>
@@ -97,6 +99,15 @@ export default function SettingsScreen() {
           >
             <Ionicons name="mail-outline" size={24} color={colors.primary} />
             <Text style={[styles.settingText, { color: colors.text }]}>Contact</Text>
+            <Ionicons name="chevron-forward-outline" size={20} color={colors.text} />
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.settingItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            onPress={() => handleNavigate('feedback')}
+          >
+            <Ionicons name="chatbubble-outline" size={24} color={colors.primary} />
+            <Text style={[styles.settingText, { color: colors.text }]}>Feedback</Text>
             <Ionicons name="chevron-forward-outline" size={20} color={colors.text} />
           </TouchableOpacity>
         </View>
@@ -156,6 +167,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     marginLeft: 12,
+    textAlign: 'center',
   },
 });
 

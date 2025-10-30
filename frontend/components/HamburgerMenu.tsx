@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/hooks/useAuth';
-import { useTheme } from '@/contexts/ThemeContext';
+import { useTheme, primaryColors, type PrimaryColorKey } from '@/contexts/ThemeContext';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const DRAWER_WIDTH = SCREEN_WIDTH * 0.75;
@@ -23,7 +23,8 @@ const getContrastColor = (backgroundColor: string): string => {
   const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
   
   // Return black or white based on luminance
-  return luminance > 0.5 ? '#000000' : '#FFFFFF';
+  // Lower threshold to 0.4 to accommodate bright colors like red, pink, orange, magenta
+  return luminance > 0.4 ? '#000000' : '#FFFFFF';
 };
 
 interface HamburgerMenuProps {
@@ -36,10 +37,11 @@ interface HamburgerMenuProps {
 export default function HamburgerMenu({ visible, onClose, backgroundColor = '#52AFDD', children }: HamburgerMenuProps) {
   const router = useRouter();
   const { user } = useAuth();
-  const { isDarkMode, toggleDarkMode, colors } = useTheme();
+  const { isDarkMode, toggleDarkMode, colors, primaryColor, setPrimaryColor } = useTheme();
   const slideAnim = React.useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const contentAnim = React.useRef(new Animated.Value(0)).current;
   const [modalVisible, setModalVisible] = React.useState(false);
+  const [colorMenuOpen, setColorMenuOpen] = React.useState(false);
   
   // Get appropriate text color for hamburger menu
   const hamburgerTextColor = getContrastColor(backgroundColor);
@@ -92,14 +94,16 @@ export default function HamburgerMenu({ visible, onClose, backgroundColor = '#52
 
   const handleAchievements = () => {
     onClose();
-    // TODO: Navigate to achievements page when it's created
-    console.log('Navigate to achievements page');
+    setTimeout(() => {
+      router.push('/(child)/(tabs)/account/achievements' as any);
+    }, 300);
   };
 
   const handleHelp = () => {
     onClose();
-    // TODO: Navigate to help page when it's created
-    console.log('Navigate to help page');
+    setTimeout(() => {
+      router.push('/(child)/(tabs)/account/help-center' as any);
+    }, 300);
   };
 
   const handleDarkModeToggle = (value: boolean) => {
@@ -108,10 +112,11 @@ export default function HamburgerMenu({ visible, onClose, backgroundColor = '#52
     }
   };
 
-  const handleFeedback = () => {
+  const handleTheme = () => {
     onClose();
-    // TODO: Navigate to feedback page when it's created
-    console.log('Navigate to feedback page');
+    setTimeout(() => {
+      router.push('/(child)/(tabs)/account/theme' as any);
+    }, 300);
   };
 
   return (
@@ -169,11 +174,47 @@ export default function HamburgerMenu({ visible, onClose, backgroundColor = '#52
 
           <TouchableOpacity 
             style={styles.menuItem}
-            onPress={handleFeedback}
+            onPress={() => setColorMenuOpen(!colorMenuOpen)}
           >
-            <IconSymbol name="bubble.left.and.bubble.right.fill" size={24} color={hamburgerTextColor} style={styles.menuIcon} />
-            <Text style={[styles.menuText, { color: hamburgerTextColor }]}>Feedback</Text>
+            <View style={styles.themeColorButton}>
+              <Ionicons name="color-palette-outline" size={24} color={hamburgerTextColor} style={styles.menuIcon} />
+              <Text style={[styles.menuText, { color: hamburgerTextColor }]}>Theme Color</Text>
+              <View style={{ flex: 1 }} />
+              <Ionicons 
+                name={colorMenuOpen ? 'chevron-up' : 'chevron-down'} 
+                size={20} 
+                color={hamburgerTextColor}
+              />
+            </View>
           </TouchableOpacity>
+
+          {/* Color dropdown within menu */}
+          {colorMenuOpen && (
+            <View style={styles.colorDropdown}>
+              <View style={[styles.colorOptionsContainer, { backgroundColor: colors.surface, borderColor: '#000000' }]}>
+                {Object.entries(primaryColors).map(([key, color]) => (
+                  <TouchableOpacity
+                    key={key}
+                    style={styles.colorOption}
+                    onPress={() => {
+                      setPrimaryColor(key as PrimaryColorKey);
+                    }}
+                  >
+                    <View 
+                      style={[
+                        styles.colorCircle, 
+                        { backgroundColor: color },
+                        primaryColor === key && styles.colorCircleSelected
+                      ]}
+                    />
+                    {primaryColor === key && (
+                      <Ionicons name="checkmark" size={18} color="#000000" style={styles.checkmark} />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
 
           <View style={styles.darkModeItem}>
             <View style={styles.darkModeLabel}>
@@ -316,6 +357,43 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
+  },
+  themeColorButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+  },
+  colorDropdown: {
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+  },
+  colorOptionsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    borderRadius: 8,
+    padding: 16,
+    gap: 12,
+    borderWidth: 1,
+  },
+  colorOption: {
+    width: '21%',
+    aspectRatio: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  colorCircle: {
+    width: '100%',
+    aspectRatio: 1,
+    borderRadius: 50,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  colorCircleSelected: {
+    borderWidth: 3,
+    borderColor: '#000000',
+  },
+  checkmark: {
+    position: 'absolute',
   },
 });
 

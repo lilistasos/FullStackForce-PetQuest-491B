@@ -9,10 +9,31 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import HamburgerMenu from '@/components/HamburgerMenu';
 import { useTheme } from '@/contexts/ThemeContext';
 
+// Function to calculate luminance and determine text color
+const getContrastColor = (backgroundColor: string): string => {
+  // Remove # if present
+  const hex = backgroundColor.replace('#', '');
+  
+  // Convert to RGB
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  
+  // Calculate relative luminance
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  
+  // Return black or white based on luminance
+  // Lower threshold to 0.4 to accommodate bright colors like red, pink, orange, magenta
+  return luminance > 0.4 ? '#000000' : '#FFFFFF';
+};
+
 export default function ChildLayout() {
   const [headerTitle, setHeaderTitle] = useState('Pet');
   const [menuVisible, setMenuVisible] = useState(false);
   const { colors } = useTheme();
+  
+  // Get appropriate text color for header based on primary color
+  const headerTextColor = getContrastColor(colors.primary);
 
   const navigationState = useNavigationState(state => state);
 
@@ -60,6 +81,8 @@ export default function ChildLayout() {
           else if (accountPageName === 'theme') setHeaderTitle('Theme');
           else if (accountPageName === 'parental-controls') setHeaderTitle('Parental Controls');
           else if (accountPageName === 'contact') setHeaderTitle('Contact');
+          else if (accountPageName === 'help-center') setHeaderTitle('Help Center');
+          else if (accountPageName === 'achievements') setHeaderTitle('Achievements');
           else setHeaderTitle('Account');
         } else {
           setHeaderTitle('Account');
@@ -77,24 +100,24 @@ export default function ChildLayout() {
       <Tabs
       initialRouteName="(tabs)/pet"
       screenOptions={{
-        tabBarActiveTintColor: "#FFFFFF",
+        tabBarActiveTintColor: headerTextColor,
         tabBarInactiveTintColor: "#555555",
         tabBarStyle: { backgroundColor: colors.primary },
         headerStyle: { backgroundColor: colors.primary },
-        headerTintColor: "#000000ff",
-        headerTitleStyle: { fontWeight: "bold" },
+        headerTintColor: headerTextColor,
+        headerTitleStyle: { fontWeight: "bold", color: headerTextColor },
         tabBarButton: HapticTab,
         headerTitleAlign: 'center',
         tabBarShowLabel: false,
         headerTitle: headerTitle,
         headerLeft: () => (
           <TouchableOpacity style={{ marginLeft: 15 }} onPress={() => setMenuVisible(true)}>
-            <Ionicons name="menu" size={24} color="black" />
+            <Ionicons name="menu" size={24} color={headerTextColor} />
           </TouchableOpacity>
         ),
         headerRight: () => (
           <TouchableOpacity style={{ marginRight: 15 }} onPress={() => {}}>
-            <Ionicons name="notifications-outline" size={24} color="black" />
+            <Ionicons name="notifications-outline" size={24} color={headerTextColor} />
           </TouchableOpacity>
         ),
       }}
