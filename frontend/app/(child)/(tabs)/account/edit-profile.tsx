@@ -90,7 +90,7 @@ export default function EditProfileScreen() {
             />
           </View>
           <TouchableOpacity onPress={handleEditPhoto}>
-            <Text style={[styles.editPhotoText, { color: '#007AFF' }]}>Edit Photo</Text>
+            <Text style={[styles.editPhotoText, { color: colors.primary }]}>Edit Photo</Text>
           </TouchableOpacity>
         </View>
 
