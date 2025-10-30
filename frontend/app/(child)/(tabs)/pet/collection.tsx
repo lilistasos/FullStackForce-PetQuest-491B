@@ -60,8 +60,9 @@ export default function CollectionScreen() {
     >
       <View style={[
         styles.itemBox,
-        selectedPet.id === item.id && item.owned && styles.selectedItemBox,
-        !item.owned && styles.unownedItemBox
+        { backgroundColor: item.owned ? colors.background : colors.surface, borderColor: colors.primary },
+        selectedPet.id === item.id && item.owned && { borderWidth: 4, borderColor: colors.primary },
+        !item.owned && { borderColor: colors.border }
       ]}>
         {item.id === "dragon" ? (
           <Image 
@@ -152,21 +153,11 @@ const styles = StyleSheet.create({
   itemBox: {
     width: "100%",
     aspectRatio: 1,
-    backgroundColor: "#FFFFFF",
     borderRadius: 4,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
-    borderColor: "#52AFDD",
     padding: 10,
-  },
-  selectedItemBox: {
-    borderWidth: 4,
-    borderColor: "#52AFDD",
-  },
-  unownedItemBox: {
-    backgroundColor: "#F5F5F5",
-    borderColor: "#CCCCCC",
   },
   itemTitle: {
     fontFamily: "monospace",
@@ -175,7 +166,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   grayedOutText: {
-    color: "#999999",
+    opacity: 0.5,
   },
   itemImage: {
     width: 120,

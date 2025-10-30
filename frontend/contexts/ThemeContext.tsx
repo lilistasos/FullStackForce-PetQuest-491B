@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-type PrimaryColorKey = 'red' | 'orange' | 'yellow' | 'green' | 'blue' | 'purple' | 'pink' | 'brown' | 'turquoise' | 'navy' | 'teal' | 'magenta';
+export type PrimaryColorKey = 'red' | 'orange' | 'yellow' | 'green' | 'blue' | 'purple' | 'pink' | 'brown' | 'turquoise' | 'navy' | 'teal' | 'magenta';
 
 interface ThemeContextType {
   isDarkMode: boolean;
@@ -22,7 +22,7 @@ interface ThemeContextType {
   };
 }
 
-const primaryColors: Record<PrimaryColorKey, string> = {
+export const primaryColors: Record<PrimaryColorKey, string> = {
   red: '#FF4444',
   orange: '#FF8800',
   yellow: '#FFBB33',
