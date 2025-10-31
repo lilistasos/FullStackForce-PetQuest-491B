@@ -20,13 +20,21 @@ const ToDoScreen = ()=> {
 // useState hook to store the current date and update it... allows the app to display and maipulate the date dynamically 
   const [currentDate, setCurrentDate] = useState(new Date());
 
-  //const [showDetails, setShowDetails] = useState(false);
   const [showDetails, setShowDetails] = useState<string | null>(null);
+  //const [delete, setDelete] = useState(false);
+  const dropdownOptions = ["Default", "Points: High to Low", "Points: Low to High"];
+  
+  const [dropdown, setDropdown] = useState(false);
+  const [sortType, setSortType] = useState(dropdownOptions[0]);
 
   const handlePressTask = (taskId: string) => {
-  setShowDetails((prev) => (prev === taskId ? null : taskId)
-  );
-}
+    setShowDetails((prev) => (prev === taskId ? null : taskId)
+   );
+  };
+
+  const toggleDropdown = () => {
+    setDropdown((prev) => !prev);
+  };
 
 // States for Categories
 // expanded state object to track which categories are currently expanded or collapsed
@@ -37,14 +45,12 @@ const ToDoScreen = ()=> {
     Completed: false,
 });
 
-const [tasksByDate, setTasksByDate] = useState<{
-  [key: string]: Task[];
-}>({
+const taskList = {
   "2025-10-20": [
     { id: "1", text: "Read ch.1", completed: false, category: "Homework", description: "Read chapter 1 of history textbook", points: 10 },
     { id: "2", text: "Clean kitchen", completed: false, category: "Chores", description: "Wash dishes and wipe counters", points: 5 },
     { id: "3", text: "Clean room", completed: false, category: "Chores", description: "Tidy up and vacuum", points: 5 },
-    { id: "4", text: "Wash dishes", completed: false, category: "Chores", description: "Clean dirty dishes", points: 5 },
+    { id: "4", text: "Wash dishes", completed: false, category: "Chores", description: "Clean dirty dishes", points: 10 },
     { id: "5", text: "Laundry", completed: false, category: "Chores", description: "Wash and fold clothes", points: 5 },
   ],
   "2025-10-21": [
@@ -54,7 +60,12 @@ const [tasksByDate, setTasksByDate] = useState<{
   "2025-10-22": [
     { id: "8", text: "Take out trash", completed: false, category: "Chores", description: "Take out household trash", points: 5 },
   ],
-});
+}
+
+const [tasksByDate, setTasksByDate] = useState<{
+  [key: string]: Task[];
+}>(taskList);
+const [originalTasksByDate] = useState(taskList);
 
 // Converts current date to a string
 const formatDateKey = (date: Date) => date.toISOString().split("T")[0];
@@ -104,6 +115,31 @@ const toggleComplete = (taskId: string) => {
     return { ...prev, [formattedKey]: updatedDayTasks };
   });
 };
+
+const handleSort = (sortType: React.SetStateAction<string>) => {
+    setSortType(sortType);
+    setDropdown(false);
+    const sortedTasks = {...tasksByDate}
+    switch(sortType) {
+    case (dropdownOptions[0]):
+      setTasksByDate(originalTasksByDate);
+      break;
+    case (dropdownOptions[1]):
+      Object.keys(sortedTasks).forEach((date) => {
+        sortedTasks[date] = [...sortedTasks[date]].sort((a, b) => b.points - a.points);
+      })
+      setTasksByDate(sortedTasks);
+      break;
+    case (dropdownOptions[2]):
+      Object.keys(sortedTasks).forEach((date) => {
+        sortedTasks[date] = [...sortedTasks[date]].sort((a, b) => a.points - b.points);
+      })
+      setTasksByDate(sortedTasks);
+      break;
+    default:
+      break;
+    }
+  };
 
 // The four categories for tasks
   const categories = [
@@ -159,7 +195,14 @@ const toggleComplete = (taskId: string) => {
                     task.completed && { textDecorationLine: "line-through" },
                   ]}
                 >
+                  <Ionicons
+                    name={showDetails === task.id ? "chevron-down" : "chevron-forward"}
+                    size={16}
+                    color="gray"
+                    style={{marginRight: 6}}
+                  />
                   {task.text}
+                  
                 </Text>
                 </Pressable>
                 {showDetails === task.id && (
@@ -218,6 +261,25 @@ const toggleComplete = (taskId: string) => {
             </TouchableOpacity>
           </View>
         </View>
+      </View>
+
+      <View style={{flex: 1, flexDirection: "row", justifyContent: "flex-end", padding: 10, marginBottom: 10, position: "relative", zIndex: 1}}>
+        <TouchableOpacity onPress={toggleDropdown}>
+          <Ionicons name="funnel-outline" size = {20} color="gray"/>
+        </TouchableOpacity>
+        {dropdown && (
+          <View style={{position: "absolute", top: 40, right: 10, backgroundColor: "#fff", borderWidth: 1, borderColor: "#ccc", borderRadius: 6, zIndex: 1000}}>
+            <TouchableOpacity onPress={() => handleSort(dropdownOptions[0])} style={{padding: 10, borderBottomWidth: 1, borderBottomColor: "#eee"}}>
+              <Text>Default</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => handleSort(dropdownOptions[1])} style={{padding: 10, borderBottomWidth: 1, borderBottomColor: "#eee"}}>
+              <Text>Points: High to Low</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => handleSort(dropdownOptions[2])} style={{padding: 10, borderBottomWidth: 1, borderBottomColor: "#eee"}}>
+              <Text>Points: Low to High</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
       {/* Task Categories; renders all categories vertically,flatlist for efficient scrolling */}
