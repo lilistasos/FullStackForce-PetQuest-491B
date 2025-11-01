@@ -13,6 +13,7 @@ export default function AccountLayout() {
       <Stack.Screen name="contact" />
       <Stack.Screen name="feedback" />
       <Stack.Screen name="subscription" />
+      <Stack.Screen name="parent-child-settings" />
     </Stack>
   );
 }

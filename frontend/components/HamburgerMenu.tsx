@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, Animated, Dimensions, Image, Switch } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useSegments } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/hooks/useAuth';
@@ -36,12 +36,16 @@ interface HamburgerMenuProps {
 
 export default function HamburgerMenu({ visible, onClose, backgroundColor = '#52AFDD', children }: HamburgerMenuProps) {
   const router = useRouter();
+  const segments = useSegments();
   const { user } = useAuth();
   const { isDarkMode, toggleDarkMode, colors, primaryColor, setPrimaryColor } = useTheme();
   const slideAnim = React.useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const contentAnim = React.useRef(new Animated.Value(0)).current;
   const [modalVisible, setModalVisible] = React.useState(false);
   const [colorMenuOpen, setColorMenuOpen] = React.useState(false);
+  
+  // Check if we're on a parent route
+  const isParentRoute = segments[0] === '(parent)' || user?.role === 'parent';
   
   // Get appropriate text color for hamburger menu
   const hamburgerTextColor = getContrastColor(backgroundColor);
@@ -95,14 +99,26 @@ export default function HamburgerMenu({ visible, onClose, backgroundColor = '#52
   const handleAchievements = () => {
     onClose();
     setTimeout(() => {
-      router.push('/(child)/(tabs)/account/achievements' as any);
+      // Determine route based on current segments
+      if (segments[0] === '(indv)') {
+        router.push('/(indv)/(tabs)/account/achievements' as any);
+      } else {
+        router.push('/(child)/(tabs)/account/achievements' as any);
+      }
     }, 300);
   };
 
   const handleHelp = () => {
     onClose();
     setTimeout(() => {
-      router.push('/(child)/(tabs)/account/help-center' as any);
+      // Determine route based on current segments
+      if (segments[0] === '(indv)') {
+        router.push('/(indv)/(tabs)/account/help-center' as any);
+      } else if (segments[0] === '(parent)') {
+        router.push('/(parent)/(tabs)/account/help-center' as any);
+      } else {
+        router.push('/(child)/(tabs)/account/help-center' as any);
+      }
     }, 300);
   };
 
@@ -156,13 +172,15 @@ export default function HamburgerMenu({ visible, onClose, backgroundColor = '#52
         </View>
 
         <View style={styles.menuItems}>
-          <TouchableOpacity 
-            style={styles.menuItem}
-            onPress={handleAchievements}
-          >
-            <IconSymbol name="trophy.fill" size={24} color={hamburgerTextColor} style={styles.menuIcon} />
-            <Text style={[styles.menuText, { color: hamburgerTextColor }]}>Achievements</Text>
-          </TouchableOpacity>
+          {!isParentRoute && (
+            <TouchableOpacity 
+              style={styles.menuItem}
+              onPress={handleAchievements}
+            >
+              <IconSymbol name="trophy.fill" size={24} color={hamburgerTextColor} style={styles.menuIcon} />
+              <Text style={[styles.menuText, { color: hamburgerTextColor }]}>Achievements</Text>
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity 
             style={styles.menuItem}
