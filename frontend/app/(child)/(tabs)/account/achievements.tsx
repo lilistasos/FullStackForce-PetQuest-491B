@@ -17,64 +17,91 @@ export default function AchievementsScreen() {
   const { colors } = useTheme();
   
   const [achievements, setAchievements] = useState<Achievement[]>([
+    // Streak Achievements (6)
     {
       id: '1',
-      title: 'Complete a Task',
-      icon: 'checkmark-circle',
-      achieved: true,
-    },
-    {
-      id: '2',
-      title: 'Complete 10 Tasks',
-      icon: 'checkmark-done',
-      achieved: true,
-    },
-    {
-      id: '3',
-      title: 'Complete 100 Tasks',
-      icon: 'trophy',
-      achieved: false,
-    },
-    {
-      id: '4',
-      title: '7 Day Streak',
+      title: '1 Day Streak',
       icon: 'flame',
       achieved: true,
     },
     {
+      id: '2',
+      title: '1 Week Streak',
+      icon: 'flame',
+      achieved: true,
+    },
+    {
+      id: '3',
+      title: '1 Month Streak',
+      icon: 'flame',
+      achieved: false,
+    },
+    {
+      id: '4',
+      title: '3 Month Streak',
+      icon: 'flame',
+      achieved: false,
+    },
+    {
       id: '5',
-      title: '100 Day Streak',
+      title: '6 Month Streak',
       icon: 'flame',
       achieved: false,
     },
     {
       id: '6',
-      title: 'Buy a Pet',
-      icon: 'pawprint',
+      title: '1 Year Streak',
+      icon: 'flame',
+      achieved: false,
+    },
+    // Task Achievements (4)
+    {
+      id: '7',
+      title: 'Complete 1 Task',
+      icon: 'checkmark-circle',
       achieved: true,
     },
     {
-      id: '7',
-      title: 'Buy an Accessory',
-      icon: 'gift',
+      id: '8',
+      title: 'Complete 10 Tasks',
+      icon: 'checkmark-done',
+      achieved: true,
+    },
+    {
+      id: '9',
+      title: 'Complete 50 Tasks',
+      icon: 'trophy',
       achieved: false,
     },
     {
-      id: '8',
+      id: '10',
+      title: 'Complete 100 Tasks',
+      icon: 'medal',
+      achieved: false,
+    },
+    // Pet Achievements (4)
+    {
+      id: '11',
+      title: 'Buy Your First Pet',
+      icon: 'paw',
+      achieved: true,
+    },
+    {
+      id: '12',
       title: 'Collect 5 Pets',
       icon: 'library',
       achieved: false,
     },
     {
-      id: '9',
-      title: 'Earn 1000 Coins',
-      icon: 'logo-bitcoin',
-      achieved: true,
+      id: '13',
+      title: 'Buy 5 Accessories',
+      icon: 'gift',
+      achieved: false,
     },
     {
-      id: '10',
-      title: 'Master Pet Care',
-      icon: 'heart',
+      id: '14',
+      title: 'Customize Pet 10 Times',
+      icon: 'color-palette',
       achieved: false,
     },
   ]);
@@ -96,8 +123,6 @@ export default function AchievementsScreen() {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={[styles.title, { color: colors.text }]}>Achievements</Text>
-        
         <View style={styles.gridContainer}>
           {achievements.map((achievement) => (
             <View 
@@ -170,7 +195,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginBottom: 40,
+    paddingBottom: 20,
   },
   achievementCard: {
     width: '48%',
@@ -195,4 +220,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
+
 
