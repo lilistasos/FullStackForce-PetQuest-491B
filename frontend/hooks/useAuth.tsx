@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from "react"
 import * as SecureStore from "expo-secure-store"
 
 type Role = "child" | "parent" | "indv"
-type User = { id: string; email: string; role: Role; name?: string; firstName?: string; profileImageUri?: string }
+type User = { id: string; email: string; role: Role; name?: string; firstName?: string; lastName?: string; profileImageUri?: string; dateOfBirth?: string; familyCode?: string }
 
 type AuthContextType = {
   user: User | null
@@ -41,7 +41,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             id: 'demo-user',
             email: 'demo@example.com',
             role: 'child',
-            name: 'Demo User'
+            name: 'demo_user',
+            firstName: 'Demo',
+            lastName: 'User'
           }
           setUser(demoUser)
           await SecureStore.setItemAsync("user", JSON.stringify(demoUser))
@@ -72,7 +74,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         id: 'demo-user',
         email: 'demo@example.com',
         role: 'child' as Role,
-        name: 'Demo User'
+        name: 'demo_user',
+        firstName: 'Demo',
+        lastName: 'User'
       }
       setUser(currentUser)
     }

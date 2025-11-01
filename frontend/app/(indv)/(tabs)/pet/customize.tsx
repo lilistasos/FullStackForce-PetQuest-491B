@@ -3,6 +3,17 @@ import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, FlatList }
 import { useRouter } from "expo-router";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { usePet } from "@/contexts/PetContext";
+import { useTheme } from "@/contexts/ThemeContext";
+
+// Function to calculate luminance and determine text color
+const getContrastColor = (backgroundColor: string): string => {
+  const hex = backgroundColor.replace('#', '');
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.4 ? '#000000' : '#FFFFFF';
+};
 
 interface AccessoryItem {
   id: string;
@@ -19,6 +30,8 @@ interface AccessoriesData {
 export default function CustomizeScreen() {
   const router = useRouter();
   const { selectedPet, selectedAccessories, setSelectedAccessories } = usePet();
+  const { colors } = useTheme();
+  const buttonTextColor = getContrastColor(colors.primary);
   const [selectedCategory, setSelectedCategory] = useState<keyof AccessoriesData>("hats");
   const [visibleRows, setVisibleRows] = useState(2);
   const [userAccessories, setUserAccessories] = useState<AccessoriesData>({
@@ -57,8 +70,9 @@ export default function CustomizeScreen() {
       key={key}
       style={[
         styles.accessoryItem, 
-        item.isEmpty && styles.emptyItem,
-        selectedAccessories[selectedCategory] === item.id && styles.selectedAccessoryItem
+        { backgroundColor: item.isEmpty ? colors.surface : colors.surface, borderColor: selectedAccessories[selectedCategory] === item.id ? colors.primary : colors.primary },
+        item.isEmpty && { borderColor: colors.border },
+        selectedAccessories[selectedCategory] === item.id && { borderWidth: 4 }
       ]}
       disabled={item.isEmpty}
       onPress={() => handleAccessorySelect(item)}>
@@ -119,15 +133,15 @@ export default function CustomizeScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
         <TouchableOpacity 
-          style={styles.backButton}
+          style={[styles.backButton, { backgroundColor: colors.primary }]}
           onPress={() => router.back()}>
           <IconSymbol 
             name="chevron.left" 
             size={24} 
-            color="#000" 
+            color={buttonTextColor} 
             weight="medium"
           />
         </TouchableOpacity>
@@ -144,17 +158,17 @@ export default function CustomizeScreen() {
 
       <View style={styles.categoryContainer}>
         <TouchableOpacity 
-          style={[styles.categoryButton, selectedCategory === "hats" && styles.selectedCategory]}
+          style={[styles.categoryButton, { backgroundColor: selectedCategory === "hats" ? colors.primary : colors.surface }]}
           onPress={() => setSelectedCategory("hats")}>
-          <Text style={[styles.categoryText, selectedCategory === "hats" && styles.selectedCategoryText]}>
+          <Text style={[styles.categoryText, { color: selectedCategory === "hats" ? buttonTextColor : colors.text }, selectedCategory === "hats" && styles.selectedCategoryText]}>
             Hats
           </Text>
         </TouchableOpacity>
         
         <TouchableOpacity 
-          style={[styles.categoryButton, selectedCategory === "accessories" && styles.selectedCategory]}
+          style={[styles.categoryButton, { backgroundColor: selectedCategory === "accessories" ? colors.primary : colors.surface }]}
           onPress={() => setSelectedCategory("accessories")}>
-          <Text style={[styles.categoryText, selectedCategory === "accessories" && styles.selectedCategoryText]}>
+          <Text style={[styles.categoryText, { color: selectedCategory === "accessories" ? buttonTextColor : colors.text }, selectedCategory === "accessories" && styles.selectedCategoryText]}>
             Accessories
           </Text>
         </TouchableOpacity>
@@ -168,8 +182,8 @@ export default function CustomizeScreen() {
         </View>
         
         {userAccessories[selectedCategory].length > visibleRows * 3 && (
-          <TouchableOpacity style={styles.loadMoreButton} onPress={loadMoreItems}>
-            <Text style={styles.loadMoreText}>Load More</Text>
+          <TouchableOpacity style={[styles.loadMoreButton, { backgroundColor: colors.primary }]} onPress={loadMoreItems}>
+            <Text style={[styles.loadMoreText, { color: buttonTextColor }]}>Load More</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -180,7 +194,6 @@ export default function CustomizeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
   },
   header: {
     width: "100%",
@@ -189,7 +202,6 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
   },
   backButton: {
-    backgroundColor: "#7B4FDD",
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 8,
@@ -214,23 +226,17 @@ const styles = StyleSheet.create({
     gap: 20,
   },
   categoryButton: {
-    backgroundColor: "#E0E0E0",
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,
     flex: 1,
     alignItems: "center",
   },
-  selectedCategory: {
-    backgroundColor: "#7B4FDD",
-  },
   categoryText: {
     fontFamily: "monospace",
     fontSize: 18,
-    color: "#000",
   },
   selectedCategoryText: {
-    color: "#000",
     fontWeight: "bold",
   },
   gridContainer: {
@@ -245,21 +251,11 @@ const styles = StyleSheet.create({
   accessoryItem: {
     width: "30%",
     height: 110,
-    backgroundColor: "#FFFFFF",
     marginBottom: 15,
     borderRadius: 4,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
-    borderColor: "#7B4FDD",
-  },
-  selectedAccessoryItem: {
-    borderWidth: 4,
-    borderColor: "#7B4FDD",
-  },
-  emptyItem: {
-    backgroundColor: "#F8F8F8",
-    borderColor: "#E0E0E0",
   },
   accessoryIcon: {
     fontSize: 40,
@@ -269,7 +265,6 @@ const styles = StyleSheet.create({
     height: 80,
   },
   loadMoreButton: {
-    backgroundColor: "#7B4FDD",
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,
@@ -279,7 +274,6 @@ const styles = StyleSheet.create({
   loadMoreText: {
     fontFamily: "monospace",
     fontSize: 16,
-    color: "#000",
     fontWeight: "bold",
   },
 });
