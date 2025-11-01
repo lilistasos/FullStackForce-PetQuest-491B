@@ -323,10 +323,19 @@ app.post('/api/auth/verify-code', async (req, res) => {
 // In-memory password reset codes (temporary)
 const resetCodes = {};
 
-// Request reset code — no email, just console log(backend)
+// Request reset code — sends email now
 app.post('/api/auth/forgot-password', async (req, res) => {
+  console.log('📩 /forgot-password called with:', req.body)
   const { email } = req.body;
   if (!email) return res.status(400).json({ error: 'Email is required.' });
+
+  const msg = {
+    to: email,
+    from: process.env.SENDGRID_FROM_EMAIL || 'lolerpops1@gmail.com',
+    subject: 'Your Pet Quest Password Reset Code',
+    text: `Your Password Reset code is: ${code}`,
+    html: `<p>Your Password Reset code is: <strong>${code}</strong></p>`,
+  };
 
   try {
     const user = await findUserByEmail(email);
@@ -334,9 +343,10 @@ app.post('/api/auth/forgot-password', async (req, res) => {
 
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     resetCodes[email] = code;
+    await sgMail.send(msg);
+    console.log({message: 'Password reset code sent to ${email}: ${code}`'});
+    res.json({message:'Password reset code sent to your email.'});
 
-    console.log(`🔐 Password reset code for ${email}: ${code}`);
-    res.json({ message: 'Password reset code generated. Check console.' });
   } catch (err) {
     console.error('Error generating reset code:', err);
     res.status(500).json({ error: 'Server error during password reset request.' });
