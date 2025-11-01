@@ -5,16 +5,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 
-// Function to calculate luminance and determine text color
-const getContrastColor = (backgroundColor: string): string => {
-  const hex = backgroundColor.replace('#', '');
-  const r = parseInt(hex.substring(0, 2), 16);
-  const g = parseInt(hex.substring(2, 4), 16);
-  const b = parseInt(hex.substring(4, 6), 16);
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return luminance > 0.4 ? '#000000' : '#FFFFFF';
-};
-
 export default function SettingsScreen() {
   const router = useRouter();
   const { colors } = useTheme();
@@ -24,6 +14,8 @@ export default function SettingsScreen() {
       router.push('/(parent)/(tabs)/account/account-details');
     } else if (route === 'theme') {
       router.push('/(parent)/(tabs)/account/theme');
+    } else if (route === 'parent-child') {
+      router.push('/(parent)/(tabs)/account/parent-child-settings');
     } else if (route === 'contact') {
       router.push('/(parent)/(tabs)/account/contact');
     } else if (route === 'help-center') {
@@ -44,7 +36,7 @@ export default function SettingsScreen() {
           <IconSymbol 
             name="chevron.left" 
             size={24} 
-            color={getContrastColor(colors.primary)} 
+            color={colors.text} 
             weight="medium"
           />
         </TouchableOpacity>
@@ -71,6 +63,20 @@ export default function SettingsScreen() {
           >
             <Ionicons name="color-palette-outline" size={24} color={colors.primary} />
             <Text style={[styles.settingText, { color: colors.text }]}>Theme</Text>
+            <Ionicons name="chevron-forward-outline" size={20} color={colors.text} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Parent-Child Settings Section */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Parent-Child Settings</Text>
+          
+          <TouchableOpacity 
+            style={[styles.settingItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            onPress={() => handleNavigate('parent-child')}
+          >
+            <Ionicons name="timer-outline" size={24} color={colors.primary} />
+            <Text style={[styles.settingText, { color: colors.text }]}>Screen Time</Text>
             <Ionicons name="chevron-forward-outline" size={20} color={colors.text} />
           </TouchableOpacity>
         </View>

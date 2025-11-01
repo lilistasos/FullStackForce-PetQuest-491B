@@ -85,6 +85,7 @@ export default function IndvLayout() {
           else if (accountPageName === 'contact') setHeaderTitle('Contact');
           else if (accountPageName === 'feedback') setHeaderTitle('Feedback');
           else if (accountPageName === 'subscription') setHeaderTitle('Subscription');
+          else if (accountPageName === 'achievements') setHeaderTitle('Achievements');
           else setHeaderTitle('Account');
         } else {
           setHeaderTitle('Account');

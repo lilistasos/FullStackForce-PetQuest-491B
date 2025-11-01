@@ -63,6 +63,7 @@ export default function ParentLayout() {
           else if (accountPageName === 'contact') setHeaderTitle('Contact');
           else if (accountPageName === 'feedback') setHeaderTitle('Feedback');
           else if (accountPageName === 'subscription') setHeaderTitle('Subscription');
+          else if (accountPageName === 'parent-child-settings') setHeaderTitle('Parent-Child Settings');
           else setHeaderTitle('Account');
         } else {
           setHeaderTitle('Account');
