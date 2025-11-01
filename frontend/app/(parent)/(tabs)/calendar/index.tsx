@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import { Ionicons } from '@expo/vector-icons';
@@ -27,7 +27,7 @@ interface ChildTask {
   category: string;
 }
 
-type SortOption = 'child' | 'time';
+type SortOption = 'time' | 'child' | 'type';
 
 export default function ParentCalendarScreen() {
   const { colors, isDarkMode } = useTheme();
@@ -41,6 +41,14 @@ export default function ParentCalendarScreen() {
   });
   
   const [sortBy, setSortBy] = useState<SortOption>('time');
+
+  // Reset to current day and time sort when component mounts (user logs in)
+  useEffect(() => {
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    setSelectedDate(todayStr);
+    setSortBy('time');
+  }, [user]); // Reset when user changes (login/logout)
   
   // Mock children data - In real app, this would come from API based on familyCode
   const mockChildren = [
@@ -145,6 +153,354 @@ export default function ParentCalendarScreen() {
         category: 'Tutoring',
       },
     ],
+    '2025-11-01': [
+      {
+        id: '9',
+        childName: 'Emma',
+        childId: 'child1',
+        taskName: 'Soccer Practice',
+        description: 'Team practice at Riverside Field',
+        time: '04:00 PM',
+        points: 15,
+        completed: false,
+        category: 'Practice',
+      },
+      {
+        id: '10',
+        childName: 'Sophia',
+        childId: 'child3',
+        taskName: 'Piano Recital',
+        description: 'Spring recital performance',
+        time: '06:30 PM',
+        points: 30,
+        completed: false,
+        category: 'School',
+      },
+    ],
+    '2025-11-02': [
+      {
+        id: '11',
+        childName: 'Liam',
+        childId: 'child2',
+        taskName: 'Basketball Game',
+        description: 'Home game vs. Eagles',
+        time: '05:00 PM',
+        points: 25,
+        completed: false,
+        category: 'Game',
+      },
+      {
+        id: '12',
+        childName: 'Emma',
+        childId: 'child1',
+        taskName: 'Science Fair',
+        description: 'School science fair presentation',
+        time: '02:00 PM',
+        points: 40,
+        completed: false,
+        category: 'School',
+      },
+      {
+        id: '13',
+        childName: 'Sophia',
+        childId: 'child3',
+        taskName: 'Dance Practice',
+        description: 'Ballet practice at studio',
+        time: '03:30 PM',
+        points: 20,
+        completed: false,
+        category: 'Practice',
+      },
+    ],
+    '2025-11-03': [
+      {
+        id: '14',
+        childName: 'Emma',
+        childId: 'child1',
+        taskName: 'Swimming Practice',
+        description: 'Evening swim practice',
+        time: '05:30 PM',
+        points: 15,
+        completed: false,
+        category: 'Practice',
+      },
+      {
+        id: '15',
+        childName: 'Liam',
+        childId: 'child2',
+        taskName: 'Math Tutoring',
+        description: 'Algebra tutoring session',
+        time: '04:00 PM',
+        points: 10,
+        completed: false,
+        category: 'Tutoring',
+      },
+    ],
+    '2025-11-04': [
+      {
+        id: '16',
+        childName: 'Sophia',
+        childId: 'child3',
+        taskName: 'Soccer Game',
+        description: 'Away game at Central Park',
+        time: '04:30 PM',
+        points: 30,
+        completed: false,
+        category: 'Game',
+      },
+      {
+        id: '17',
+        childName: 'Emma',
+        childId: 'child1',
+        taskName: 'School Assembly',
+        description: 'Monthly school assembly',
+        time: '09:00 AM',
+        points: 5,
+        completed: false,
+        category: 'School',
+      },
+      {
+        id: '18',
+        childName: 'Liam',
+        childId: 'child2',
+        taskName: 'Chess Club',
+        description: 'Weekly chess club meeting',
+        time: '03:00 PM',
+        points: 15,
+        completed: false,
+        category: 'School',
+      },
+    ],
+    '2025-11-05': [
+      {
+        id: '19',
+        childName: 'Liam',
+        childId: 'child2',
+        taskName: 'Basketball Practice',
+        description: 'Morning practice session',
+        time: '10:00 AM',
+        points: 20,
+        completed: true,
+        category: 'Practice',
+      },
+      {
+        id: '20',
+        childName: 'Emma',
+        childId: 'child1',
+        taskName: 'Tennis Match',
+        description: 'Tournament match',
+        time: '02:00 PM',
+        points: 35,
+        completed: true,
+        category: 'Game',
+      },
+      {
+        id: '21',
+        childName: 'Sophia',
+        childId: 'child3',
+        taskName: 'Piano Practice',
+        description: 'Practice for upcoming recital',
+        time: '03:00 PM',
+        points: 20,
+        completed: false,
+        category: 'Practice',
+      },
+      {
+        id: '21a',
+        childName: 'Emma',
+        childId: 'child1',
+        taskName: 'Swimming Practice',
+        description: 'Afternoon swim session',
+        time: '04:30 PM',
+        points: 15,
+        completed: false,
+        category: 'Practice',
+      },
+      {
+        id: '21b',
+        childName: 'Liam',
+        childId: 'child2',
+        taskName: 'Math Tutoring',
+        description: 'Algebra tutoring session',
+        time: '05:00 PM',
+        points: 10,
+        completed: false,
+        category: 'Tutoring',
+      },
+      {
+        id: '21c',
+        childName: 'Sophia',
+        childId: 'child3',
+        taskName: 'Soccer Game',
+        description: 'Away game vs. Panthers',
+        time: '06:00 PM',
+        points: 30,
+        completed: false,
+        category: 'Game',
+      },
+      {
+        id: '21d',
+        childName: 'Emma',
+        childId: 'child1',
+        taskName: 'Science Fair',
+        description: 'Project presentation',
+        time: '07:30 PM',
+        points: 40,
+        completed: false,
+        category: 'School',
+      },
+    ],
+    '2025-11-06': [
+      {
+        id: '22',
+        childName: 'Emma',
+        childId: 'child1',
+        taskName: 'Soccer Practice',
+        description: 'Team practice session',
+        time: '05:00 PM',
+        points: 15,
+        completed: false,
+        category: 'Practice',
+      },
+      {
+        id: '23',
+        childName: 'Liam',
+        childId: 'child2',
+        taskName: 'Basketball Practice',
+        description: 'Team practice at gym',
+        time: '04:30 PM',
+        points: 20,
+        completed: false,
+        category: 'Practice',
+      },
+      {
+        id: '24',
+        childName: 'Sophia',
+        childId: 'child3',
+        taskName: 'Art Class',
+        description: 'After school art program',
+        time: '03:00 PM',
+        points: 15,
+        completed: false,
+        category: 'School',
+      },
+    ],
+    '2025-11-07': [
+      {
+        id: '25',
+        childName: 'Sophia',
+        childId: 'child3',
+        taskName: 'Dance Recital',
+        description: 'Annual dance recital',
+        time: '06:00 PM',
+        points: 40,
+        completed: false,
+        category: 'School',
+      },
+      {
+        id: '26',
+        childName: 'Emma',
+        childId: 'child1',
+        taskName: 'Science Tutoring',
+        description: 'Chemistry tutoring with Mr. Smith',
+        time: '05:00 PM',
+        points: 10,
+        completed: false,
+        category: 'Tutoring',
+      },
+      {
+        id: '27',
+        childName: 'Liam',
+        childId: 'child2',
+        taskName: 'Baseball Game',
+        description: 'Home game vs. Tigers',
+        time: '04:00 PM',
+        points: 30,
+        completed: false,
+        category: 'Game',
+      },
+    ],
+    '2025-11-08': [
+      {
+        id: '28',
+        childName: 'Emma',
+        childId: 'child1',
+        taskName: 'Swimming Meet',
+        description: 'Regional swimming competition',
+        time: '09:00 AM',
+        points: 50,
+        completed: false,
+        category: 'Game',
+      },
+      {
+        id: '29',
+        childName: 'Sophia',
+        childId: 'child3',
+        taskName: 'Piano Practice',
+        description: 'Weekly practice session',
+        time: '04:30 PM',
+        points: 20,
+        completed: false,
+        category: 'Practice',
+      },
+      {
+        id: '30',
+        childName: 'Liam',
+        childId: 'child2',
+        taskName: 'History Tutoring',
+        description: 'World history tutoring',
+        time: '03:00 PM',
+        points: 10,
+        completed: false,
+        category: 'Tutoring',
+      },
+      {
+        id: '31',
+        childName: 'Emma',
+        childId: 'child1',
+        taskName: 'Field Trip',
+        description: 'Museum field trip',
+        time: '10:00 AM',
+        points: 25,
+        completed: false,
+        category: 'School',
+      },
+    ],
+    '2025-11-09': [
+      {
+        id: '32',
+        childName: 'Sophia',
+        childId: 'child3',
+        taskName: 'Soccer Game',
+        description: 'Championship game',
+        time: '05:30 PM',
+        points: 45,
+        completed: false,
+        category: 'Game',
+      },
+      {
+        id: '33',
+        childName: 'Liam',
+        childId: 'child2',
+        taskName: 'Basketball Game',
+        description: 'Playoff game',
+        time: '06:00 PM',
+        points: 40,
+        completed: false,
+        category: 'Game',
+      },
+      {
+        id: '34',
+        childName: 'Emma',
+        childId: 'child1',
+        taskName: 'Music Concert',
+        description: 'School band concert',
+        time: '07:00 PM',
+        points: 30,
+        completed: false,
+        category: 'School',
+      },
+    ],
   });
 
   // Get current month name (for the calendar header month display)
@@ -181,8 +537,17 @@ export default function ParentCalendarScreen() {
         // If same child, sort by time
         return timeToMinutes(a.time) - timeToMinutes(b.time);
       });
+    } else if (sortBy === 'type') {
+      return tasks.sort((a, b) => {
+        // First sort by category
+        if (a.category !== b.category) {
+          return a.category.localeCompare(b.category);
+        }
+        // If same category, sort by time
+        return timeToMinutes(a.time) - timeToMinutes(b.time);
+      });
     } else {
-      // Sort by time
+      // Sort by time (default)
       return tasks.sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
     }
   }, [selectedDateTasks, sortBy]);
@@ -420,6 +785,30 @@ export default function ParentCalendarScreen() {
             style={[
               styles.sortButton,
               {
+                backgroundColor: sortBy === 'time' ? colors.primary : colors.surface,
+                borderColor: colors.border,
+              },
+            ]}
+            onPress={() => setSortBy('time')}
+          >
+            <Ionicons
+              name="time-outline"
+              size={18}
+              color={sortBy === 'time' ? buttonTextColor : colors.text}
+            />
+            <Text
+              style={[
+                styles.sortButtonText,
+                { color: sortBy === 'time' ? buttonTextColor : colors.text },
+              ]}
+            >
+              Time
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.sortButton,
+              {
                 backgroundColor: sortBy === 'child' ? colors.primary : colors.surface,
                 borderColor: colors.border,
               },
@@ -444,24 +833,24 @@ export default function ParentCalendarScreen() {
             style={[
               styles.sortButton,
               {
-                backgroundColor: sortBy === 'time' ? colors.primary : colors.surface,
+                backgroundColor: sortBy === 'type' ? colors.primary : colors.surface,
                 borderColor: colors.border,
               },
             ]}
-            onPress={() => setSortBy('time')}
+            onPress={() => setSortBy('type')}
           >
             <Ionicons
-              name="time-outline"
+              name="list-outline"
               size={18}
-              color={sortBy === 'time' ? buttonTextColor : colors.text}
+              color={sortBy === 'type' ? buttonTextColor : colors.text}
             />
             <Text
               style={[
                 styles.sortButtonText,
-                { color: sortBy === 'time' ? buttonTextColor : colors.text },
+                { color: sortBy === 'type' ? buttonTextColor : colors.text },
               ]}
             >
-              Time
+              Type
             </Text>
           </TouchableOpacity>
         </View>
