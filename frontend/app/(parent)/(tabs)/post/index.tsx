@@ -16,6 +16,7 @@ const ParentSelectChildScreen = () => {
     { id: "3", name: "Rinsley" },
   ];
 
+  
   const router = useRouter();
 
   const handleSelectChild = (childId: string) => {
@@ -24,27 +25,10 @@ const ParentSelectChildScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.headerContainer}>
-        <Text style={styles.header}>Select a Child</Text>
+      <Text style={styles.header}>
+        {selectedChild ? `Create a task for ${selectedChild}` : "Select a child to create a task"}
+      </Text>
 
-        {/* Arrow only shows when a child is selected */}
-        {selectedChild && (
-          <TouchableOpacity
-            style={styles.nextButton}
-            onPress={() =>
-              router.push({
-                pathname: "./ParentCreateTaskScreen",
-                params: { childId: selectedChild },
-              })
-            }
-          >
-            <Ionicons name="arrow-forward-circle" size={36} color="#52AFDD" />
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* List of children */}
       <FlatList
         data={children}
         keyExtractor={(item) => item.id}
@@ -52,14 +36,28 @@ const ParentSelectChildScreen = () => {
           <TouchableOpacity
             style={[
               styles.childButton,
-              selectedChild === item.id && styles.selectedChildButton,
+              selectedChild === item.name && styles.selectedChild,
             ]}
-            onPress={() => handleSelectChild(item.id)}
+            onPress={() => setSelectedChild(item.name)}
           >
             <Text style={styles.childText}>{item.name}</Text>
           </TouchableOpacity>
         )}
       />
+
+      {selectedChild && (
+        <TouchableOpacity
+          style={styles.nextButton}
+          onPress={() =>
+            router.push({
+              pathname: "./ParentCreateTaskScreen",
+              params: { childName: selectedChild },
+            })
+          }
+        >
+          <Text style={styles.nextArrow}>→</Text>
+        </TouchableOpacity>
+      )}
     </SafeAreaView>
   );
 };
@@ -72,20 +70,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     padding: 20,
   },
-  headerContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 30,
-  },
   header: {
-    fontSize: 26,
+    fontSize: 22,
     fontWeight: "700",
     textAlign: "center",
     color: "#0077B6",
-  },
-  nextButton: {
-    padding: 5,
+    marginBottom: 30,
   },
   childButton: {
     padding: 18,
@@ -95,12 +85,29 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "transparent",
   },
-  selectedChildButton: {
+  selectedChild: {
     borderColor: "red",
   },
   childText: {
     fontSize: 18,
     fontWeight: "600",
     color: "#0077B6",
+    textAlign: "center",
+  },
+  nextButton: {
+    position: "absolute",
+    top: 20,
+    right: 20,
+    backgroundColor: "#0077B6",
+    borderRadius: 30,
+    width: 50,
+    height: 50,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  nextArrow: {
+    color: "white",
+    fontSize: 28,
+    fontWeight: "bold",
   },
 });
