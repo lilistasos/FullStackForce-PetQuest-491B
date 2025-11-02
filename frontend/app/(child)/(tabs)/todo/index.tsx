@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, FlatList, StyleSheet,  Image, ScrollView, Pressable } from "react-native";
+import { View, Text, TouchableOpacity, FlatList, StyleSheet,  Image, ScrollView, Pressable, Modal } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -21,11 +21,11 @@ const ToDoScreen = ()=> {
   const [currentDate, setCurrentDate] = useState(new Date());
 
   const [showDetails, setShowDetails] = useState<string | null>(null);
-  //const [delete, setDelete] = useState(false);
   const dropdownOptions = ["Default", "Points: High to Low", "Points: Low to High"];
   
   const [dropdown, setDropdown] = useState(false);
   const [sortType, setSortType] = useState(dropdownOptions[0]);
+  const [modal, setModal] = useState(false);
 
   const handlePressTask = (taskId: string) => {
     setShowDetails((prev) => (prev === taskId ? null : taskId)
@@ -141,6 +141,13 @@ const handleSort = (sortType: React.SetStateAction<string>) => {
     }
   };
 
+  const deleteTask = (date: string, taskId: string) => {
+    setTasksByDate((prev) => {
+      const updatedTasks = prev[date].filter(task => task.id !== taskId);
+      return {...prev, [date]: updatedTasks };
+    })
+  }
+
 // The four categories for tasks
   const categories = [
     { id: "Homework", title: "Homework" },
@@ -150,6 +157,7 @@ const handleSort = (sortType: React.SetStateAction<string>) => {
   ];
   const renderCategory = (category: { id: string; title: string }) => {
     const isExpanded = expanded[category.id];
+    const allTasks = Object.values(tasksByDate).flat();
     const categoryTasks = tasks.filter((t) => t.category === category.id);
     const visibleTasks = isExpanded ? categoryTasks : categoryTasks.slice(0, 3);
     const hiddenCount = categoryTasks.length - visibleTasks.length;
@@ -205,12 +213,39 @@ const handleSort = (sortType: React.SetStateAction<string>) => {
                   
                 </Text>
                 </Pressable>
+                
                 {showDetails === task.id && (
                   <View style={{marginTop: 4}}>
                     <Text style={{color: "#555"}}>Description: {task.description}</Text>
                     <Text style={{color: "#555"}}>Points: {task.points}</Text>
+                    <TouchableOpacity onPress={() => {setModal(true);}} style={styles.deleteButton}>
+                      <Text>Delete</Text>
+                    </TouchableOpacity>
                   </View>
                 )}
+                
+                <Modal
+                  animationType="slide"
+                  transparent={true}
+                  visible={modal}
+                  onRequestClose={() => {
+                  setModal(!modal);
+                }}
+                >
+                  <View style={{flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "white", padding: 20, margin: 20, borderColor: "#ccc", borderWidth: 1, borderRadius: 10}}>
+                    <Text style={{fontSize: 18, fontWeight: "600", marginBottom: 10}}>Are you sure you want to delete? You won't get the points for this task if you do.</Text>
+                    <View style={{flexDirection: "row", justifyContent: "space-between", width: "100%"}}>
+                      <TouchableOpacity onPress={() => setModal(false)} style={{backgroundColor: "#888", padding: 10, marginHorizontal: 10, borderRadius: 5, marginTop: 6}}>
+                        <Text style={{color: 'white'}}>Cancel</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.deleteButton} onPress={() => {
+                        deleteTask(formattedKey, task.id);
+                        setModal(false);}}>
+                        <Text style={{color: 'white'}}>Delete</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </Modal>
                 </View>
               </View>
             ))
@@ -387,5 +422,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#888",
     fontStyle: "italic",
+  },
+  deleteButton: {
+    backgroundColor:"#FF0000", 
+    padding: 10, 
+    marginHorizontal:10, 
+    borderRadius: 5,
+    marginTop: 6
   },
 });
