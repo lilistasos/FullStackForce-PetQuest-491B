@@ -15,7 +15,7 @@ const ParentSelectChildScreen = () => {
     { id: "1", name: "Joey" },
     { id: "2", name: "Theodore" },
     { id: "3", name: "Madalynn" },
-    { id: "3", name: "Rinsley" },
+    { id: "4", name: "Rinsley" },
   ];
 
   
