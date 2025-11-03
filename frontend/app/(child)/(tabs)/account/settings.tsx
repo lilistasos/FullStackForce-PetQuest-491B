@@ -20,6 +20,8 @@ export default function SettingsScreen() {
       router.push('/(child)/(tabs)/account/contact');
     } else if (route === 'help-center') {
       router.push('/(child)/(tabs)/account/help-center');
+    } else if (route === 'preferences') {
+      router.push('/(child)/(tabs)/account/preferences');
     } else {
       // TODO: Navigate to other pages when created
       console.log(`Navigate to ${route}`);
@@ -62,6 +64,15 @@ export default function SettingsScreen() {
           >
             <Ionicons name="color-palette-outline" size={24} color={colors.primary} />
             <Text style={[styles.settingText, { color: colors.text }]}>Theme</Text>
+            <Ionicons name="chevron-forward-outline" size={20} color={colors.text} />
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.settingItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            onPress={() => handleNavigate('preferences')}
+          >
+            <Ionicons name="options-outline" size={24} color={colors.primary} />
+            <Text style={[styles.settingText, { color: colors.text }]}>Preferences</Text>
             <Ionicons name="chevron-forward-outline" size={20} color={colors.text} />
           </TouchableOpacity>
         </View>

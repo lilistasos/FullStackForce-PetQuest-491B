@@ -1,9 +1,13 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, Modal, Dimensions } from 'react-native';
 import { WeekCalendar, CalendarProvider } from 'react-native-calendars';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { usePet } from '@/contexts/PetContext';
+import { useFocusEffect } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const WEEK_START_KEY = '@petquest:weekStart';
 
 // Function to calculate luminance and determine text color
 const getContrastColor = (backgroundColor: string): string => {
@@ -32,52 +36,163 @@ interface AgendaSection {
 
 type SortOption = 'time' | 'type' | 'points';
 
+// Helper function to format date as YYYY-MM-DD without timezone issues
+const formatDateString = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+// Helper function to normalize a date to the Monday of its week
+const getMondayOfWeek = (dateString: string): string => {
+  const [year, month, day] = dateString.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  const dayOfWeek = date.getDay(); // 0 = Sunday, 1 = Monday, etc.
+  const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  const monday = new Date(date);
+  monday.setDate(date.getDate() + mondayOffset);
+  return formatDateString(monday);
+};
+
+// Helper function to check if a date is in the visible week
+const isDateInVisibleWeek = (dateString: string, weekStartDate: string): boolean => {
+  const mondayOfWeek = getMondayOfWeek(weekStartDate);
+  const [year, month, day] = mondayOfWeek.split('-').map(Number);
+  const weekStart = new Date(year, month - 1, day);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 6);
+  
+  const [checkYear, checkMonth, checkDay] = dateString.split('-').map(Number);
+  const checkDate = new Date(checkYear, checkMonth - 1, checkDay);
+  return checkDate >= weekStart && checkDate <= weekEnd;
+};
+
+// Helper function to get the same day of week in a different week
+const getSameDayInWeek = (selectedDate: string, weekStartDate: string): string => {
+  const [selectedYear, selectedMonth, selectedDay] = selectedDate.split('-').map(Number);
+  const selectedDateObj = new Date(selectedYear, selectedMonth - 1, selectedDay);
+  const dayOfWeek = selectedDateObj.getDay();
+  const adjustedDayOfWeek = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  
+  const mondayOfWeek = getMondayOfWeek(weekStartDate);
+  const [weekYear, weekMonth, weekDay] = mondayOfWeek.split('-').map(Number);
+  const weekStart = new Date(weekYear, weekMonth - 1, weekDay);
+  
+  const newDate = new Date(weekStart);
+  newDate.setDate(weekStart.getDate() + adjustedDayOfWeek);
+  return formatDateString(newDate);
+};
+
+// Helper function to convert time string to minutes since midnight for proper sorting
+const timeToMinutes = (timeStr: string): number => {
+  const [time, period] = timeStr.split(' ');
+  const [hours, minutes] = time.split(':').map(Number);
+  let totalMinutes = hours * 60 + minutes;
+  
+  if (period === 'PM' && hours !== 12) {
+    totalMinutes += 12 * 60;
+  } else if (period === 'AM' && hours === 12) {
+    totalMinutes -= 12 * 60;
+  }
+  
+  return totalMinutes;
+};
+
+// Helper function to get ordinal suffix (st, nd, rd, th)
+const getOrdinalSuffix = (day: number): string => {
+  if (day > 3 && day < 21) return 'th';
+  switch (day % 10) {
+    case 1: return 'st';
+    case 2: return 'nd';
+    case 3: return 'rd';
+    default: return 'th';
+  }
+};
+
 export default function CalendarScreen() {
   const { colors, isDarkMode } = useTheme();
   const { selectedPet } = usePet();
   const buttonTextColor = getContrastColor(colors.primary);
 
   const now = new Date();
-  const [currentDate, setCurrentDate] = useState(() => 
-    new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().split('T')[0]
-  );
-  // Track visible week separately from selected date to prevent auto-selection on swipe
-  const [visibleWeekDate, setVisibleWeekDate] = useState(() => 
-    new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().split('T')[0]
-  );
-  // Track if we're in a swipe gesture to prevent date selection
+  const initialDate = formatDateString(new Date(now.getTime() - now.getTimezoneOffset() * 60000));
+  const [currentDate, setCurrentDate] = useState(initialDate);
+  const [visibleWeekDate, setVisibleWeekDate] = useState(initialDate);
+  const [firstDay, setFirstDay] = useState<0 | 1>(1); // 0 = Sunday, 1 = Monday
+  
   const isSwipingRef = useRef(false);
-  // Track when the last swipe occurred to prevent auto-selection
+  
+  // Load week start preference from AsyncStorage
+  const loadWeekStartPreference = async () => {
+    try {
+      const saved = await AsyncStorage.getItem(WEEK_START_KEY);
+      if (saved !== null) {
+        setFirstDay(parseInt(saved) as 0 | 1);
+      }
+    } catch (error) {
+      console.error('Error loading week start preference:', error);
+    }
+  };
+
+  // Load on mount and when screen comes into focus (after returning from preferences)
+  useEffect(() => {
+    loadWeekStartPreference();
+  }, []);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      loadWeekStartPreference();
+    }, [])
+  );
   const lastSwipeTimeRef = useRef<number>(0);
+  const previousVisibleWeekRef = useRef<string>(initialDate);
   
   const [sortBy, setSortBy] = useState<SortOption>('time');
 
   const [items, setItems] = useState<AgendaSection[]>([
-      {
-        title: '2025-10-21',
+    {
+      title: '2025-11-05',
       data: [
         { name: 'Soccer Practice', id: '1', description: 'Team practice at Riverside Field', time: '04:00 PM', points: 15, complete: false, category: 'Practice' },
-        { name: 'Art Class', id: '2', description: 'After school art program', time: '03:00 PM', points: 10, complete: false, category: 'School' },
+        { name: 'Art Class', id: '2', description: 'After school art program', time: '03:00 PM', points: 10, complete: true, category: 'School' },
+        { name: 'Piano Lesson', id: '3', description: 'Weekly piano lesson', time: '02:00 PM', points: 20, complete: true, category: 'Practice' },
       ],
     },
     {
-      title: '2025-10-22',
+      title: '2025-11-12',
       data: [
-        { name: 'Piano Lesson', id: '3', description: 'Weekly piano lesson', time: '02:00 PM', points: 20, complete: false, category: 'Practice' },
         { name: 'Soccer Game', id: '4', description: 'Home game vs. Eagles', time: '05:00 PM', points: 30, complete: false, category: 'Game' },
-      ],
-    },
-    {
-      title: '2025-11-01',
-      data: [
         { name: 'Swimming Practice', id: '5', description: 'Evening swim practice', time: '05:30 PM', points: 15, complete: false, category: 'Practice' },
-        { name: 'Basketball Practice', id: '6', description: 'Morning practice session', time: '10:00 AM', points: 20, complete: true, category: 'Practice' },
+        { name: 'Basketball Practice', id: '6', description: 'Morning practice session', time: '10:00 AM', points: 20, complete: false, category: 'Practice' },
       ],
     },
   ]);
 
   const [modal, setModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<TaskItem | null>(null);
+
+  // Shared function to navigate weeks (used by buttons and swipe handlers)
+  const navigateWeek = (direction: 'prev' | 'next') => {
+    isSwipingRef.current = true;
+    lastSwipeTimeRef.current = Date.now();
+    
+    const [year, month, day] = visibleWeekDate.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    date.setDate(date.getDate() + (direction === 'next' ? 7 : -7));
+    const newWeekDate = formatDateString(date);
+    
+    setVisibleWeekDate(newWeekDate);
+    
+    if (!isDateInVisibleWeek(currentDate, newWeekDate)) {
+      const newSelectedDate = getSameDayInWeek(currentDate, newWeekDate);
+      setCurrentDate(newSelectedDate);
+    }
+    
+    setTimeout(() => {
+      isSwipingRef.current = false;
+    }, 1000);
+  };
 
   const toggleComplete = (date: string, itemId: string) => {
     setItems(prevItems =>
@@ -129,10 +244,9 @@ export default function CalendarScreen() {
     );
   };
 
-  // Calendar theme that adapts to dark/light mode - matches parent calendar
-  const disabledDayColor = isDarkMode ? '#666666' : '#CCCCCC';
-  // Use colors.background for calendar to match the app theme
+  // Simplified calendar theme
   const calendarBg = colors.background;
+  const disabledDayColor = isDarkMode ? '#666666' : '#CCCCCC';
   const calendarTheme = {
     backgroundColor: calendarBg,
     calendarBackground: calendarBg,
@@ -151,13 +265,13 @@ export default function CalendarScreen() {
     textDayFontFamily: 'monospace',
     textMonthFontFamily: 'monospace',
     textDayHeaderFontFamily: 'monospace',
-    textDayFontSize: 14,
-    textMonthFontSize: 18,
-    textDayHeaderFontSize: 12,
+    textDayFontSize: 20,
+    textMonthFontSize: 60,
+    textDayHeaderFontSize: 15,
     'stylesheet.day.basic': {
       base: {
-        width: 32,
-        height: 32,
+        width: 50,
+        height: 40,
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: calendarBg,
@@ -167,11 +281,16 @@ export default function CalendarScreen() {
       },
       selected: {
         backgroundColor: colors.primary,
-        borderRadius: 12,
-        width: 24,
-        height: 24,
+        borderRadius: 16,
+        width: 32,
+        height: 32,
         alignItems: 'center',
         justifyContent: 'center',
+        alignSelf: 'center',
+        marginTop: 4,
+        marginBottom: 4,
+        marginLeft: 9,
+        marginRight: 9,
       },
     },
     'stylesheet.calendar.header': {
@@ -179,166 +298,105 @@ export default function CalendarScreen() {
         marginTop: 0,
         flexDirection: 'row',
         justifyContent: 'space-between',
-        paddingLeft: 5,
-        paddingRight: 5,
+        paddingLeft: 10,
+        paddingRight: 10,
         marginBottom: 0,
         backgroundColor: calendarBg,
         paddingTop: 10,
         paddingBottom: 0,
-        borderTopWidth: 0,
-        borderBottomWidth: 0,
       },
       monthText: {
         fontSize: 18,
         fontWeight: 'bold',
         color: colors.text,
         fontFamily: 'monospace',
-        margin: 0,
-        padding: 0,
       },
       dayHeader: {
         marginTop: 0,
-        marginBottom: 12,
-        width: 32,
+        marginBottom: 24,
+        width: 50,
         textAlign: 'center',
         color: colors.text,
         fontFamily: 'monospace',
-        fontSize: 12,
+        fontSize: 15,
       },
     },
     'stylesheet.calendar.main': {
       container: {
-        paddingLeft: 5,
-        paddingRight: 5,
-        backgroundColor: calendarBg,
-        borderTopWidth: 0,
-        borderBottomWidth: 0,
-      },
-      week: {
-        backgroundColor: calendarBg,
-        marginTop: 0,
-        marginBottom: 0,
-        paddingTop: 0,
-        paddingBottom: 0,
-      },
-      weekContainer: {
-        backgroundColor: calendarBg,
-      },
-      dayContainer: {
-        backgroundColor: calendarBg,
-      },
-    },
-    'stylesheet.day.single': {
-      base: {
-        marginTop: 4,
-        backgroundColor: calendarBg,
-      },
-    },
-    'stylesheet.agenda.list': {
-      container: {
-        backgroundColor: calendarBg,
-      },
-      knob: {
-        backgroundColor: calendarBg,
-      },
-      knobContainer: {
-        backgroundColor: calendarBg,
-      },
-      weekday: {
-        backgroundColor: calendarBg,
-      },
-      reservation: {
-        backgroundColor: calendarBg,
-      },
-    },
-    'stylesheet.week': {
-      container: {
+        paddingLeft: 10,
+        paddingRight: 10,
         backgroundColor: calendarBg,
       },
       week: {
         backgroundColor: calendarBg,
-      },
-      weekContainer: {
-        backgroundColor: calendarBg,
-      },
-      dayContainer: {
-        backgroundColor: calendarBg,
-      },
-    },
-    'stylesheet.day.basic.marked': {
-      backgroundColor: calendarBg,
-    },
-    'stylesheet.day.period': {
-      base: {
-        backgroundColor: calendarBg,
-      },
-      selected: {
-        backgroundColor: calendarBg,
-      },
-    },
-    'stylesheet.calendar-list.container': {
-      backgroundColor: calendarBg,
-    },
-    'stylesheet.calendar-list.week': {
-      container: {
-        backgroundColor: calendarBg,
-      },
-      dayText: {
-        backgroundColor: calendarBg,
+        paddingTop: 24,
       },
     },
   };
 
-  // Helper function to convert time string to minutes since midnight for proper sorting
-  const timeToMinutes = (timeStr: string): number => {
-    const [time, period] = timeStr.split(' ');
-    const [hours, minutes] = time.split(':').map(Number);
-    let totalMinutes = hours * 60 + minutes;
-    
-    // Convert to 24-hour format
-    if (period === 'PM' && hours !== 12) {
-      totalMinutes += 12 * 60; // Add 12 hours for PM
-    } else if (period === 'AM' && hours === 12) {
-      totalMinutes -= 12 * 60; // Subtract 12 hours for 12 AM
-    }
-    
-    return totalMinutes;
-  };
-
-  // Helper function to check if a date is in the visible week
-  const isDateInVisibleWeek = (dateString: string, weekStartDate: string): boolean => {
-    const [year, month, day] = weekStartDate.split('-').map(Number);
-    const weekStart = new Date(year, month - 1, day);
-    
-    // Calculate the end of the week (Sunday)
-    const weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekEnd.getDate() + 6);
-    
-    // Parse the date to check
-    const [checkYear, checkMonth, checkDay] = dateString.split('-').map(Number);
-    const checkDate = new Date(checkYear, checkMonth - 1, checkDay);
-    
-    // Check if the date is within the week range
-    return checkDate >= weekStart && checkDate <= weekEnd;
-  };
-
-  // Helper function to get ordinal suffix (st, nd, rd, th)
-  const getOrdinalSuffix = (day: number): string => {
-    if (day > 3 && day < 21) return 'th';
-    switch (day % 10) {
-      case 1: return 'st';
-      case 2: return 'nd';
-      case 3: return 'rd';
-      default: return 'th';
-    }
-  };
-
-  // Get current month and year based on selected date (updates when date changes)
-  const currentMonthName = (() => {
+  // Get current month and year based on selected date
+  const currentMonthName = useMemo(() => {
     const [year, month] = currentDate.split('-').map(Number);
     const date = new Date(year, month - 1, 1);
     return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-  })();
+  }, [currentDate]);
+
+  // Keep ref in sync with visibleWeekDate
+  useEffect(() => {
+    previousVisibleWeekRef.current = visibleWeekDate;
+  }, [visibleWeekDate]);
+
+  // Get marked dates (dates with tasks) - show dots for all dates with events
+  const markedDates = useMemo(() => {
+    const marked: { [key: string]: any } = {};
+    
+    // Add dots for all dates that have events
+    items.forEach(section => {
+      if (section.data.length > 0) {
+        marked[section.title] = {
+          marked: true,
+          dotColor: colors.primary,
+        };
+      }
+    });
+    
+    // Add selected styling for the current date (if in visible week)
+    if (isDateInVisibleWeek(currentDate, visibleWeekDate)) {
+      marked[currentDate] = {
+        ...marked[currentDate],
+        selected: true,
+        marked: false, // Hide the dot when selected
+        customStyles: {
+          container: {
+            backgroundColor: colors.primary,
+            borderRadius: 16,
+            width: 32,
+            height: 32,
+            alignItems: 'center',
+            justifyContent: 'center',
+            alignSelf: 'center',
+            marginTop: 4,
+            marginBottom: 4,
+            marginLeft: 9,
+            marginRight: 9,
+            paddingTop: 0,
+            paddingBottom: 0,
+            borderWidth: 0,
+          },
+          text: {
+            color: buttonTextColor,
+            textAlign: 'center',
+            textAlignVertical: 'center',
+            lineHeight: 20,
+            fontSize: 20,
+            fontWeight: 'normal',
+          },
+        },
+      };
+    }
+    
+    return marked;
+  }, [items, currentDate, visibleWeekDate, colors.primary, buttonTextColor]);
 
   // Get tasks for selected date and sort them
   const todayAgenda = items.filter(section => section.title === currentDate);
@@ -349,35 +407,64 @@ export default function CalendarScreen() {
     
     if (sortBy === 'type') {
       return tasks.sort((a, b) => {
-        // First sort by category
         const categoryA = a.category || 'Event';
         const categoryB = b.category || 'Event';
         if (categoryA !== categoryB) {
           return categoryA.localeCompare(categoryB);
         }
-        // If same category, sort by time
         return timeToMinutes(a.time) - timeToMinutes(b.time);
       });
     } else if (sortBy === 'points') {
-      // Sort by points (highest to lowest)
       return tasks.sort((a, b) => b.points - a.points);
     } else {
-      // Sort by time (default)
       return tasks.sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
     }
   }, [todayTasks, sortBy]);
+
+  // Sort button component
+  const SortButton = ({ option, icon, label }: { option: SortOption; icon: string; label: string }) => (
+    <TouchableOpacity
+      style={[
+        styles.sortButton,
+        {
+          backgroundColor: sortBy === option ? colors.primary : colors.surface,
+          borderColor: colors.border,
+        },
+      ]}
+      onPress={() => setSortBy(option)}
+    >
+      <Ionicons
+        name={icon as any}
+        size={18}
+        color={sortBy === option ? buttonTextColor : colors.text}
+      />
+      <Text
+        style={[
+          styles.sortButtonText,
+          { color: sortBy === option ? buttonTextColor : colors.text },
+        ]}
+      >
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+
+  // Format selected date display
+  const selectedDateText = useMemo(() => {
+    const [year, month, day] = currentDate.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    const weekday = date.toLocaleDateString('en-US', { weekday: 'long' });
+    const monthName = date.toLocaleDateString('en-US', { month: 'long' });
+    const ordinalSuffix = getOrdinalSuffix(day);
+    return `${weekday}, ${monthName} ${day}${ordinalSuffix}:`;
+  }, [currentDate]);
 
   return (
     <CalendarProvider date={visibleWeekDate} style={{ backgroundColor: colors.background }}>
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
           {/* Header with Pet, Month/Year, and Navigation */}
-          <View
-            style={[
-              styles.headerContainer,
-              { backgroundColor: colors.background },
-            ]}
-          >
+          <View style={[styles.headerContainer, { backgroundColor: colors.background }]}>
             <Image
               source={selectedPet.image}
               style={styles.petImage}
@@ -390,48 +477,14 @@ export default function CalendarScreen() {
             </View>
             <View style={styles.navigationContainer}>
               <TouchableOpacity
-                style={[
-                  styles.navButton,
-                  {
-                    backgroundColor: colors.surface,
-                    borderColor: colors.border,
-                  },
-                ]}
-                onPress={() => {
-                  isSwipingRef.current = true;
-                  lastSwipeTimeRef.current = Date.now(); // Record when navigation occurred
-                  const [year, month, day] = visibleWeekDate.split('-').map(Number);
-                  const date = new Date(year, month - 1, day);
-                  date.setDate(date.getDate() - 7);
-                  setVisibleWeekDate(date.toISOString().split('T')[0]);
-                  // Reset swipe flag after a delay
-                  setTimeout(() => {
-                    isSwipingRef.current = false;
-                  }, 1000);
-                }}
+                style={[styles.navButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                onPress={() => navigateWeek('prev')}
               >
                 <Ionicons name="chevron-back" size={20} color={colors.text} />
               </TouchableOpacity>
               <TouchableOpacity
-                style={[
-                  styles.navButton,
-                  {
-                    backgroundColor: colors.surface,
-                    borderColor: colors.border,
-                  },
-                ]}
-                onPress={() => {
-                  isSwipingRef.current = true;
-                  lastSwipeTimeRef.current = Date.now(); // Record when navigation occurred
-                  const [year, month, day] = visibleWeekDate.split('-').map(Number);
-                  const date = new Date(year, month - 1, day);
-                  date.setDate(date.getDate() + 7);
-                  setVisibleWeekDate(date.toISOString().split('T')[0]);
-                  // Reset swipe flag after a delay
-                  setTimeout(() => {
-                    isSwipingRef.current = false;
-                  }, 1000);
-                }}
+                style={[styles.navButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                onPress={() => navigateWeek('next')}
               >
                 <Ionicons name="chevron-forward" size={20} color={colors.text} />
               </TouchableOpacity>
@@ -439,193 +492,77 @@ export default function CalendarScreen() {
           </View>
 
           {/* Week Calendar */}
-          <View 
-            style={[
-              styles.calendarWrapper, 
-              { 
-                backgroundColor: colors.background,
-                ...noShadow,
-              }
-            ]}
-          >
-            {/* Horizontal line above calendar */}
+          <View style={[styles.calendarWrapper, { backgroundColor: colors.background, ...noShadow }]}>
             <View style={[styles.calendarLine, styles.calendarLineTop, { backgroundColor: colors.border }]} />
             <WeekCalendar
-              key={`week-calendar-${isDarkMode ? 'dark' : 'light'}-${colors.background}`}
+              key={`week-calendar-${isDarkMode ? 'dark' : 'light'}-${colors.background}-${firstDay}`}
               current={visibleWeekDate}
               onDayPress={(day) => {
-                // Only update selected date on explicit click, not during swipe or immediately after navigation
+                const dayIsInVisibleWeek = isDateInVisibleWeek(day.dateString, visibleWeekDate);
                 const now = Date.now();
                 const timeSinceLastSwipe = now - lastSwipeTimeRef.current;
+                const looksLikeSwipe = isSwipingRef.current || timeSinceLastSwipe < 2000;
                 
-                // Ignore if we're currently swiping OR if a swipe happened recently (within 1 second)
-                if (!isSwipingRef.current && timeSinceLastSwipe > 1000) {
-                  setCurrentDate(day.dateString);
-                  // Update visible week to show the selected date's week
-                  setVisibleWeekDate(day.dateString);
-                } else {
-                  // If we're swiping or just swiped, ignore this auto-selection
-                  // Reset the flag after a delay
+                if (!dayIsInVisibleWeek && looksLikeSwipe) {
+                  // Swipe detected - determine direction and navigate
+                  const [year, month, dayNum] = visibleWeekDate.split('-').map(Number);
+                  const date = new Date(year, month - 1, dayNum);
+                  const [dayYear, dayMonth, dayDay] = day.dateString.split('-').map(Number);
+                  const dayDateObj = new Date(dayYear, dayMonth - 1, dayDay);
+                  const daysDiff = Math.round((dayDateObj.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+                  
+                  navigateWeek(daysDiff > 0 ? 'next' : 'prev');
                   setTimeout(() => {
                     isSwipingRef.current = false;
                   }, 100);
+                } else {
+                  // Normal day selection
+                  setCurrentDate(day.dateString);
+                  setVisibleWeekDate(day.dateString);
                 }
               }}
               onMonthChange={(month) => {
-                // When swiping to a new week/month, update visible week but keep selected date the same
                 isSwipingRef.current = true;
-                lastSwipeTimeRef.current = Date.now(); // Record when the swipe occurred
-                // Find the first Monday of the month's week view
-                const date = new Date(month.year, month.month - 1, 15); // Use middle of month for calculation
-                // Get the Monday of the week containing this date (firstDay is 1 for Monday)
-                const dayOfWeek = date.getDay();
-                const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-                date.setDate(date.getDate() + mondayOffset);
-                const newVisibleWeek = date.toISOString().split('T')[0];
+                lastSwipeTimeRef.current = Date.now();
                 
-                // Only update if it's different to avoid unnecessary renders
-                if (newVisibleWeek !== visibleWeekDate) {
-                  setVisibleWeekDate(newVisibleWeek);
+                const [prevYear, prevMonth] = previousVisibleWeekRef.current.split('-').map(Number);
+                const prevMonthIndex = prevYear * 12 + prevMonth;
+                const newMonthIndex = month.year * 12 + month.month;
+                const monthDiff = newMonthIndex - prevMonthIndex;
+                
+                if (monthDiff !== 0) {
+                  navigateWeek(monthDiff > 0 ? 'next' : 'prev');
                 }
                 
-                // Reset swipe flag after animation completes
                 setTimeout(() => {
                   isSwipingRef.current = false;
-                }, 1000);
+                }, 1500);
               }}
-              markedDates={{
-                // Mark currentDate as selected if it's in the visible week
-                // This ensures the date showing tasks is always circled when visible
-                ...(isDateInVisibleWeek(currentDate, visibleWeekDate) ? {
-                  [currentDate]: {
-                    selected: true,
-                    marked: true,
-                    selectedColor: colors.primary,
-                    customStyles: {
-                      container: {
-                        backgroundColor: colors.primary,
-                        borderRadius: 12,
-                        width: 24,
-                        height: 24,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      },
-                      text: {
-                        color: buttonTextColor,
-                      },
-                    },
-                  },
-                } : {}),
-              }}
+              markedDates={markedDates}
               theme={calendarTheme}
-              style={[
-                styles.calendar, 
-                { 
-                  backgroundColor: calendarBg,
-                  ...noShadow,
-                }
-              ]}
+              style={[styles.calendar, { backgroundColor: calendarBg, ...noShadow }]}
               hideExtraDays={false}
-              firstDay={1}
-              enableSwipeMonths={true}
+              firstDay={firstDay}
+              enableSwipeMonths={false}
               hideArrows={true}
               allowShadow={false}
             />
-            {/* Horizontal line below calendar */}
             <View style={[styles.calendarLine, styles.calendarLineBottom, { backgroundColor: colors.border }]} />
           </View>
 
           {/* Tasks Section */}
           <View style={[styles.tasksSection, { backgroundColor: colors.background }]}>
-            
             {/* Sort Buttons */}
             <View style={styles.sortContainer}>
               <Text style={[styles.sortLabel, { color: colors.text }]}>Sort:</Text>
-              <TouchableOpacity
-                style={[
-                  styles.sortButton,
-                  {
-                    backgroundColor: sortBy === 'time' ? colors.primary : colors.surface,
-                    borderColor: colors.border,
-                  },
-                ]}
-                onPress={() => setSortBy('time')}
-              >
-                <Ionicons
-                  name="time-outline"
-                  size={18}
-                  color={sortBy === 'time' ? buttonTextColor : colors.text}
-                />
-                <Text
-                  style={[
-                    styles.sortButtonText,
-                    { color: sortBy === 'time' ? buttonTextColor : colors.text },
-                  ]}
-                >
-                  Time
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.sortButton,
-                  {
-                    backgroundColor: sortBy === 'type' ? colors.primary : colors.surface,
-                    borderColor: colors.border,
-                  },
-                ]}
-                onPress={() => setSortBy('type')}
-              >
-                <Ionicons
-                  name="list-outline"
-                  size={18}
-                  color={sortBy === 'type' ? buttonTextColor : colors.text}
-                />
-                <Text
-                  style={[
-                    styles.sortButtonText,
-                    { color: sortBy === 'type' ? buttonTextColor : colors.text },
-                  ]}
-                >
-                  Type
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.sortButton,
-                  {
-                    backgroundColor: sortBy === 'points' ? colors.primary : colors.surface,
-                    borderColor: colors.border,
-                  },
-                ]}
-                onPress={() => setSortBy('points')}
-              >
-                <Ionicons
-                  name="star-outline"
-                  size={18}
-                  color={sortBy === 'points' ? buttonTextColor : colors.text}
-                />
-                <Text
-                  style={[
-                    styles.sortButtonText,
-                    { color: sortBy === 'points' ? buttonTextColor : colors.text },
-                  ]}
-                >
-                  Points
-                </Text>
-              </TouchableOpacity>
+              <SortButton option="time" icon="time-outline" label="Time" />
+              <SortButton option="type" icon="list-outline" label="Type" />
+              <SortButton option="points" icon="star-outline" label="Points" />
             </View>
 
             {/* Selected Date */}
             <Text style={[styles.selectedDateText, { color: colors.text }]}>
-              {(() => {
-                // Parse date string properly to avoid timezone issues
-                const [year, month, day] = currentDate.split('-').map(Number);
-                const date = new Date(year, month - 1, day);
-                const weekday = date.toLocaleDateString('en-US', { weekday: 'long' });
-                const monthName = date.toLocaleDateString('en-US', { month: 'long' });
-                const ordinalSuffix = getOrdinalSuffix(day);
-                return `${weekday}, ${monthName} ${day}${ordinalSuffix}:`;
-              })()}
+              {selectedDateText}
             </Text>
 
             {/* Tasks List */}
@@ -649,9 +586,7 @@ export default function CalendarScreen() {
           animationType="slide"
           transparent={true}
           visible={modal}
-          onRequestClose={() => {
-            setModal(!modal);
-          }}
+          onRequestClose={() => setModal(!modal)}
         >
           {selectedItem && (
             <View style={styles.modalView}>
@@ -763,9 +698,6 @@ const styles = StyleSheet.create({
   },
   calendarWrapper: {
     overflow: 'visible',
-    borderTopWidth: 0,
-    borderBottomWidth: 0,
-    opacity: 1,
     position: 'relative',
     paddingBottom: 8,
     paddingTop: 16,
