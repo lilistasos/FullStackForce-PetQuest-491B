@@ -59,8 +59,9 @@ export default function CustomizeScreen() {
       key={key}
       style={[
         styles.accessoryItem, 
-        item.isEmpty && styles.emptyItem,
-        selectedAccessories[selectedCategory] === item.id && styles.selectedAccessoryItem
+        { backgroundColor: colors.background, borderColor: colors.primary },
+        item.isEmpty && [styles.emptyItem, { backgroundColor: colors.surface, borderColor: colors.border }],
+        selectedAccessories[selectedCategory] === item.id && { borderWidth: 4, borderColor: colors.primary }
       ]}
       disabled={item.isEmpty}
       onPress={() => handleAccessorySelect(item)}>
@@ -260,21 +261,13 @@ const styles = StyleSheet.create({
   accessoryItem: {
     width: "30%",
     height: 110,
-    backgroundColor: "#FFFFFF",
     marginBottom: 15,
     borderRadius: 4,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
-    borderColor: "#52AFDD",
-  },
-  selectedAccessoryItem: {
-    borderWidth: 4,
-    borderColor: "#52AFDD",
   },
   emptyItem: {
-    backgroundColor: "#F8F8F8",
-    borderColor: "#E0E0E0",
   },
   accessoryIcon: {
     fontSize: 40,
