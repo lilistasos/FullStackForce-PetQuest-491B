@@ -38,16 +38,15 @@ export default function CalendarScreen() {
   const buttonTextColor = getContrastColor(colors.primary);
 
   const now = new Date();
-  // Don't auto-select today's date - only select when user explicitly clicks
-  const [currentDate, setCurrentDate] = useState<string | null>(null);
+  const [currentDate, setCurrentDate] = useState(() => 
+    new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().split('T')[0]
+  );
   // Track visible week separately from selected date to prevent auto-selection on swipe
   const [visibleWeekDate, setVisibleWeekDate] = useState(() => 
     new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().split('T')[0]
   );
   // Track if we're in a swipe gesture to prevent date selection
   const isSwipingRef = useRef(false);
-  // Track the last explicit click timestamp to differentiate from swipe-triggered presses
-  const lastClickTimeRef = useRef<number>(0);
   
   const [sortBy, setSortBy] = useState<SortOption>('time');
 
@@ -166,9 +165,9 @@ export default function CalendarScreen() {
       },
       selected: {
         backgroundColor: colors.primary,
-        borderRadius: 14,
-        width: 28,
-        height: 28,
+        borderRadius: 12,
+        width: 24,
+        height: 24,
         alignItems: 'center',
         justifyContent: 'center',
       },
@@ -288,22 +287,6 @@ export default function CalendarScreen() {
     },
   };
 
-  // Helper function to get Monday of the week for a given date
-  const getWeekMonday = (dateString: string): string => {
-    const [year, month, day] = dateString.split('-').map(Number);
-    const date = new Date(year, month - 1, day);
-    const dayOfWeek = date.getDay();
-    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Monday = 1, Sunday = 0
-    date.setDate(date.getDate() + mondayOffset);
-    return date.toISOString().split('T')[0];
-  };
-
-  // Helper function to check if selected date is in the visible week
-  const isDateInVisibleWeek = (selectedDate: string | null, visibleWeekDate: string): boolean => {
-    if (!selectedDate) return false;
-    return getWeekMonday(selectedDate) === getWeekMonday(visibleWeekDate);
-  };
-
   // Helper function to convert time string to minutes since midnight for proper sorting
   const timeToMinutes = (timeStr: string): number => {
     const [time, period] = timeStr.split(' ');
@@ -320,15 +303,32 @@ export default function CalendarScreen() {
     return totalMinutes;
   };
 
-  // Get current month and year based on visible week (updates when week changes)
+  // Helper function to check if a date is in the visible week
+  const isDateInVisibleWeek = (dateString: string, weekStartDate: string): boolean => {
+    const [year, month, day] = weekStartDate.split('-').map(Number);
+    const weekStart = new Date(year, month - 1, day);
+    
+    // Calculate the end of the week (Sunday)
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+    
+    // Parse the date to check
+    const [checkYear, checkMonth, checkDay] = dateString.split('-').map(Number);
+    const checkDate = new Date(checkYear, checkMonth - 1, checkDay);
+    
+    // Check if the date is within the week range
+    return checkDate >= weekStart && checkDate <= weekEnd;
+  };
+
+  // Get current month and year based on selected date (updates when date changes)
   const currentMonthName = (() => {
-    const [year, month] = visibleWeekDate.split('-').map(Number);
+    const [year, month] = currentDate.split('-').map(Number);
     const date = new Date(year, month - 1, 1);
     return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   })();
 
-  // Get tasks for selected date and sort them (only if a date is selected)
-  const todayAgenda = currentDate ? items.filter(section => section.title === currentDate) : [];
+  // Get tasks for selected date and sort them
+  const todayAgenda = items.filter(section => section.title === currentDate);
   const todayTasks = todayAgenda.length > 0 ? todayAgenda[0].data : [];
   
   const sortedTasks = useMemo(() => {
@@ -426,31 +426,29 @@ export default function CalendarScreen() {
             {/* Horizontal line above calendar */}
             <View style={[styles.calendarLine, styles.calendarLineTop, { backgroundColor: colors.border }]} />
             <WeekCalendar
-              key={`week-calendar-${isDarkMode ? 'dark' : 'light'}-${colors.background}-${currentDate || 'none'}-${visibleWeekDate}`}
-              current={currentDate && isDateInVisibleWeek(currentDate, visibleWeekDate) ? currentDate : visibleWeekDate}
-              disableAllTouchEventsForDisabledDays={true}
-              disabledDaysIndexes={[]}
+              key={`week-calendar-${isDarkMode ? 'dark' : 'light'}-${colors.background}`}
+              current={visibleWeekDate}
               onDayPress={(day) => {
-                // Always ignore day press during swipe
-                const timeSinceLastAction = Date.now() - lastClickTimeRef.current;
-                
                 // Only update selected date on explicit click, not during swipe
-                if (!isSwipingRef.current && timeSinceLastAction > 100) {
+                // Check if this is a genuine click (not a swipe-triggered selection)
+                if (!isSwipingRef.current) {
                   setCurrentDate(day.dateString);
-                  // Update visible week to show the selected date's week (use the Monday of that week)
-                  const clickedMonday = getWeekMonday(day.dateString);
-                  setVisibleWeekDate(clickedMonday);
-                  lastClickTimeRef.current = Date.now();
+                  // Update visible week to show the selected date's week
+                  setVisibleWeekDate(day.dateString);
+                } else {
+                  // If we're swiping, this was likely triggered by the swipe, ignore it
+                  // Reset the flag after a short delay
+                  setTimeout(() => {
+                    isSwipingRef.current = false;
+                  }, 100);
                 }
-                // If we're swiping or this was triggered too quickly, ignore it completely
               }}
               onMonthChange={(month) => {
                 // When swiping to a new week/month, update visible week but keep selected date the same
                 isSwipingRef.current = true;
-                lastClickTimeRef.current = 0; // Reset click time to prevent accidental selection
-                
-                // Calculate the Monday of the visible week - use a safe date from the month
-                const date = new Date(month.year, month.month - 1, 15);
+                // Find the first Monday of the month's week view
+                const date = new Date(month.year, month.month - 1, 15); // Use middle of month for calculation
+                // Get the Monday of the week containing this date (firstDay is 1 for Monday)
                 const dayOfWeek = date.getDay();
                 const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
                 date.setDate(date.getDate() + mondayOffset);
@@ -464,42 +462,31 @@ export default function CalendarScreen() {
                 // Reset swipe flag after animation completes
                 setTimeout(() => {
                   isSwipingRef.current = false;
-                }, 600);
+                }, 400);
               }}
-              markedDates={useMemo(() => {
-                // Build marked dates object - match parent calendar pattern
-                // ONLY mark the explicitly selected date, nothing else
-                const marked: { [key: string]: any } = {};
-                
-                // Only mark if we have a selected date AND it's in the visible week
-                if (currentDate) {
-                  const selectedMonday = getWeekMonday(currentDate);
-                  const visibleMonday = getWeekMonday(visibleWeekDate);
-                  
-                  // Only mark if the selected date is in the visible week
-                  if (selectedMonday === visibleMonday) {
-                    marked[currentDate] = {
-                      selected: true,
-                      selectedColor: colors.primary,
-                      customStyles: {
-                        container: {
-                          backgroundColor: colors.primary,
-                          borderRadius: 14,
-                          width: 28,
-                          height: 28,
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        },
-                        text: {
-                          color: buttonTextColor,
-                        },
+              markedDates={{
+                // Only mark currentDate as selected if it's in the visible week
+                ...(isDateInVisibleWeek(currentDate, visibleWeekDate) ? {
+                  [currentDate]: {
+                    selected: true,
+                    marked: true,
+                    selectedColor: colors.primary,
+                    customStyles: {
+                      container: {
+                        backgroundColor: colors.primary,
+                        borderRadius: 12,
+                        width: 24,
+                        height: 24,
+                        alignItems: 'center',
+                        justifyContent: 'center',
                       },
-                    };
-                  }
-                }
-                
-                return marked;
-              }, [currentDate, visibleWeekDate, colors.primary, buttonTextColor])}
+                      text: {
+                        color: buttonTextColor,
+                      },
+                    },
+                  },
+                } : {}),
+              }}
               theme={calendarTheme}
               style={[
                 styles.calendar, 
@@ -599,20 +586,18 @@ export default function CalendarScreen() {
             </View>
 
             {/* Selected Date */}
-            {currentDate && (
-              <Text style={[styles.selectedDateText, { color: colors.text }]}>
-                {(() => {
-                  // Parse date string properly to avoid timezone issues
-                  const [year, month, day] = currentDate.split('-').map(Number);
-                  const date = new Date(year, month - 1, day);
-                  return date.toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    month: 'long',
-                    day: 'numeric',
-                  });
-                })()}
-              </Text>
-            )}
+            <Text style={[styles.selectedDateText, { color: colors.text }]}>
+              {(() => {
+                // Parse date string properly to avoid timezone issues
+                const [year, month, day] = currentDate.split('-').map(Number);
+                const date = new Date(year, month - 1, day);
+                return date.toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  month: 'long',
+                  day: 'numeric',
+                });
+              })()}
+            </Text>
 
             {/* Tasks List */}
             {sortedTasks.length > 0 ? (
@@ -673,9 +658,7 @@ export default function CalendarScreen() {
                         'Task Completed',
                         `You have earned ${selectedItem.points} points!`
                       );
-                      if (currentDate) {
-                        toggleComplete(currentDate, selectedItem.id);
-                      }
+                      toggleComplete(currentDate, selectedItem.id);
                       setModal(!modal);
                     }}
                   >
