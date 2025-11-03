@@ -47,6 +47,8 @@ export default function CalendarScreen() {
   );
   // Track if we're in a swipe gesture to prevent date selection
   const isSwipingRef = useRef(false);
+  // Track when the last swipe occurred to prevent auto-selection
+  const lastSwipeTimeRef = useRef<number>(0);
   
   const [sortBy, setSortBy] = useState<SortOption>('time');
 
@@ -320,6 +322,17 @@ export default function CalendarScreen() {
     return checkDate >= weekStart && checkDate <= weekEnd;
   };
 
+  // Helper function to get ordinal suffix (st, nd, rd, th)
+  const getOrdinalSuffix = (day: number): string => {
+    if (day > 3 && day < 21) return 'th';
+    switch (day % 10) {
+      case 1: return 'st';
+      case 2: return 'nd';
+      case 3: return 'rd';
+      default: return 'th';
+    }
+  };
+
   // Get current month and year based on selected date (updates when date changes)
   const currentMonthName = (() => {
     const [year, month] = currentDate.split('-').map(Number);
@@ -385,10 +398,16 @@ export default function CalendarScreen() {
                   },
                 ]}
                 onPress={() => {
+                  isSwipingRef.current = true;
+                  lastSwipeTimeRef.current = Date.now(); // Record when navigation occurred
                   const [year, month, day] = visibleWeekDate.split('-').map(Number);
                   const date = new Date(year, month - 1, day);
                   date.setDate(date.getDate() - 7);
                   setVisibleWeekDate(date.toISOString().split('T')[0]);
+                  // Reset swipe flag after a delay
+                  setTimeout(() => {
+                    isSwipingRef.current = false;
+                  }, 1000);
                 }}
               >
                 <Ionicons name="chevron-back" size={20} color={colors.text} />
@@ -402,10 +421,16 @@ export default function CalendarScreen() {
                   },
                 ]}
                 onPress={() => {
+                  isSwipingRef.current = true;
+                  lastSwipeTimeRef.current = Date.now(); // Record when navigation occurred
                   const [year, month, day] = visibleWeekDate.split('-').map(Number);
                   const date = new Date(year, month - 1, day);
                   date.setDate(date.getDate() + 7);
                   setVisibleWeekDate(date.toISOString().split('T')[0]);
+                  // Reset swipe flag after a delay
+                  setTimeout(() => {
+                    isSwipingRef.current = false;
+                  }, 1000);
                 }}
               >
                 <Ionicons name="chevron-forward" size={20} color={colors.text} />
@@ -429,15 +454,18 @@ export default function CalendarScreen() {
               key={`week-calendar-${isDarkMode ? 'dark' : 'light'}-${colors.background}`}
               current={visibleWeekDate}
               onDayPress={(day) => {
-                // Only update selected date on explicit click, not during swipe
-                // Check if this is a genuine click (not a swipe-triggered selection)
-                if (!isSwipingRef.current) {
+                // Only update selected date on explicit click, not during swipe or immediately after navigation
+                const now = Date.now();
+                const timeSinceLastSwipe = now - lastSwipeTimeRef.current;
+                
+                // Ignore if we're currently swiping OR if a swipe happened recently (within 1 second)
+                if (!isSwipingRef.current && timeSinceLastSwipe > 1000) {
                   setCurrentDate(day.dateString);
                   // Update visible week to show the selected date's week
                   setVisibleWeekDate(day.dateString);
                 } else {
-                  // If we're swiping, this was likely triggered by the swipe, ignore it
-                  // Reset the flag after a short delay
+                  // If we're swiping or just swiped, ignore this auto-selection
+                  // Reset the flag after a delay
                   setTimeout(() => {
                     isSwipingRef.current = false;
                   }, 100);
@@ -446,6 +474,7 @@ export default function CalendarScreen() {
               onMonthChange={(month) => {
                 // When swiping to a new week/month, update visible week but keep selected date the same
                 isSwipingRef.current = true;
+                lastSwipeTimeRef.current = Date.now(); // Record when the swipe occurred
                 // Find the first Monday of the month's week view
                 const date = new Date(month.year, month.month - 1, 15); // Use middle of month for calculation
                 // Get the Monday of the week containing this date (firstDay is 1 for Monday)
@@ -462,10 +491,11 @@ export default function CalendarScreen() {
                 // Reset swipe flag after animation completes
                 setTimeout(() => {
                   isSwipingRef.current = false;
-                }, 400);
+                }, 1000);
               }}
               markedDates={{
-                // Only mark currentDate as selected if it's in the visible week
+                // Mark currentDate as selected if it's in the visible week
+                // This ensures the date showing tasks is always circled when visible
                 ...(isDateInVisibleWeek(currentDate, visibleWeekDate) ? {
                   [currentDate]: {
                     selected: true,
@@ -591,11 +621,10 @@ export default function CalendarScreen() {
                 // Parse date string properly to avoid timezone issues
                 const [year, month, day] = currentDate.split('-').map(Number);
                 const date = new Date(year, month - 1, day);
-                return date.toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  month: 'long',
-                  day: 'numeric',
-                });
+                const weekday = date.toLocaleDateString('en-US', { weekday: 'long' });
+                const monthName = date.toLocaleDateString('en-US', { month: 'long' });
+                const ordinalSuffix = getOrdinalSuffix(day);
+                return `${weekday}, ${monthName} ${day}${ordinalSuffix}:`;
               })()}
             </Text>
 
