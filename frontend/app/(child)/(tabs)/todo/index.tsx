@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { View, Text, TouchableOpacity, FlatList, StyleSheet,  Image, ScrollView, Pressable, Modal } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -26,6 +26,7 @@ const ToDoScreen = ()=> {
   const [dropdown, setDropdown] = useState(false);
   const [sortType, setSortType] = useState(dropdownOptions[0]);
   const [modal, setModal] = useState(false);
+  const [taskDelete, setTaskDelete] = useState<string | null>(null);
 
   const handlePressTask = (taskId: string) => {
     setShowDetails((prev) => (prev === taskId ? null : taskId)
@@ -49,7 +50,7 @@ const taskList = {
   "2025-10-20": [
     { id: "1", text: "Read ch.1", completed: false, category: "Homework", description: "Read chapter 1 of history textbook", points: 10 },
     { id: "2", text: "Clean kitchen", completed: false, category: "Chores", description: "Wash dishes and wipe counters", points: 5 },
-    { id: "3", text: "Clean room", completed: false, category: "Chores", description: "Tidy up and vacuum", points: 5 },
+    { id: "3", text: "Clean room", completed: false, category: "Chores", description: "Tidy up and vacuum", points: 10 },
     { id: "4", text: "Wash dishes", completed: false, category: "Chores", description: "Clean dirty dishes", points: 10 },
     { id: "5", text: "Laundry", completed: false, category: "Chores", description: "Wash and fold clothes", points: 5 },
   ],
@@ -65,7 +66,7 @@ const taskList = {
 const [tasksByDate, setTasksByDate] = useState<{
   [key: string]: Task[];
 }>(taskList);
-const [originalTasksByDate] = useState(taskList);
+//const [originalTasksByDate] = useState(taskList);
 
 // Converts current date to a string
 const formatDateKey = (date: Date) => date.toISOString().split("T")[0];
@@ -119,34 +120,38 @@ const toggleComplete = (taskId: string) => {
 const handleSort = (sortType: React.SetStateAction<string>) => {
     setSortType(sortType);
     setDropdown(false);
-    const sortedTasks = {...tasksByDate}
-    switch(sortType) {
-    case (dropdownOptions[0]):
-      setTasksByDate(originalTasksByDate);
-      break;
-    case (dropdownOptions[1]):
-      Object.keys(sortedTasks).forEach((date) => {
-        sortedTasks[date] = [...sortedTasks[date]].sort((a, b) => b.points - a.points);
-      })
-      setTasksByDate(sortedTasks);
-      break;
-    case (dropdownOptions[2]):
-      Object.keys(sortedTasks).forEach((date) => {
-        sortedTasks[date] = [...sortedTasks[date]].sort((a, b) => a.points - b.points);
-      })
-      setTasksByDate(sortedTasks);
-      break;
-    default:
-      break;
-    }
+    // const sortedTasks = {...tasksByDate}
+    // switch(sortType) {
+    // case (dropdownOptions[0]):
+    //   //setTasksByDate(taskList);
+    //   Object.keys(sortedTasks).forEach((date) => {
+    //     sortedTasks[date] = [...tasksByDate[date]];
+    //   })
+    //   setTasksByDate(sortedTasks);
+    //   break;
+    // case (dropdownOptions[1]):
+    //   Object.keys(sortedTasks).forEach((date) => {
+    //     sortedTasks[date] = [...sortedTasks[date]].sort((a, b) => b.points - a.points);
+    //   })
+    //   setTasksByDate(sortedTasks);
+    //   break;
+    // case (dropdownOptions[2]):
+    //   Object.keys(sortedTasks).forEach((date) => {
+    //     sortedTasks[date] = [...sortedTasks[date]].sort((a, b) => a.points - b.points);
+    //   })
+    //   setTasksByDate(sortedTasks);
+    //   break;
+    // default:
+    //   break;
+    // }
   };
 
   const deleteTask = (date: string, taskId: string) => {
-    setTasksByDate((prev) => {
+    setTasksByDate(prev => {
       const updatedTasks = prev[date].filter(task => task.id !== taskId);
-      return {...prev, [date]: updatedTasks };
+      return {...prev, [date]: updatedTasks};
     })
-  }
+  };
 
 // The four categories for tasks
   const categories = [
@@ -157,11 +162,23 @@ const handleSort = (sortType: React.SetStateAction<string>) => {
   ];
   const renderCategory = (category: { id: string; title: string }) => {
     const isExpanded = expanded[category.id];
-    const allTasks = Object.values(tasksByDate).flat();
+    const tasks = tasksByDate[formattedKey] || [];
     const categoryTasks = tasks.filter((t) => t.category === category.id);
+    switch(sortType) {
+      case (dropdownOptions[1]):
+        categoryTasks.sort((a, b) => b.points - a.points);
+        break;
+      case (dropdownOptions[2]):
+        categoryTasks.sort((a, b) => a.points - b.points);
+        break;
+      case (dropdownOptions[0]):
+      default:
+        categoryTasks.sort((a, b) => a.text.localeCompare(b.text));
+        break;
+    }
     const visibleTasks = isExpanded ? categoryTasks : categoryTasks.slice(0, 3);
     const hiddenCount = categoryTasks.length - visibleTasks.length;
-
+    
 
     return (
       <View style={styles.card}>
@@ -218,7 +235,7 @@ const handleSort = (sortType: React.SetStateAction<string>) => {
                   <View style={{marginTop: 4}}>
                     <Text style={{color: "#555"}}>Description: {task.description}</Text>
                     <Text style={{color: "#555"}}>Points: {task.points}</Text>
-                    <TouchableOpacity onPress={() => {setModal(true);}} style={styles.deleteButton}>
+                    <TouchableOpacity onPress={() => {setModal(true); setTaskDelete(task.id)}} style={styles.deleteButton}>
                       <Text>Delete</Text>
                     </TouchableOpacity>
                   </View>
@@ -239,8 +256,10 @@ const handleSort = (sortType: React.SetStateAction<string>) => {
                         <Text style={{color: 'white'}}>Cancel</Text>
                       </TouchableOpacity>
                       <TouchableOpacity style={styles.deleteButton} onPress={() => {
-                        deleteTask(formattedKey, task.id);
-                        setModal(false);}}>
+                        if (taskDelete)
+                        deleteTask(formattedKey, taskDelete);
+                        setModal(false);
+                        setTaskDelete(null);}}>
                         <Text style={{color: 'white'}}>Delete</Text>
                       </TouchableOpacity>
                     </View>
