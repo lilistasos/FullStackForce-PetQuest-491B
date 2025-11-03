@@ -34,13 +34,47 @@ export default function AccountDetailsScreen() {
     );
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (deleteConfirmText === 'DELETE') {
       setShowDeleteModal(false);
       setDeleteConfirmText('');
-      // TODO: Implement account deletion
-      console.log('Account deletion confirmed');
-      Alert.alert("Account Deleted", "Your account has been permanently deleted.");
+
+      try {
+        const { token, logout } = useAuth();
+
+        if (!token) {
+          Alert.alert("Error", "You must be logged in to delete your account.");
+          return;
+        }
+
+        const res = await fetch("http://10.0.2.2:4000/api/account/delete-account", {
+          method: "DELETE",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          if (logout) logout();
+
+          Alert.alert("Account Deleted", "Your account has been permanently deleted.", [
+            {
+              text: "OK",
+              onPress: () => router.replace("/login"),
+            },
+          ]);
+        } else {
+          console.error("Delete failed:", data);
+          Alert.alert("Error", data.error || "Failed to delete account.");
+        }
+      } catch (err) {
+        console.error("Error deleting account:", err);
+        Alert.alert("Error", "An unexpected error occurred while deleting your account.");
+      }
+
     } else {
       Alert.alert("Invalid Confirmation", "You must type 'DELETE' exactly to confirm.");
     }

@@ -417,6 +417,60 @@ app.put('/api/users/me', authMiddleware, async (req, res) => {
   }
 });
 
+// Update account info (first name, username only)
+app.put('/api/account/update-account', authMiddleware, async (req, res) => {
+  const { firstName, username } = req.body;
+  const userId = req.user.sub;
+
+  if (!firstName && !username) {
+    return res.status(400).json({ error: 'At least one field (firstName or username) is required.' });
+  }
+
+  try {
+    const updates = [];
+    const values = [];
+    let idx = 1;
+
+    if (firstName) {
+      updates.push(`first_name = $${idx++}`);
+      values.push(firstName);
+    }
+    if (username) {
+      updates.push(`username = $${idx++}`);
+      values.push(username);
+    }
+
+    values.push(userId);
+
+    const query = `
+      UPDATE users
+      SET ${updates.join(', ')}
+      WHERE id = $${idx}
+      RETURNING id, email, username, first_name AS "firstName", last_name AS "lastName", role;
+    `;
+
+    const { rows } = await pool.query(query, values);
+    res.json(rows[0]);
+  } catch (err) {
+    console.error('Error updating account:', err);
+    res.status(500).json({ error: 'Failed to update account info.' });
+  }
+});
+
+// Delete account route
+app.delete('/api/account/delete-account', authMiddleware, async (req, res) => {
+  const userId = req.user.sub;
+
+  try {
+    await pool.query('DELETE FROM users WHERE id = $1', [userId]);
+    res.json({ message: 'Account deleted permanently.' });
+  } catch (err) {
+    console.error('Error deleting account:', err);
+    res.status(500).json({ error: 'Error deleting account.' });
+  }
+});
+
+
 // Starts Server
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
