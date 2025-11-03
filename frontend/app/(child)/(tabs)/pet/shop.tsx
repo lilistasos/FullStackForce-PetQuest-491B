@@ -79,7 +79,7 @@ export default function ShopScreen() {
 
   const renderShopItem = (item: ShopItem) => (
     <View key={item.id} style={styles.itemContainer}>
-      <View style={styles.itemBox}>
+      <View style={[styles.itemBox, { borderColor: colors.primary, backgroundColor: colors.background }]}>
         {item.id === "top-hat" ? (
           <>
             <Image 
@@ -87,7 +87,7 @@ export default function ShopScreen() {
               style={styles.itemImage}
               resizeMode="contain"
             />
-            <Text style={styles.itemPrice}>{item.price}</Text>
+            <Text style={[styles.itemPrice, { color: colors.text }]}>{item.price}</Text>
           </>
         ) : item.id === "glasses" ? (
           <>
@@ -96,7 +96,7 @@ export default function ShopScreen() {
               style={styles.itemImage}
               resizeMode="contain"
             />
-            <Text style={styles.itemPrice}>{item.price}</Text>
+            <Text style={[styles.itemPrice, { color: colors.text }]}>{item.price}</Text>
           </>
         ) : item.id === "cap" ? (
           <>
@@ -105,7 +105,7 @@ export default function ShopScreen() {
               style={styles.itemImage}
               resizeMode="contain"
             />
-            <Text style={styles.itemPrice}>{item.price}</Text>
+            <Text style={[styles.itemPrice, { color: colors.text }]}>{item.price}</Text>
           </>
         ) : item.id === "football" ? (
           <>
@@ -114,7 +114,7 @@ export default function ShopScreen() {
               style={styles.itemImage}
               resizeMode="contain"
             />
-            <Text style={styles.itemPrice}>{item.price}</Text>
+            <Text style={[styles.itemPrice, { color: colors.text }]}>{item.price}</Text>
           </>
         ) : item.id === "cat" ? (
           <>
@@ -123,7 +123,7 @@ export default function ShopScreen() {
               style={styles.itemImage}
               resizeMode="contain"
             />
-            <Text style={styles.itemPrice}>{item.price}</Text>
+            <Text style={[styles.itemPrice, { color: colors.text }]}>{item.price}</Text>
           </>
         ) : item.id === "dog" ? (
           <>
@@ -132,7 +132,7 @@ export default function ShopScreen() {
               style={styles.itemImage}
               resizeMode="contain"
             />
-            <Text style={styles.itemPrice}>{item.price}</Text>
+            <Text style={[styles.itemPrice, { color: colors.text }]}>{item.price}</Text>
           </>
         ) : item.id === "lion" ? (
           <>
@@ -141,7 +141,7 @@ export default function ShopScreen() {
               style={styles.itemImage}
               resizeMode="contain"
             />
-            <Text style={styles.itemPrice}>{item.price}</Text>
+            <Text style={[styles.itemPrice, { color: colors.text }]}>{item.price}</Text>
           </>
         ) : item.id === "unicorn" ? (
           <>
@@ -150,27 +150,27 @@ export default function ShopScreen() {
               style={styles.itemImage}
               resizeMode="contain"
             />
-            <Text style={styles.itemPrice}>{item.price}</Text>
+            <Text style={[styles.itemPrice, { color: colors.text }]}>{item.price}</Text>
           </>
         ) : (
           <>
-            <Text style={styles.itemTitle}>{item.name}</Text>
-            <Text style={styles.itemPrice}>{item.price}</Text>
+            <Text style={[styles.itemTitle, { color: colors.text }]}>{item.name}</Text>
+            <Text style={[styles.itemPrice, { color: colors.text }]}>{item.price}</Text>
           </>
         )}
       </View>
       <TouchableOpacity 
         style={[
           styles.actionButton, 
-          item.owned ? styles.ownedButton : styles.buyButton,
-          !item.owned && userCoins < item.price && styles.disabledButton
+          item.owned ? { backgroundColor: colors.surface } : { backgroundColor: '#90EE90' },
+          !item.owned && userCoins < item.price && { backgroundColor: '#FFCCCC' }
         ]}
         onPress={() => handlePurchaseClick(item)}
         disabled={item.owned || (!item.owned && userCoins < item.price)}>
         <Text style={[
           styles.buttonText,
-          item.owned ? styles.ownedButtonText : styles.buyButtonText,
-          !item.owned && userCoins < item.price && styles.disabledButtonText
+          item.owned ? { color: colors.textSecondary } : { color: '#000' },
+          !item.owned && userCoins < item.price && { color: '#999' }
         ]}>
           {item.owned ? "OWN" : "BUY"}
         </Text>
@@ -211,17 +211,29 @@ export default function ShopScreen() {
 
       <View style={styles.tabContainer}>
         <TouchableOpacity 
-          style={[styles.tab, selectedTab === "pets" && styles.selectedTab]}
+          style={[
+            styles.tab, 
+            { backgroundColor: selectedTab === "pets" ? colors.primary : colors.surface },
+          ]}
           onPress={() => setSelectedTab("pets")}>
-          <Text style={[styles.tabText, selectedTab === "pets" && styles.selectedTabText]}>
+          <Text style={[
+            styles.tabText, 
+            { color: selectedTab === "pets" ? '#FFFFFF' : colors.text }
+          ]}>
             Pet
           </Text>
         </TouchableOpacity>
         
         <TouchableOpacity 
-          style={[styles.tab, selectedTab === "customization" && styles.selectedTab]}
+          style={[
+            styles.tab, 
+            { backgroundColor: selectedTab === "customization" ? colors.primary : colors.surface },
+          ]}
           onPress={() => setSelectedTab("customization")}>
-          <Text style={[styles.tabText, selectedTab === "customization" && styles.selectedTabText]}>
+          <Text style={[
+            styles.tabText, 
+            { color: selectedTab === "customization" ? '#FFFFFF' : colors.text }
+          ]}>
             Costumes
           </Text>
         </TouchableOpacity>
@@ -241,7 +253,7 @@ export default function ShopScreen() {
         onRequestClose={cancelPurchase}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
+          <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
             {/* X button in top right */}
             <TouchableOpacity 
               style={styles.closeButton}
@@ -252,29 +264,29 @@ export default function ShopScreen() {
               <IconSymbol 
                 name="xmark" 
                 size={24} 
-                color="#000" 
+                color={colors.text} 
                 weight="medium"
               />
             </TouchableOpacity>
 
-            <Text style={styles.modalTitle}>Confirm Purchase</Text>
-            <Text style={styles.modalMessage}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Confirm Purchase</Text>
+            <Text style={[styles.modalMessage, { color: colors.text }]}>
               Are you sure you would like to buy?
             </Text>
 
             <View style={styles.modalButtons}>
               <TouchableOpacity 
-                style={[styles.modalButton, styles.noButton]}
+                style={[styles.modalButton, { backgroundColor: '#FFCCCC' }]}
                 onPress={cancelPurchase}
               >
-                <Text style={styles.noButtonText}>No</Text>
+                <Text style={{ color: '#000', fontFamily: 'monospace', fontSize: 16, fontWeight: 'bold' }}>No</Text>
               </TouchableOpacity>
 
               <TouchableOpacity 
-                style={[styles.modalButton, styles.yesButton]}
+                style={[styles.modalButton, { backgroundColor: '#90EE90' }]}
                 onPress={confirmPurchase}
               >
-                <Text style={styles.yesButtonText}>Yes</Text>
+                <Text style={{ color: '#000', fontFamily: 'monospace', fontSize: 16, fontWeight: 'bold' }}>Yes</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -299,7 +311,6 @@ const styles = StyleSheet.create({
   dateText: {
     fontFamily: "monospace",
     fontSize: 18,
-    color: "#000",
     fontWeight: "bold",
   },
   backButton: {
@@ -323,7 +334,6 @@ const styles = StyleSheet.create({
     fontFamily: "monospace",
     fontSize: 16,
     fontWeight: "bold",
-    color: "#000",
   },
   tabContainer: {
     flexDirection: "row",
@@ -332,7 +342,6 @@ const styles = StyleSheet.create({
     gap: 20,
   },
   tab: {
-    backgroundColor: "#E0E0E0",
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,
@@ -340,15 +349,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   selectedTab: {
-    backgroundColor: "#52AFDD",
   },
   tabText: {
     fontFamily: "monospace",
     fontSize: 18,
-    color: "#000",
   },
   selectedTabText: {
-    color: "#000",
     fontWeight: "bold",
   },
   gridContainer: {
@@ -369,27 +375,23 @@ const styles = StyleSheet.create({
   itemBox: {
     width: "100%",
     aspectRatio: 1,
-    backgroundColor: "#FFFFFF",
     marginBottom: 8,
     borderRadius: 4,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
-    borderColor: "#52AFDD",
     padding: 10,
   },
   itemTitle: {
     fontFamily: "monospace",
     fontSize: 14,
     fontWeight: "bold",
-    color: "#000",
     marginBottom: 4,
     textAlign: "center",
   },
   itemPrice: {
     fontFamily: "monospace",
     fontSize: 16,
-    color: "#000",
     textAlign: "center",
     fontWeight: "bold",
   },
@@ -407,28 +409,10 @@ const styles = StyleSheet.create({
     width: "100%",
     alignItems: "center",
   },
-  buyButton: {
-    backgroundColor: "#90EE90",
-  },
-  ownedButton: {
-    backgroundColor: "#E0E0E0",
-  },
-  disabledButton: {
-    backgroundColor: "#FFCCCC",
-  },
   buttonText: {
     fontFamily: "monospace",
     fontSize: 14,
     fontWeight: "bold",
-  },
-  buyButtonText: {
-    color: "#000",
-  },
-  ownedButtonText: {
-    color: "#666",
-  },
-  disabledButtonText: {
-    color: "#999",
   },
   modalOverlay: {
     flex: 1,
@@ -437,7 +421,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   modalContainer: {
-    backgroundColor: "#FFFFFF",
     borderRadius: 12,
     padding: 20,
     margin: 20,
@@ -459,7 +442,6 @@ const styles = StyleSheet.create({
     fontFamily: "monospace",
     fontSize: 20,
     fontWeight: "bold",
-    color: "#000",
     textAlign: "center",
     marginBottom: 15,
     marginTop: 10,
@@ -467,7 +449,6 @@ const styles = StyleSheet.create({
   modalMessage: {
     fontFamily: "monospace",
     fontSize: 16,
-    color: "#000",
     textAlign: "center",
     marginBottom: 25,
     lineHeight: 22,
@@ -483,23 +464,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 8,
     alignItems: "center",
-  },
-  noButton: {
-    backgroundColor: "#FFCCCC",
-  },
-  yesButton: {
-    backgroundColor: "#90EE90",
-  },
-  noButtonText: {
-    fontFamily: "monospace",
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#000",
-  },
-  yesButtonText: {
-    fontFamily: "monospace",
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#000",
   },
 });
