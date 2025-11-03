@@ -771,7 +771,7 @@ export default function ParentCalendarScreen() {
               hideExtraDays={false}
               disableMonthChange={false}
               enableSwipeMonths={true}
-            />
+        />
           </View>
         </View>
 
