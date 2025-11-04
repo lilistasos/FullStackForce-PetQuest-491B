@@ -1,7 +1,5 @@
 import React, { useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Modal } from "react-native";
-import { useRouter } from "expo-router";
-import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useTheme } from "@/contexts/ThemeContext";
 
 // Function to calculate luminance and determine text color
@@ -28,7 +26,6 @@ interface ShopData {
 }
 
 export default function ShopScreen() {
-  const router = useRouter();
   const { colors } = useTheme();
   const buttonTextColor = getContrastColor(colors.primary);
   const [selectedTab, setSelectedTab] = useState<keyof ShopData>("pets");
@@ -192,16 +189,6 @@ export default function ShopScreen() {
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]} showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={[styles.backButton, { backgroundColor: colors.primary }]}
-          onPress={() => router.back()}>
-          <IconSymbol 
-            name="chevron.left" 
-            size={24} 
-            color={buttonTextColor} 
-            weight="medium"
-          />
-        </TouchableOpacity>
         <Text style={[styles.dateText, { color: colors.text }]}>
           {new Date().toLocaleDateString('en-US', {
             year: 'numeric',
@@ -311,14 +298,6 @@ const styles = StyleSheet.create({
     fontFamily: "monospace",
     fontSize: 18,
     fontWeight: "bold",
-  },
-  backButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    minWidth: 40,
-    alignItems: "center",
-    justifyContent: "center",
   },
   coinsContainer: {
     paddingVertical: 8,
