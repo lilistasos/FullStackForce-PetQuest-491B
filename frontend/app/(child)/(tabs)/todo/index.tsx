@@ -23,8 +23,11 @@ const ToDoScreen = ()=> {
   const [showDetails, setShowDetails] = useState<string | null>(null);
   const dropdownOptions = ["Default", "Points: High to Low", "Points: Low to High"];
   
+  //states for sort dropdown
   const [dropdown, setDropdown] = useState(false);
   const [sortType, setSortType] = useState(dropdownOptions[0]);
+
+  //states for delete task
   const [deleteModal, setDeleteModal] = useState(false);
   const [taskDelete, setTaskDelete] = useState<string | null>(null);
 
@@ -116,35 +119,14 @@ const toggleComplete = (taskId: string) => {
   });
 };
 
+// handles sort selection from dropdown
 const handleSort = (sortType: React.SetStateAction<string>) => {
     setSortType(sortType);
     setDropdown(false);
-    // const sortedTasks = {...tasksByDate}
-    // switch(sortType) {
-    // case (dropdownOptions[0]):
-    //   //setTasksByDate(taskList);
-    //   Object.keys(sortedTasks).forEach((date) => {
-    //     sortedTasks[date] = [...tasksByDate[date]];
-    //   })
-    //   setTasksByDate(sortedTasks);
-    //   break;
-    // case (dropdownOptions[1]):
-    //   Object.keys(sortedTasks).forEach((date) => {
-    //     sortedTasks[date] = [...sortedTasks[date]].sort((a, b) => b.points - a.points);
-    //   })
-    //   setTasksByDate(sortedTasks);
-    //   break;
-    // case (dropdownOptions[2]):
-    //   Object.keys(sortedTasks).forEach((date) => {
-    //     sortedTasks[date] = [...sortedTasks[date]].sort((a, b) => a.points - b.points);
-    //   })
-    //   setTasksByDate(sortedTasks);
-    //   break;
-    // default:
-    //   break;
-    // }
+    
   };
 
+  //delete task function
   const deleteTask = (date: string, taskId: string) => {
     setTasksByDate(prev => {
       const updatedTasks = prev[date].filter(task => task.id !== taskId);
@@ -163,6 +145,7 @@ const handleSort = (sortType: React.SetStateAction<string>) => {
     const isExpanded = expanded[category.id];
     const tasks = tasksByDate[formattedKey] || [];
     const categoryTasks = tasks.filter((t) => t.category === category.id);
+    //sort tasks based on selected sort
     switch(sortType) {
       case (dropdownOptions[1]):
         categoryTasks.sort((a, b) => b.points - a.points);
@@ -239,6 +222,8 @@ const handleSort = (sortType: React.SetStateAction<string>) => {
                     </TouchableOpacity>
                   </View>
                 )}
+
+                {/* Delete Confirmation Modal */}
                 
                 <Modal
                   animationType="slide"
@@ -315,6 +300,8 @@ const handleSort = (sortType: React.SetStateAction<string>) => {
           </View>
         </View>
       </View>
+
+      {/*Dropdown for sorting tasks */}
 
       <View style={styles.dropdownContainer}>
         <TouchableOpacity onPress={toggleDropdown}>
@@ -449,6 +436,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
     alignSelf: "flex-start"
   },
+
   deleteModalContainer: {
     flex: 1, 
     justifyContent: "center", 
