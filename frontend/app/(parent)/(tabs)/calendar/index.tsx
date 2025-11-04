@@ -4,6 +4,10 @@ import { Calendar } from 'react-native-calendars';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/hooks/useAuth';
+import { useFocusEffect } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const WEEK_START_KEY = '@petquest:weekStart';
 
 // Function to calculate luminance and determine text color
 const getContrastColor = (backgroundColor: string): string => {
@@ -41,6 +45,30 @@ export default function ParentCalendarScreen() {
   });
   
   const [sortBy, setSortBy] = useState<SortOption>('time');
+  const [firstDay, setFirstDay] = useState<0 | 1>(1); // 0 = Sunday, 1 = Monday
+  
+  // Load week start preference from AsyncStorage
+  const loadWeekStartPreference = async () => {
+    try {
+      const saved = await AsyncStorage.getItem(WEEK_START_KEY);
+      if (saved !== null) {
+        setFirstDay(parseInt(saved) as 0 | 1);
+      }
+    } catch (error) {
+      console.error('Error loading week start preference:', error);
+    }
+  };
+
+  // Load on mount and when screen comes into focus (after returning from preferences)
+  useEffect(() => {
+    loadWeekStartPreference();
+  }, []);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      loadWeekStartPreference();
+    }, [])
+  );
 
   // Reset to current day and time sort when component mounts (user logs in)
   useEffect(() => {
@@ -555,12 +583,35 @@ export default function ParentCalendarScreen() {
   // Get marked dates (dates with tasks)
   const markedDates = useMemo(() => {
     const marked: { [key: string]: any } = {};
+    
+    // Get today's date string
+    const today = new Date();
+    const todayString = today.toISOString().split('T')[0];
+    
     Object.keys(childrenTasks).forEach(date => {
       marked[date] = {
         marked: true,
         dotColor: colors.primary,
       };
     });
+    
+    // Style today's date with theme color (if not selected)
+    if (todayString !== selectedDate) {
+      marked[todayString] = {
+        ...marked[todayString],
+        customStyles: {
+          container: {
+            backgroundColor: 'transparent',
+          },
+          text: {
+            color: colors.primary,
+            fontWeight: 'normal',
+          },
+        },
+      };
+    }
+    
+    // Style selected date
     marked[selectedDate] = {
       ...marked[selectedDate],
       selected: true,
@@ -579,6 +630,7 @@ export default function ParentCalendarScreen() {
         },
       },
     };
+    
     return marked;
   }, [childrenTasks, selectedDate, colors.primary, buttonTextColor]);
 
@@ -631,6 +683,7 @@ export default function ParentCalendarScreen() {
     selectedDayBackgroundColor: colors.primary,
     selectedDayTextColor: buttonTextColor,
     todayTextColor: colors.primary,
+    todayBackgroundColor: 'transparent',
     dayTextColor: colors.text,
     textDisabledColor: disabledDayColor,
     disabledDayTextColor: disabledDayColor,
@@ -762,7 +815,7 @@ export default function ParentCalendarScreen() {
         <View style={[styles.calendarContainer, { backgroundColor: colors.background }]}>
           <View style={[styles.calendarWrapper, { backgroundColor: colors.background }]}>
             <Calendar
-              key={`calendar-${isDarkMode ? 'dark' : 'light'}`}
+              key={`calendar-${isDarkMode ? 'dark' : 'light'}-${colors.primary}-${firstDay}`}
               current={selectedDate}
               onDayPress={(day) => setSelectedDate(day.dateString)}
               markedDates={markedDates}
@@ -771,6 +824,7 @@ export default function ParentCalendarScreen() {
               hideExtraDays={false}
               disableMonthChange={false}
               enableSwipeMonths={true}
+              firstDay={firstDay}
         />
           </View>
         </View>
