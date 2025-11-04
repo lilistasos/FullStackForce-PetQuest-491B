@@ -83,6 +83,7 @@ export default function ChildLayout() {
           else if (accountPageName === 'contact') setHeaderTitle('Contact');
           else if (accountPageName === 'help-center') setHeaderTitle('Help Center');
           else if (accountPageName === 'achievements') setHeaderTitle('Achievements');
+          else if (accountPageName === 'preferences') setHeaderTitle('Preferences');
           else setHeaderTitle('Account');
         } else {
           setHeaderTitle('Account');

@@ -13,6 +13,7 @@ export default function AccountLayout() {
       <Stack.Screen name="contact" />
       <Stack.Screen name="help-center" />
       <Stack.Screen name="achievements" />
+      <Stack.Screen name="preferences" />
     </Stack>
   );
 }

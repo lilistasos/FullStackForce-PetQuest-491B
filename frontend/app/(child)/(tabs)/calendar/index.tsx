@@ -247,7 +247,7 @@ export default function CalendarScreen() {
   // Simplified calendar theme
   const calendarBg = colors.background;
   const disabledDayColor = isDarkMode ? '#666666' : '#CCCCCC';
-  const calendarTheme = {
+  const calendarTheme = useMemo(() => ({
     backgroundColor: calendarBg,
     calendarBackground: calendarBg,
     textSectionTitleColor: colors.text,
@@ -332,7 +332,7 @@ export default function CalendarScreen() {
         paddingTop: 24,
       },
     },
-  };
+  }), [colors.background, colors.text, colors.primary, buttonTextColor, isDarkMode]);
 
   // Get current month and year based on selected date
   const currentMonthName = useMemo(() => {
@@ -476,17 +476,11 @@ export default function CalendarScreen() {
               </Text>
             </View>
             <View style={styles.navigationContainer}>
-              <TouchableOpacity
-                style={[styles.navButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                onPress={() => navigateWeek('prev')}
-              >
-                <Ionicons name="chevron-back" size={20} color={colors.text} />
+              <TouchableOpacity onPress={() => navigateWeek('prev')}>
+                <Ionicons name="chevron-back" size={26} color={colors.primary} />
               </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.navButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                onPress={() => navigateWeek('next')}
-              >
-                <Ionicons name="chevron-forward" size={20} color={colors.text} />
+              <TouchableOpacity onPress={() => navigateWeek('next')}>
+                <Ionicons name="chevron-forward" size={26} color={colors.primary} />
               </TouchableOpacity>
             </View>
           </View>
@@ -495,7 +489,7 @@ export default function CalendarScreen() {
           <View style={[styles.calendarWrapper, { backgroundColor: colors.background, ...noShadow }]}>
             <View style={[styles.calendarLine, styles.calendarLineTop, { backgroundColor: colors.border }]} />
             <WeekCalendar
-              key={`week-calendar-${isDarkMode ? 'dark' : 'light'}-${colors.background}-${firstDay}`}
+              key={`week-calendar-${isDarkMode ? 'dark' : 'light'}-${colors.background}-${colors.primary}-${firstDay}`}
               current={visibleWeekDate}
               onDayPress={(day) => {
                 const dayIsInVisibleWeek = isDateInVisibleWeek(day.dateString, visibleWeekDate);
@@ -686,15 +680,8 @@ const styles = StyleSheet.create({
   navigationContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-  },
-  navButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    gap: 16,
+    marginLeft: 16,
   },
   calendarWrapper: {
     overflow: 'visible',
