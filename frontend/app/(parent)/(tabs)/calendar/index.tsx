@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList } from 'react-native';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -17,6 +17,17 @@ const getContrastColor = (backgroundColor: string): string => {
   const b = parseInt(hex.substring(4, 6), 16);
   const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
   return luminance > 0.4 ? '#000000' : '#FFFFFF';
+};
+
+// Helper function to get ordinal suffix (st, nd, rd, th)
+const getOrdinalSuffix = (day: number): string => {
+  if (day > 3 && day < 21) return 'th';
+  switch (day % 10) {
+    case 1: return 'st';
+    case 2: return 'nd';
+    case 3: return 'rd';
+    default: return 'th';
+  }
 };
 
 interface ChildTask {
@@ -44,8 +55,64 @@ export default function ParentCalendarScreen() {
     return today.toISOString().split('T')[0];
   });
   
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  });
+  
   const [sortBy, setSortBy] = useState<SortOption>('time');
   const [firstDay, setFirstDay] = useState<0 | 1>(1); // 0 = Sunday, 1 = Monday
+  
+  // Animation values for month transitions
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const [isAnimating, setIsAnimating] = useState(false);
+  
+  // Format month and year for display
+  const formatMonthYear = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  };
+  
+  // Navigate to previous/next month
+  const navigateMonth = (direction: 'prev' | 'next') => {
+    if (isAnimating) return;
+    
+    const current = new Date(currentMonth);
+    const newDate = new Date(current);
+    if (direction === 'prev') {
+      newDate.setMonth(current.getMonth() - 1);
+    } else {
+      newDate.setMonth(current.getMonth() + 1);
+    }
+    
+    const newMonthString = newDate.toISOString().split('T')[0];
+    const directionNum = direction === 'next' ? 1 : -1;
+    
+    // Check if it's actually a different month
+    if (newMonthString === currentMonth) return;
+    
+    setIsAnimating(true);
+    
+    // Animate out
+    Animated.timing(slideAnim, {
+      toValue: directionNum * -400,
+      duration: 250,
+      useNativeDriver: true,
+    }).start(() => {
+      // Update month immediately before animating in
+      setCurrentMonth(newMonthString);
+      
+      // Reset position and animate in
+      slideAnim.setValue(directionNum * 400);
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true,
+      }).start(() => {
+        setIsAnimating(false);
+      });
+    });
+  };
   
   // Load week start preference from AsyncStorage
   const loadWeekStartPreference = async () => {
@@ -75,7 +142,9 @@ export default function ParentCalendarScreen() {
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
     setSelectedDate(todayStr);
+    setCurrentMonth(todayStr);
     setSortBy('time');
+    slideAnim.setValue(0); // Reset animation
   }, [user]); // Reset when user changes (login/logout)
   
   // Mock children data - In real app, this would come from API based on familyCode
@@ -531,9 +600,6 @@ export default function ParentCalendarScreen() {
     ],
   });
 
-  // Get current month name (for the calendar header month display)
-  const currentMonthName = new Date(selectedDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-
   // Helper function to convert time string to minutes since midnight for proper sorting
   const timeToMinutes = (timeStr: string): number => {
     const [time, period] = timeStr.split(' ');
@@ -813,25 +879,92 @@ export default function ParentCalendarScreen() {
       >
         {/* Calendar */}
         <View style={[styles.calendarContainer, { backgroundColor: colors.background }]}>
-          <View style={[styles.calendarWrapper, { backgroundColor: colors.background }]}>
-            <Calendar
-              key={`calendar-${isDarkMode ? 'dark' : 'light'}-${colors.primary}-${firstDay}`}
-              current={selectedDate}
-              onDayPress={(day) => setSelectedDate(day.dateString)}
-              markedDates={markedDates}
-              theme={calendarTheme}
-              style={[styles.calendar, { borderBottomColor: colors.border, backgroundColor: colors.background }]}
-              hideExtraDays={false}
-              disableMonthChange={false}
-              enableSwipeMonths={true}
-              firstDay={firstDay}
-        />
+          {/* Static Header */}
+          <View style={[styles.calendarHeader, { backgroundColor: colors.background }]}>
+            <TouchableOpacity
+              onPress={() => navigateMonth('prev')}
+              style={styles.calendarHeaderButton}
+              disabled={isAnimating}
+            >
+              <Ionicons name="chevron-back" size={24} color={colors.text} />
+            </TouchableOpacity>
+            <Text style={[styles.calendarHeaderText, { color: colors.text }]}>
+              {formatMonthYear(currentMonth)}
+            </Text>
+            <TouchableOpacity
+              onPress={() => navigateMonth('next')}
+              style={styles.calendarHeaderButton}
+              disabled={isAnimating}
+            >
+              <Ionicons name="chevron-forward" size={24} color={colors.text} />
+            </TouchableOpacity>
+          </View>
+          
+          {/* Animated Calendar Grid */}
+          <View style={[styles.calendarWrapper, { backgroundColor: colors.background, overflow: 'hidden' }]}>
+            <Animated.View
+              style={[
+                styles.calendarAnimatedWrapper,
+                {
+                  transform: [{ translateX: slideAnim }],
+                },
+              ]}
+            >
+              <Calendar
+                key={`calendar-${isDarkMode ? 'dark' : 'light'}-${colors.primary}-${firstDay}-${currentMonth}`}
+                current={currentMonth}
+                onDayPress={(day) => setSelectedDate(day.dateString)}
+                onMonthChange={(month) => {
+                  // Only process if not animating and month is actually different
+                  if (isAnimating) return;
+                  
+                  const monthDate = new Date(month.dateString);
+                  const currentDate = new Date(currentMonth);
+                  const isSameMonth = monthDate.getMonth() === currentDate.getMonth() && 
+                                     monthDate.getFullYear() === currentDate.getFullYear();
+                  
+                  if (isSameMonth) return;
+                  
+                  const direction = monthDate > currentDate ? 1 : -1;
+                  setIsAnimating(true);
+                  
+                  // Animate out
+                  Animated.timing(slideAnim, {
+                    toValue: direction * -400,
+                    duration: 250,
+                    useNativeDriver: true,
+                  }).start(() => {
+                    // Update month immediately before animating in
+                    setCurrentMonth(month.dateString);
+                    
+                    // Reset position and animate in
+                    slideAnim.setValue(direction * 400);
+                    Animated.timing(slideAnim, {
+                      toValue: 0,
+                      duration: 250,
+                      useNativeDriver: true,
+                    }).start(() => {
+                      setIsAnimating(false);
+                    });
+                  });
+                }}
+                markedDates={markedDates}
+                theme={calendarTheme}
+                style={[styles.calendar, { borderBottomColor: colors.border, backgroundColor: colors.background }]}
+                hideExtraDays={false}
+                disableMonthChange={false}
+                enableSwipeMonths={true}
+                firstDay={firstDay}
+                hideArrows={true}
+                renderHeader={() => null}
+              />
+            </Animated.View>
           </View>
         </View>
 
         {/* Tasks Section */}
+        <View style={[styles.tasksDivider, { borderTopColor: colors.border }]} />
         <View style={[styles.tasksSection, { backgroundColor: colors.background }]}>
-          <View style={[styles.tasksDivider, { borderTopColor: colors.border }]} />
           {/* Sort Buttons */}
           <View style={styles.sortContainer}>
           <Text style={[styles.sortLabel, { color: colors.text }]}>Sort by:</Text>
@@ -915,11 +1048,10 @@ export default function ParentCalendarScreen() {
             // Parse date string properly to avoid timezone issues
             const [year, month, day] = selectedDate.split('-').map(Number);
             const date = new Date(year, month - 1, day);
-            return date.toLocaleDateString('en-US', {
-              weekday: 'long',
-              month: 'long',
-              day: 'numeric',
-            });
+            const weekday = date.toLocaleDateString('en-US', { weekday: 'long' });
+            const monthName = date.toLocaleDateString('en-US', { month: 'long' });
+            const ordinalSuffix = getOrdinalSuffix(day);
+            return `${weekday}, ${monthName} ${day}${ordinalSuffix}:`;
           })()}
         </Text>
 
@@ -960,22 +1092,45 @@ const styles = StyleSheet.create({
     paddingTop: 0,
     paddingBottom: 0,
   },
+  calendarHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingTop: 10,
+    paddingBottom: 0,
+  },
+  calendarHeaderButton: {
+    padding: 8,
+    minWidth: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  calendarHeaderText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    fontFamily: 'monospace',
+  },
   calendarWrapper: {
     overflow: 'hidden',
+  },
+  calendarAnimatedWrapper: {
+    width: '100%',
   },
   calendar: {
     borderBottomWidth: 0,
     marginTop: 0,
     paddingTop: 0,
   },
-  tasksSection: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-  },
   tasksDivider: {
     borderTopWidth: 1,
     marginTop: 0,
-    marginBottom: 16,
+    marginBottom: 0,
+    width: '100%',
+  },
+  tasksSection: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
   },
   sortContainer: {
     flexDirection: 'row',
