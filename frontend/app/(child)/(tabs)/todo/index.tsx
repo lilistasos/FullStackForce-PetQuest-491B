@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, FlatList, StyleSheet,  Image, ScrollView, Pressable, Modal, TextInput } from "react-native";
+import { View, Text, TouchableOpacity, FlatList, StyleSheet,  Image, ScrollView, Pressable, Modal, TextInput, Animated } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -48,6 +48,13 @@ const ToDoScreen = ()=> {
 // States for completion confirmation
   const [confirmModal, setConfirmModal] = useState(false);
   const [taskToConfirm, setTaskToConfirm] = useState<Task | null>(null);
+
+// Points Added Pop Up
+const [pointsPopup, setPointsPopup] = useState<{ visible: boolean; message: string }>({
+  visible: false,
+  message: "",
+});
+const fadeAnim = useState(new Animated.Value(0))[0]; // controls opacity of Pop Up
 
 const [tasksByDate, setTasksByDate] = useState<{
   [key: string]: Task[];
@@ -103,6 +110,28 @@ const year = currentDate.getFullYear();
       setTaskToEdit(null);
     }
   };
+
+// Points PopUp Function
+const showPopup = (message: string) => {
+  setPointsPopup({ visible: true, message });
+
+  // Fading in
+  Animated.timing(fadeAnim, {
+    toValue: 1,
+    duration: 400,
+    useNativeDriver: true,
+  }).start(() => {
+    // hold for 1.5s, then fade out
+    setTimeout(() => {
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 400,
+        useNativeDriver: true,
+      }).start(() => setPointsPopup({ visible: false, message: "" }));
+    }, 1500);
+  });
+};
+
 
 // When a user taps tasks it is moved to completed and can be moved back if not
 const toggleComplete = (taskId: string) => {
@@ -203,18 +232,20 @@ const toggleComplete = (taskId: string) => {
                     <Text style={{color: "#555"}}>Description: {task.description}</Text>
                     <Text style={{color: "#555"}}>Points: {task.points}</Text>
                     {/* Edit Button */}
-                    <TouchableOpacity
-                      onPress={() => {
-                        setTaskToEdit(task);
-                        setEditText(task.text);
-                        setEditDescription(task.description);
-                        setEditPoints(task.points.toString());
-                        setEditModal(true);
-                      }}
-                      style={{ backgroundColor: "#0077B6", padding: 10, borderRadius: 5, marginTop: 6 }}
-                    >
-                      <Text style={{ color: "white" }}>Edit</Text>
-                    </TouchableOpacity>
+                    {!task.completed && (
+                      <TouchableOpacity
+                        onPress={() => {
+                          setTaskToEdit(task);
+                          setEditText(task.text);
+                          setEditDescription(task.description);
+                          setEditPoints(task.points.toString());
+                          setEditModal(true);
+                        }}
+                        style={{ backgroundColor: "#0077B6", padding: 10, borderRadius: 5, marginTop: 6 }}
+                      >
+                        <Text style={{ color: "white" }}>Edit</Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
                 )}
                 </View>
@@ -322,7 +353,13 @@ const toggleComplete = (taskId: string) => {
             </>
           )}
         </View>
-      </Modal>      
+      </Modal>
+      {/* Animated points gained popup */}
+        {pointsPopup.visible && (
+          <Animated.View style={[styles.pointsPopup, { opacity: fadeAnim }]}>
+            <Text style={styles.pointsPopupText}>{pointsPopup.message}</Text>
+          </Animated.View>
+        )}      
     </SafeAreaView>
   );
 };
@@ -458,5 +495,24 @@ const styles = StyleSheet.create({
   saveButton: { backgroundColor: "#0077B6", 
     padding: 10, 
     borderRadius: 5 
+  },
+  pointsPopup: {
+  position: "absolute",
+  bottom: 100,
+  alignSelf: "center",
+  backgroundColor: "#0077B6",
+  paddingVertical: 10,
+  paddingHorizontal: 20,
+  borderRadius: 20,
+  shadowColor: "#000",
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.25,
+  shadowRadius: 4,
+  elevation: 5,
+  },
+  pointsPopupText: {
+    color: "white",
+    fontWeight: "600",
+    fontSize: 16,
   },
 });
