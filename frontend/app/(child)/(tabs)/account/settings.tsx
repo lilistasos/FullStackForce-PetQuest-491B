@@ -3,7 +3,6 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-nati
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
-import { IconSymbol } from '@/components/ui/icon-symbol';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -30,20 +29,6 @@ export default function SettingsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={[styles.backButton, { backgroundColor: colors.primary }]}
-          onPress={() => router.back()}>
-          <IconSymbol 
-            name="chevron.left" 
-            size={24} 
-            color={colors.text} 
-            weight="medium"
-          />
-        </TouchableOpacity>
-        <View style={styles.headerSpacer} />
-      </View>
-
       <ScrollView style={styles.content}>
         {/* General Section */}
         <View style={styles.section}>
@@ -131,29 +116,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    width: "100%",
-    paddingTop: 20,
-    paddingHorizontal: 20,
-    flexDirection: "row",
-    justifyContent: "flex-start",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  backButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    minWidth: 40,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  headerSpacer: {
-    flex: 1,
-  },
   content: {
     flex: 1,
     paddingHorizontal: 20,
+    paddingTop: 20,
   },
   section: {
     marginTop: 24,
