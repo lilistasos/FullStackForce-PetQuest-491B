@@ -1,7 +1,8 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, FlatList, StyleSheet,  Image, ScrollView, Pressable } from "react-native";
+import { View, Text, TouchableOpacity, FlatList, StyleSheet,  Image, ScrollView, Pressable, Modal, TextInput } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+
 
 // Defines what a task looks like
 type Task = {
@@ -37,21 +38,32 @@ const ToDoScreen = ()=> {
     Completed: false,
 });
 
+// States for editting modal
+  const [editModal, setEditModal] = useState(false);
+  const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
+  const [editText, setEditText] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editPoints, setEditPoints] = useState("");
+  
+// States for completion confirmation
+  const [confirmModal, setConfirmModal] = useState(false);
+  const [taskToConfirm, setTaskToConfirm] = useState<Task | null>(null);
+
 const [tasksByDate, setTasksByDate] = useState<{
   [key: string]: Task[];
 }>({
-  "2025-10-20": [
+  "2025-11-02": [
     { id: "1", text: "Read ch.1", completed: false, category: "Homework", description: "Read chapter 1 of history textbook", points: 10 },
     { id: "2", text: "Clean kitchen", completed: false, category: "Chores", description: "Wash dishes and wipe counters", points: 5 },
     { id: "3", text: "Clean room", completed: false, category: "Chores", description: "Tidy up and vacuum", points: 5 },
     { id: "4", text: "Wash dishes", completed: false, category: "Chores", description: "Clean dirty dishes", points: 5 },
     { id: "5", text: "Laundry", completed: false, category: "Chores", description: "Wash and fold clothes", points: 5 },
   ],
-  "2025-10-21": [
+  "2025-11-03": [
     { id: "6", text: "Math worksheet", completed: false, category: "Homework", description: "Complete assigned math worksheet", points: 10 },
     { id: "7", text: "Soccer practice", completed: false, category: "Extracurriculars", description: "Attend soccer practice", points: 15 },
   ],
-  "2025-10-22": [
+  "2025-11-04": [
     { id: "8", text: "Take out trash", completed: false, category: "Chores", description: "Take out household trash", points: 5 },
   ],
 });
@@ -75,6 +87,22 @@ const monthDay = currentDate.toLocaleDateString("en-US", {
   day: "numeric",
 });
 const year = currentDate.getFullYear();
+
+// Handling Edit Save Logic
+  const handleEditSave = () => {
+    if (taskToEdit) {
+      setTasksByDate((prev) => {
+        const updatedTasks = prev[formattedKey].map((task) =>
+          task.id === taskToEdit.id
+            ? { ...task, text: editText, description: editDescription, points: parseInt(editPoints) || task.points }
+            : task
+        );
+        return { ...prev, [formattedKey]: updatedTasks };
+      });
+      setEditModal(false);
+      setTaskToEdit(null);
+    }
+  };
 
 // When a user taps tasks it is moved to completed and can be moved back if not
 const toggleComplete = (taskId: string) => {
@@ -142,7 +170,15 @@ const toggleComplete = (taskId: string) => {
           {visibleTasks.length > 0 ? (
             visibleTasks.map((task) => (
               <View key={task.id} style={styles.taskItem}>
-                <TouchableOpacity onPress={() => toggleComplete(task.id)}>
+                <TouchableOpacity onPress={() => {
+                  if (!task.completed) {
+                    setTaskToConfirm(task);
+                    setConfirmModal(true);
+                  } else {
+                    toggleComplete(task.id);
+                  }
+                }}
+                >
                   <Ionicons
                     name={
                       task.completed ? "checkmark-circle" : "ellipse-outline"
@@ -166,6 +202,19 @@ const toggleComplete = (taskId: string) => {
                   <View style={{marginTop: 4}}>
                     <Text style={{color: "#555"}}>Description: {task.description}</Text>
                     <Text style={{color: "#555"}}>Points: {task.points}</Text>
+                    {/* Edit Button */}
+                    <TouchableOpacity
+                      onPress={() => {
+                        setTaskToEdit(task);
+                        setEditText(task.text);
+                        setEditDescription(task.description);
+                        setEditPoints(task.points.toString());
+                        setEditModal(true);
+                      }}
+                      style={{ backgroundColor: "#0077B6", padding: 10, borderRadius: 5, marginTop: 6 }}
+                    >
+                      <Text style={{ color: "white" }}>Edit</Text>
+                    </TouchableOpacity>
                   </View>
                 )}
                 </View>
@@ -227,6 +276,53 @@ const toggleComplete = (taskId: string) => {
         renderItem={({ item }) => renderCategory(item)}
         contentContainerStyle={{ paddingBottom: 100 }}
       />
+
+      {/* Edit Task Modal */}
+      <Modal visible={editModal} animationType="slide" transparent={true}>
+        <View style={styles.modalBox}>
+          <Text style={styles.modalTitle}>Edit Task</Text>
+          <TextInput placeholder="Task name" value={editText} onChangeText={setEditText} style={styles.input} />
+          <TextInput placeholder="Description" value={editDescription} onChangeText={setEditDescription} style={styles.input} />
+          <TextInput placeholder="Points" keyboardType="numeric" value={editPoints} onChangeText={setEditPoints} style={styles.input} />
+          <View style={styles.modalButtonRow}>
+            <TouchableOpacity onPress={() => setEditModal(false)} style={styles.cancelButton}>
+              <Text style={{ color: "white" }}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleEditSave} style={styles.saveButton}>
+              <Text style={{ color: "white" }}>Save</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Completion Confirmation Modal */}
+      <Modal visible={confirmModal} animationType="slide" transparent={true}>
+        <View style={styles.modalBox}>
+          {taskToConfirm && (
+            <>
+              <Text style={styles.modalTitle}>Complete this task?</Text>
+              <Text>Task: {taskToConfirm.text}</Text>
+              <Text>Description: {taskToConfirm.description}</Text>
+              <Text>Points: {taskToConfirm.points}</Text>
+              <View style={styles.modalButtonRow}>
+                <TouchableOpacity onPress={() => setConfirmModal(false)} style={styles.cancelButton}>
+                  <Text style={{ color: "white" }}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => {
+                    toggleComplete(taskToConfirm.id);
+                    setConfirmModal(false);
+                    setTaskToConfirm(null);
+                  }}
+                  style={styles.saveButton}
+                >
+                  <Text style={{ color: "white" }}>Confirm</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
+        </View>
+      </Modal>      
     </SafeAreaView>
   );
 };
@@ -325,5 +421,42 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#888",
     fontStyle: "italic",
+  },
+  modalBox: { 
+    flex: 1, 
+    justifyContent: "center", 
+    alignItems: "center", 
+    backgroundColor: "white", 
+    margin: 20, 
+    borderRadius: 10, 
+    padding: 20 
+  },
+  modalTitle: { 
+    fontSize: 18, 
+    fontWeight: "600", 
+    marginBottom: 10 
+  },
+  input: { 
+    borderWidth: 1, 
+    borderColor: "#ccc", 
+    borderRadius: 5, 
+    padding: 8, 
+    width: "100%", 
+    marginBottom: 8 
+  },
+  modalButtonRow: { 
+    flexDirection: "row", 
+    justifyContent: "space-between", 
+    width: "100%", 
+    marginTop: 10 
+  },
+  cancelButton: { 
+    backgroundColor: "#888", 
+    padding: 10, 
+    borderRadius: 5 
+  },
+  saveButton: { backgroundColor: "#0077B6", 
+    padding: 10, 
+    borderRadius: 5 
   },
 });
