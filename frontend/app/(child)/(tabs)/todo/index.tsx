@@ -21,13 +21,25 @@ const ToDoScreen = ()=> {
 // useState hook to store the current date and update it... allows the app to display and maipulate the date dynamically 
   const [currentDate, setCurrentDate] = useState(new Date());
 
-  //const [showDetails, setShowDetails] = useState(false);
   const [showDetails, setShowDetails] = useState<string | null>(null);
+  const dropdownOptions = ["Default", "Points: High to Low", "Points: Low to High"];
+  
+  //states for sort dropdown
+  const [dropdown, setDropdown] = useState(false);
+  const [sortType, setSortType] = useState(dropdownOptions[0]);
+
+  //states for delete task
+  const [deleteModal, setDeleteModal] = useState(false);
+  const [taskDelete, setTaskDelete] = useState<string | null>(null);
 
   const handlePressTask = (taskId: string) => {
-  setShowDetails((prev) => (prev === taskId ? null : taskId)
-  );
-}
+    setShowDetails((prev) => (prev === taskId ? null : taskId)
+   );
+  };
+
+  const toggleDropdown = () => {
+    setDropdown((prev) => !prev);
+  };
 
 // States for Categories
 // expanded state object to track which categories are currently expanded or collapsed
@@ -62,8 +74,8 @@ const [tasksByDate, setTasksByDate] = useState<{
   "2025-11-02": [
     { id: "1", text: "Read ch.1", completed: false, category: "Homework", description: "Read chapter 1 of history textbook", points: 10 },
     { id: "2", text: "Clean kitchen", completed: false, category: "Chores", description: "Wash dishes and wipe counters", points: 5 },
-    { id: "3", text: "Clean room", completed: false, category: "Chores", description: "Tidy up and vacuum", points: 5 },
-    { id: "4", text: "Wash dishes", completed: false, category: "Chores", description: "Clean dirty dishes", points: 5 },
+    { id: "3", text: "Clean room", completed: false, category: "Chores", description: "Tidy up and vacuum", points: 10 },
+    { id: "4", text: "Wash dishes", completed: false, category: "Chores", description: "Clean dirty dishes", points: 10 },
     { id: "5", text: "Laundry", completed: false, category: "Chores", description: "Wash and fold clothes", points: 5 },
   ],
   "2025-11-03": [
@@ -73,7 +85,11 @@ const [tasksByDate, setTasksByDate] = useState<{
   "2025-11-04": [
     { id: "8", text: "Take out trash", completed: false, category: "Chores", description: "Take out household trash", points: 5 },
   ],
-});
+}
+
+const [tasksByDate, setTasksByDate] = useState<{
+  [key: string]: Task[];
+}>(taskList);
 
 // Converts current date to a string
 const formatDateKey = (date: Date) => date.toISOString().split("T")[0];
@@ -162,6 +178,21 @@ const toggleComplete = (taskId: string) => {
   });
 };
 
+// handles sort selection from dropdown
+const handleSort = (sortType: React.SetStateAction<string>) => {
+    setSortType(sortType);
+    setDropdown(false);
+    
+  };
+
+  //delete task function
+  const deleteTask = (date: string, taskId: string) => {
+    setTasksByDate(prev => {
+      const updatedTasks = prev[date].filter(task => task.id !== taskId);
+      return {...prev, [date]: updatedTasks};
+    })
+  };
+
 // The four categories for tasks
   const categories = [
     { id: "Homework", title: "Homework" },
@@ -171,10 +202,24 @@ const toggleComplete = (taskId: string) => {
   ];
   const renderCategory = (category: { id: string; title: string }) => {
     const isExpanded = expanded[category.id];
+    const tasks = tasksByDate[formattedKey] || [];
     const categoryTasks = tasks.filter((t) => t.category === category.id);
+    //sort tasks based on selected sort
+    switch(sortType) {
+      case (dropdownOptions[1]):
+        categoryTasks.sort((a, b) => b.points - a.points);
+        break;
+      case (dropdownOptions[2]):
+        categoryTasks.sort((a, b) => a.points - b.points);
+        break;
+      case (dropdownOptions[0]):
+      default:
+        categoryTasks.sort((a, b) => a.text.localeCompare(b.text));
+        break;
+    }
     const visibleTasks = isExpanded ? categoryTasks : categoryTasks.slice(0, 3);
     const hiddenCount = categoryTasks.length - visibleTasks.length;
-
+    
 
     return (
       <View style={styles.card}>
@@ -224,13 +269,25 @@ const toggleComplete = (taskId: string) => {
                     task.completed && { textDecorationLine: "line-through" },
                   ]}
                 >
+                  <Ionicons
+                    name={showDetails === task.id ? "chevron-down" : "chevron-forward"}
+                    size={16}
+                    color="gray"
+                    style={{marginRight: 6}}
+                  />
                   {task.text}
+                  
                 </Text>
                 </Pressable>
+                
+                {/* Task Details (description, points, delete button) */}
                 {showDetails === task.id && (
                   <View style={{marginTop: 4}}>
                     <Text style={{color: "#555"}}>Description: {task.description}</Text>
                     <Text style={{color: "#555"}}>Points: {task.points}</Text>
+                    <TouchableOpacity onPress={() => {setDeleteModal(true); setTaskDelete(task.id)}} style={styles.deleteButton}>
+                      <Text>Delete</Text>
+                    </TouchableOpacity>
                     {/* Edit Button */}
                     {!task.completed && (
                       <TouchableOpacity
@@ -248,6 +305,33 @@ const toggleComplete = (taskId: string) => {
                     )}
                   </View>
                 )}
+
+                {/* Delete Confirmation Modal */}
+                
+                <Modal
+                  animationType="slide"
+                  transparent={true}
+                  visible={deleteModal}
+                  onRequestClose={() => {
+                  setDeleteModal(!deleteModal);
+                }}
+                >
+                  <View style={styles.deleteModalContainer}>
+                    <Text style={styles.deleteModalText}>Are you sure you want to delete? You won't get the points for this task if you do.</Text>
+                    <View style={{flexDirection: "row", justifyContent: "space-between", width: "100%", marginTop: 10}}>
+                      <TouchableOpacity onPress={() => setDeleteModal(false)} style={styles.cancelDeleteButton}>
+                        <Text style={{color: 'white'}}>Cancel</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.deleteButton} onPress={() => {
+                        if (taskDelete)
+                        deleteTask(formattedKey, taskDelete);
+                        setDeleteModal(false);
+                        setTaskDelete(null);}}>
+                        <Text style={{color: 'white'}}>Delete</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </Modal>
                 </View>
               </View>
             ))
@@ -298,6 +382,27 @@ const toggleComplete = (taskId: string) => {
             </TouchableOpacity>
           </View>
         </View>
+      </View>
+
+      {/*Dropdown for sorting tasks */}
+
+      <View style={styles.dropdownContainer}>
+        <TouchableOpacity onPress={toggleDropdown}>
+          <Ionicons name="funnel-outline" size = {20} color="gray"/>
+        </TouchableOpacity>
+        {dropdown && (
+          <View style={styles.dropdown}>
+            <TouchableOpacity onPress={() => handleSort(dropdownOptions[0])} style={styles.dropdownOption}>
+              <Text>Default</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => handleSort(dropdownOptions[1])} style={styles.dropdownOption}>
+              <Text>Points: High to Low</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => handleSort(dropdownOptions[2])} style={styles.dropdownOption}>
+              <Text>Points: Low to High</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
       {/* Task Categories; renders all categories vertically,flatlist for efficient scrolling */}
@@ -459,6 +564,64 @@ const styles = StyleSheet.create({
     color: "#888",
     fontStyle: "italic",
   },
+  deleteButton: {
+    backgroundColor:"#FF0000", 
+    padding: 10, 
+    marginHorizontal:10, 
+    borderRadius: 5,
+    marginTop: 6,
+    alignSelf: "flex-start"
+  },
+  cancelDeleteButton: {
+    backgroundColor: "#888", 
+    padding: 10, 
+    marginHorizontal: 10, 
+    borderRadius: 5, 
+    marginTop: 6
+  },
+  dropdownContainer: {
+    flex: 1, 
+    flexDirection: "row", 
+    justifyContent: "flex-end", 
+    padding: 10, 
+    marginBottom: 10, 
+    position: "relative", 
+    zIndex: 1
+  },
+  dropdownOption: {
+    padding: 10, 
+    borderBottomWidth: 1, 
+    borderBottomColor: "#eee"
+  },
+  dropdown: {
+    position: "absolute", 
+    top: 40, 
+    right: 10, 
+    backgroundColor: "#fff", 
+    borderWidth: 1, 
+    borderColor: "#ccc", 
+    borderRadius: 6, 
+    zIndex: 1000
+  },
+  deleteModalContainer: {
+    flex: 1, 
+    justifyContent: "center", 
+    alignItems: "center", 
+    backgroundColor: "white", 
+    padding: 35, 
+    margin: 20, 
+    marginTop: "75%",
+    marginBottom: "75%",
+    borderColor: "#888", 
+    borderWidth: 1, 
+    borderRadius: 10,
+  },
+  deleteModalText: {
+    fontSize: 18, 
+    fontWeight: "600", 
+    marginBottom: 10, 
+    textAlign: "center"
+  }
   modalBox: { 
     flex: 1, 
     justifyContent: "center", 
