@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Tabs } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
 import { TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigationState } from '@react-navigation/native';
@@ -22,8 +22,10 @@ const getContrastColor = (backgroundColor: string): string => {
 export default function ParentLayout() {
   const [headerTitle, setHeaderTitle] = useState('Calendar');
   const [menuVisible, setMenuVisible] = useState(false);
+  const [isSubPage, setIsSubPage] = useState(false);
   const { colors } = useTheme();
   const headerTextColor = getContrastColor(colors.primary);
+  const router = useRouter();
 
   const navigationState = useNavigationState(state => state);
 
@@ -54,6 +56,9 @@ export default function ParentLayout() {
           const accountRoute = activeTabRoute.state.routes[activeTabRoute.state.index];
           const accountPageName = accountRoute?.name || 'index';
           
+          // Check if we're on a sub-page (not index)
+          setIsSubPage(accountPageName !== 'index');
+          
           if (accountPageName === 'edit-profile') setHeaderTitle('Edit Profile');
           else if (accountPageName === 'notifications') setHeaderTitle('Notification Preferences');
           else if (accountPageName === 'settings') setHeaderTitle('Settings');
@@ -65,10 +70,16 @@ export default function ParentLayout() {
           else if (accountPageName === 'subscription') setHeaderTitle('Subscription');
           else if (accountPageName === 'parent-child-settings') setHeaderTitle('Parent-Child Settings');
           else if (accountPageName === 'preferences') setHeaderTitle('Preferences');
-          else setHeaderTitle('Account');
+          else {
+            setHeaderTitle('Account');
+            setIsSubPage(false);
+          }
         } else {
           setHeaderTitle('Account');
+          setIsSubPage(false);
         }
+      } else {
+        setIsSubPage(false);
       }
     }
   }, [navigationState]);
@@ -92,11 +103,20 @@ export default function ParentLayout() {
           headerTitleAlign: 'center',
           tabBarShowLabel: false,
           headerTitle: headerTitle,
-          headerLeft: () => (
-            <TouchableOpacity style={{ marginLeft: 15 }} onPress={() => setMenuVisible(true)}>
-              <Ionicons name="menu" size={24} color={headerTextColor} />
-            </TouchableOpacity>
-          ),
+          headerLeft: () => {
+            if (isSubPage) {
+              return (
+                <TouchableOpacity style={{ marginLeft: 15 }} onPress={() => router.back()}>
+                  <Ionicons name="chevron-back" size={24} color={headerTextColor} />
+                </TouchableOpacity>
+              );
+            }
+            return (
+              <TouchableOpacity style={{ marginLeft: 15 }} onPress={() => setMenuVisible(true)}>
+                <Ionicons name="menu" size={24} color={headerTextColor} />
+              </TouchableOpacity>
+            );
+          },
         headerRight: () => (
           <TouchableOpacity style={{ marginRight: 15 }} onPress={() => {}}>
             <Ionicons name="notifications-outline" size={24} color={headerTextColor} />

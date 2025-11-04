@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Tabs } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
 import { TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigationState } from '@react-navigation/native';
@@ -30,10 +30,12 @@ const getContrastColor = (backgroundColor: string): string => {
 export default function ChildLayout() {
   const [headerTitle, setHeaderTitle] = useState('Pet');
   const [menuVisible, setMenuVisible] = useState(false);
+  const [isSubPage, setIsSubPage] = useState(false);
   const { colors } = useTheme();
   
   // Get appropriate text color for header based on primary color
   const headerTextColor = getContrastColor(colors.primary);
+  const router = useRouter();
 
   const navigationState = useNavigationState(state => state);
 
@@ -58,21 +60,33 @@ export default function ChildLayout() {
           const petRoute = activeTabRoute.state.routes[activeTabRoute.state.index];
           const petPageName = petRoute?.name || 'index';
           
+          // Check if we're on a sub-page (not index)
+          setIsSubPage(petPageName !== 'index');
+          
           if (petPageName === 'customize') setHeaderTitle('Customize');
           else if (petPageName === 'shop') setHeaderTitle('Shop');
           else if (petPageName === 'collection') setHeaderTitle('Collection');
-          else setHeaderTitle('Pet');
+          else {
+            setHeaderTitle('Pet');
+            setIsSubPage(false);
+          }
         } else {
           setHeaderTitle('Pet');
+          setIsSubPage(false);
         }
       } else if (tabName === '(tabs)/calendar') {
         setHeaderTitle('Calendar');
+        setIsSubPage(false);
       } else if (tabName === '(tabs)/todo') {
         setHeaderTitle('To-Do');
+        setIsSubPage(false);
       } else if (tabName === '(tabs)/account') {
         if (activeTabRoute.state && activeTabRoute.state.routes && activeTabRoute.state.index !== undefined) {
           const accountRoute = activeTabRoute.state.routes[activeTabRoute.state.index];
           const accountPageName = accountRoute?.name || 'index';
+          
+          // Check if we're on a sub-page (not index)
+          setIsSubPage(accountPageName !== 'index');
           
           if (accountPageName === 'edit-profile') setHeaderTitle('Edit Profile');
           else if (accountPageName === 'notifications') setHeaderTitle('Notification Preferences');
@@ -84,10 +98,16 @@ export default function ChildLayout() {
           else if (accountPageName === 'help-center') setHeaderTitle('Help Center');
           else if (accountPageName === 'achievements') setHeaderTitle('Achievements');
           else if (accountPageName === 'preferences') setHeaderTitle('Preferences');
-          else setHeaderTitle('Account');
+          else {
+            setHeaderTitle('Account');
+            setIsSubPage(false);
+          }
         } else {
           setHeaderTitle('Account');
+          setIsSubPage(false);
         }
+      } else {
+        setIsSubPage(false);
       }
     }
   }, [navigationState]);
@@ -111,11 +131,20 @@ export default function ChildLayout() {
         headerTitleAlign: 'center',
         tabBarShowLabel: false,
         headerTitle: headerTitle,
-        headerLeft: () => (
-          <TouchableOpacity style={{ marginLeft: 15 }} onPress={() => setMenuVisible(true)}>
-            <Ionicons name="menu" size={24} color={headerTextColor} />
-          </TouchableOpacity>
-        ),
+        headerLeft: () => {
+          if (isSubPage) {
+            return (
+              <TouchableOpacity style={{ marginLeft: 15 }} onPress={() => router.back()}>
+                <Ionicons name="chevron-back" size={24} color={headerTextColor} />
+              </TouchableOpacity>
+            );
+          }
+          return (
+            <TouchableOpacity style={{ marginLeft: 15 }} onPress={() => setMenuVisible(true)}>
+              <Ionicons name="menu" size={24} color={headerTextColor} />
+            </TouchableOpacity>
+          );
+        },
         headerRight: () => (
           <TouchableOpacity style={{ marginRight: 15 }} onPress={() => {}}>
             <Ionicons name="notifications-outline" size={24} color={headerTextColor} />

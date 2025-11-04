@@ -1,7 +1,5 @@
 import React, { useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image } from "react-native";
-import { useRouter } from "expo-router";
-import { IconSymbol } from "@/components/ui/icon-symbol";
 import { usePet } from "@/contexts/PetContext";
 import { useTheme } from "@/contexts/ThemeContext";
 
@@ -24,7 +22,6 @@ interface CollectionItem {
 }
 
 export default function CollectionScreen() {
-  const router = useRouter();
   const { selectedPet, setSelectedPet } = usePet();
   const { colors } = useTheme();
   const buttonTextColor = getContrastColor(colors.primary);
@@ -105,19 +102,6 @@ export default function CollectionScreen() {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]} showsVerticalScrollIndicator={false}>
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={[styles.backButton, { backgroundColor: colors.primary }]}
-          onPress={() => router.back()}>
-          <IconSymbol 
-            name="chevron.left" 
-            size={24} 
-            color={buttonTextColor} 
-            weight="medium"
-          />
-        </TouchableOpacity>
-      </View>
-
       <View style={styles.gridContainer}>
         <View style={styles.grid}>
           {collectionItems.map(renderCollectionItem)}
@@ -130,21 +114,6 @@ export default function CollectionScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  header: {
-    width: "100%",
-    paddingTop: 20,
-    paddingHorizontal: 20,
-    flexDirection: "row",
-    alignItems: "flex-start",
-  },
-  backButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    minWidth: 40,
-    alignItems: "center",
-    justifyContent: "center",
   },
   gridContainer: {
     paddingHorizontal: 20,

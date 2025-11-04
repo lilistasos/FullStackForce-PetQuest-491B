@@ -1,11 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Switch } from 'react-native';
-import { useRouter } from 'expo-router';
+import { View, Text, StyleSheet, ScrollView, Switch } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
-import { IconSymbol } from '@/components/ui/icon-symbol';
 
 export default function NotificationsScreen() {
-  const router = useRouter();
   const { colors } = useTheme();
   
   const [notifications, setNotifications] = useState({
@@ -37,21 +34,6 @@ export default function NotificationsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={[styles.backButton, { backgroundColor: colors.primary }]}
-          onPress={() => router.back()}>
-          <IconSymbol 
-            name="chevron.left" 
-            size={24} 
-            color={colors.text} 
-            weight="medium"
-          />
-        </TouchableOpacity>
-        <View style={styles.headerSpacer} />
-      </View>
-
       {/* Content */}
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={[styles.sectionContainer, { backgroundColor: colors.surface }]}>
@@ -84,29 +66,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    width: "100%",
-    paddingTop: 20,
-    paddingHorizontal: 20,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  backButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    minWidth: 40,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  headerSpacer: {
-    flex: 1,
-  },
   content: {
     flex: 1,
     paddingHorizontal: 20,
+    paddingTop: 20,
   },
   sectionContainer: {
     borderRadius: 12,
