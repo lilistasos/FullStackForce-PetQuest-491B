@@ -25,7 +25,7 @@ const ToDoScreen = ()=> {
   
   const [dropdown, setDropdown] = useState(false);
   const [sortType, setSortType] = useState(dropdownOptions[0]);
-  const [modal, setModal] = useState(false);
+  const [deleteModal, setDeleteModal] = useState(false);
   const [taskDelete, setTaskDelete] = useState<string | null>(null);
 
   const handlePressTask = (taskId: string) => {
@@ -47,18 +47,18 @@ const ToDoScreen = ()=> {
 });
 
 const taskList = {
-  "2025-10-20": [
+  "2025-11-02": [
     { id: "1", text: "Read ch.1", completed: false, category: "Homework", description: "Read chapter 1 of history textbook", points: 10 },
     { id: "2", text: "Clean kitchen", completed: false, category: "Chores", description: "Wash dishes and wipe counters", points: 5 },
     { id: "3", text: "Clean room", completed: false, category: "Chores", description: "Tidy up and vacuum", points: 10 },
     { id: "4", text: "Wash dishes", completed: false, category: "Chores", description: "Clean dirty dishes", points: 10 },
     { id: "5", text: "Laundry", completed: false, category: "Chores", description: "Wash and fold clothes", points: 5 },
   ],
-  "2025-10-21": [
+  "2025-11-03": [
     { id: "6", text: "Math worksheet", completed: false, category: "Homework", description: "Complete assigned math worksheet", points: 10 },
     { id: "7", text: "Soccer practice", completed: false, category: "Extracurriculars", description: "Attend soccer practice", points: 15 },
   ],
-  "2025-10-22": [
+  "2025-11-04": [
     { id: "8", text: "Take out trash", completed: false, category: "Chores", description: "Take out household trash", points: 5 },
   ],
 }
@@ -66,7 +66,6 @@ const taskList = {
 const [tasksByDate, setTasksByDate] = useState<{
   [key: string]: Task[];
 }>(taskList);
-//const [originalTasksByDate] = useState(taskList);
 
 // Converts current date to a string
 const formatDateKey = (date: Date) => date.toISOString().split("T")[0];
@@ -235,7 +234,7 @@ const handleSort = (sortType: React.SetStateAction<string>) => {
                   <View style={{marginTop: 4}}>
                     <Text style={{color: "#555"}}>Description: {task.description}</Text>
                     <Text style={{color: "#555"}}>Points: {task.points}</Text>
-                    <TouchableOpacity onPress={() => {setModal(true); setTaskDelete(task.id)}} style={styles.deleteButton}>
+                    <TouchableOpacity onPress={() => {setDeleteModal(true); setTaskDelete(task.id)}} style={styles.deleteButton}>
                       <Text>Delete</Text>
                     </TouchableOpacity>
                   </View>
@@ -244,21 +243,21 @@ const handleSort = (sortType: React.SetStateAction<string>) => {
                 <Modal
                   animationType="slide"
                   transparent={true}
-                  visible={modal}
+                  visible={deleteModal}
                   onRequestClose={() => {
-                  setModal(!modal);
+                  setDeleteModal(!deleteModal);
                 }}
                 >
-                  <View style={{flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "white", padding: 20, margin: 20, borderColor: "#ccc", borderWidth: 1, borderRadius: 10}}>
-                    <Text style={{fontSize: 18, fontWeight: "600", marginBottom: 10}}>Are you sure you want to delete? You won't get the points for this task if you do.</Text>
-                    <View style={{flexDirection: "row", justifyContent: "space-between", width: "100%"}}>
-                      <TouchableOpacity onPress={() => setModal(false)} style={{backgroundColor: "#888", padding: 10, marginHorizontal: 10, borderRadius: 5, marginTop: 6}}>
+                  <View style={styles.deleteModalContainer}>
+                    <Text style={{fontSize: 18, fontWeight: "600", marginBottom: 10, textAlign: "center"}}>Are you sure you want to delete? You won't get the points for this task if you do.</Text>
+                    <View style={{flexDirection: "row", justifyContent: "space-between", width: "100%", marginTop: 10}}>
+                      <TouchableOpacity onPress={() => setDeleteModal(false)} style={styles.cancelDeleteButton}>
                         <Text style={{color: 'white'}}>Cancel</Text>
                       </TouchableOpacity>
                       <TouchableOpacity style={styles.deleteButton} onPress={() => {
                         if (taskDelete)
                         deleteTask(formattedKey, taskDelete);
-                        setModal(false);
+                        setDeleteModal(false);
                         setTaskDelete(null);}}>
                         <Text style={{color: 'white'}}>Delete</Text>
                       </TouchableOpacity>
@@ -317,19 +316,19 @@ const handleSort = (sortType: React.SetStateAction<string>) => {
         </View>
       </View>
 
-      <View style={{flex: 1, flexDirection: "row", justifyContent: "flex-end", padding: 10, marginBottom: 10, position: "relative", zIndex: 1}}>
+      <View style={styles.dropdownContainer}>
         <TouchableOpacity onPress={toggleDropdown}>
           <Ionicons name="funnel-outline" size = {20} color="gray"/>
         </TouchableOpacity>
         {dropdown && (
-          <View style={{position: "absolute", top: 40, right: 10, backgroundColor: "#fff", borderWidth: 1, borderColor: "#ccc", borderRadius: 6, zIndex: 1000}}>
-            <TouchableOpacity onPress={() => handleSort(dropdownOptions[0])} style={{padding: 10, borderBottomWidth: 1, borderBottomColor: "#eee"}}>
+          <View style={styles.dropdown}>
+            <TouchableOpacity onPress={() => handleSort(dropdownOptions[0])} style={styles.dropdownOption}>
               <Text>Default</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => handleSort(dropdownOptions[1])} style={{padding: 10, borderBottomWidth: 1, borderBottomColor: "#eee"}}>
+            <TouchableOpacity onPress={() => handleSort(dropdownOptions[1])} style={styles.dropdownOption}>
               <Text>Points: High to Low</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => handleSort(dropdownOptions[2])} style={{padding: 10, borderBottomWidth: 1, borderBottomColor: "#eee"}}>
+            <TouchableOpacity onPress={() => handleSort(dropdownOptions[2])} style={styles.dropdownOption}>
               <Text>Points: Low to High</Text>
             </TouchableOpacity>
           </View>
@@ -447,6 +446,52 @@ const styles = StyleSheet.create({
     padding: 10, 
     marginHorizontal:10, 
     borderRadius: 5,
+    marginTop: 6,
+    alignSelf: "flex-start"
+  },
+  deleteModalContainer: {
+    flex: 1, 
+    justifyContent: "center", 
+    alignItems: "center", 
+    backgroundColor: "white", 
+    padding: 35, 
+    margin: 20, 
+    marginTop: "75%",
+    marginBottom: "75%",
+    borderColor: "#888", 
+    borderWidth: 1, 
+    borderRadius: 10,
+    height: 100
+  },
+  cancelDeleteButton: {
+    backgroundColor: "#888", 
+    padding: 10, 
+    marginHorizontal: 10, 
+    borderRadius: 5, 
     marginTop: 6
   },
+  dropdownContainer: {
+    flex: 1, 
+    flexDirection: "row", 
+    justifyContent: "flex-end", 
+    padding: 10, 
+    marginBottom: 10, 
+    position: "relative", 
+    zIndex: 1
+  },
+  dropdownOption: {
+    padding: 10, 
+    borderBottomWidth: 1, 
+    borderBottomColor: "#eee"
+  },
+  dropdown: {
+    position: "absolute", 
+    top: 40, 
+    right: 10, 
+    backgroundColor: "#fff", 
+    borderWidth: 1, 
+    borderColor: "#ccc", 
+    borderRadius: 6, 
+    zIndex: 1000
+  }
 });
