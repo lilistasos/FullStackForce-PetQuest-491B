@@ -1,14 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { Tabs } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
 import { TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigationState } from '@react-navigation/native';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import HamburgerMenu from '@/components/HamburgerMenu';
+import { useTheme } from '@/contexts/ThemeContext';
+
+// Function to calculate luminance and determine text color
+const getContrastColor = (backgroundColor: string): string => {
+  const hex = backgroundColor.replace('#', '');
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.4 ? '#000000' : '#FFFFFF';
+};
 
 export default function ParentLayout() {
   const [headerTitle, setHeaderTitle] = useState('Calendar');
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [isSubPage, setIsSubPage] = useState(false);
+  const { colors } = useTheme();
+  const headerTextColor = getContrastColor(colors.primary);
+  const router = useRouter();
 
   const navigationState = useNavigationState(state => state);
 
@@ -35,33 +52,74 @@ export default function ParentLayout() {
       } else if (tabName === '(tabs)/post') {
         setHeaderTitle('Post');
       } else if (tabName === '(tabs)/account') {
-        setHeaderTitle('Account');
+        if (activeTabRoute.state && activeTabRoute.state.routes && activeTabRoute.state.index !== undefined) {
+          const accountRoute = activeTabRoute.state.routes[activeTabRoute.state.index];
+          const accountPageName = accountRoute?.name || 'index';
+          
+          // Check if we're on a sub-page (not index)
+          setIsSubPage(accountPageName !== 'index');
+          
+          if (accountPageName === 'edit-profile') setHeaderTitle('Edit Profile');
+          else if (accountPageName === 'notifications') setHeaderTitle('Notification Preferences');
+          else if (accountPageName === 'settings') setHeaderTitle('Settings');
+          else if (accountPageName === 'account-details') setHeaderTitle('Account Details');
+          else if (accountPageName === 'theme') setHeaderTitle('Theme');
+          else if (accountPageName === 'help-center') setHeaderTitle('Help Center');
+          else if (accountPageName === 'contact') setHeaderTitle('Contact');
+          else if (accountPageName === 'feedback') setHeaderTitle('Feedback');
+          else if (accountPageName === 'subscription') setHeaderTitle('Subscription');
+          else if (accountPageName === 'parent-child-settings') setHeaderTitle('Parent-Child Settings');
+          else if (accountPageName === 'preferences') setHeaderTitle('Preferences');
+          else {
+            setHeaderTitle('Account');
+            setIsSubPage(false);
+          }
+        } else {
+          setHeaderTitle('Account');
+          setIsSubPage(false);
+        }
+      } else {
+        setIsSubPage(false);
       }
     }
   }, [navigationState]);
 
   return (
-    <Tabs
-      initialRouteName="(tabs)/calendar"
-      screenOptions={{
-        tabBarActiveTintColor: "#FFFFFF",
-        tabBarInactiveTintColor: "#000000ff",
-        tabBarStyle: { backgroundColor: "#dd4f4fff" },
-        headerStyle: { backgroundColor: "#dd4f4fff" },
-        headerTintColor: "#000000ff",
-        headerTitleStyle: { fontWeight: "bold" },
-        tabBarButton: HapticTab,
-        headerTitleAlign: 'center',
-        tabBarShowLabel: false,
-        headerTitle: headerTitle,
-        headerLeft: () => (
-          <TouchableOpacity style={{ marginLeft: 15 }} onPress={() => {}}>
-            <Ionicons name="menu" size={24} color="black" />
-          </TouchableOpacity>
-        ),
+    <HamburgerMenu 
+      visible={menuVisible} 
+      onClose={() => setMenuVisible(false)}
+      backgroundColor={colors.primary}
+    >
+      <Tabs
+        initialRouteName="(tabs)/calendar"
+        screenOptions={{
+          tabBarActiveTintColor: headerTextColor,
+          tabBarInactiveTintColor: "#555555",
+          tabBarStyle: { backgroundColor: colors.primary },
+          headerStyle: { backgroundColor: colors.primary },
+          headerTintColor: headerTextColor,
+          headerTitleStyle: { fontWeight: "bold", color: headerTextColor },
+          tabBarButton: HapticTab,
+          headerTitleAlign: 'center',
+          tabBarShowLabel: false,
+          headerTitle: headerTitle,
+          headerLeft: () => {
+            if (isSubPage) {
+              return (
+                <TouchableOpacity style={{ marginLeft: 15 }} onPress={() => router.back()}>
+                  <Ionicons name="chevron-back" size={24} color={headerTextColor} />
+                </TouchableOpacity>
+              );
+            }
+            return (
+              <TouchableOpacity style={{ marginLeft: 15 }} onPress={() => setMenuVisible(true)}>
+                <Ionicons name="menu" size={24} color={headerTextColor} />
+              </TouchableOpacity>
+            );
+          },
         headerRight: () => (
           <TouchableOpacity style={{ marginRight: 15 }} onPress={() => {}}>
-            <Ionicons name="notifications-outline" size={24} color="black" />
+            <Ionicons name="notifications-outline" size={24} color={headerTextColor} />
           </TouchableOpacity>
         ),
       }}
@@ -95,5 +153,6 @@ export default function ParentLayout() {
         }}
       />
     </Tabs>
+    </HamburgerMenu>
   );
 }

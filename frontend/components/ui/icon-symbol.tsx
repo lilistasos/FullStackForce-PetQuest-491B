@@ -29,6 +29,11 @@ const MAPPING = {
   'chevron.left.forwardslash.chevron.right': 'code',
   'chevron.right': 'chevron-right',
   'chevron.left': 'chevron-left',
+  'paintbrush.fill': 'format-color-fill',
+  'trophy.fill': 'emoji-events',
+  'questionmark.circle.fill': 'help-circle',
+  'bubble.left.and.bubble.right.fill': 'forum',
+  'moon.fill': 'dark-mode',
 } as IconMapping;
 
 /**

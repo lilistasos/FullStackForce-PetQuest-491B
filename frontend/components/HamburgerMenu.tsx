@@ -1,42 +1,92 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, Animated, Dimensions } from 'react-native';
-import { useRouter } from 'expo-router';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Animated, Dimensions, Image, Switch } from 'react-native';
+import { useRouter, useSegments } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { useAuth } from '@/hooks/useAuth';
+import { useTheme, primaryColors, type PrimaryColorKey } from '@/contexts/ThemeContext';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const DRAWER_WIDTH = SCREEN_WIDTH * 0.75;
+
+// Function to calculate luminance and determine text color
+const getContrastColor = (backgroundColor: string): string => {
+  // Remove # if present
+  const hex = backgroundColor.replace('#', '');
+  
+  // Convert to RGB
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  
+  // Calculate relative luminance
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  
+  // Return black or white based on luminance
+  // Lower threshold to 0.4 to accommodate bright colors like red, pink, orange, magenta
+  return luminance > 0.4 ? '#000000' : '#FFFFFF';
+};
 
 interface HamburgerMenuProps {
   visible: boolean;
   onClose: () => void;
   backgroundColor?: string;
+  children?: React.ReactNode;
 }
 
-export default function HamburgerMenu({ visible, onClose, backgroundColor = '#52AFDD' }: HamburgerMenuProps) {
+export default function HamburgerMenu({ visible, onClose, backgroundColor = '#52AFDD', children }: HamburgerMenuProps) {
   const router = useRouter();
+  const segments = useSegments();
+  const { user } = useAuth();
+  const { isDarkMode, toggleDarkMode, colors, primaryColor, setPrimaryColor } = useTheme();
   const slideAnim = React.useRef(new Animated.Value(-DRAWER_WIDTH)).current;
+  const contentAnim = React.useRef(new Animated.Value(0)).current;
   const [modalVisible, setModalVisible] = React.useState(false);
+  const [colorMenuOpen, setColorMenuOpen] = React.useState(false);
+  
+  // Check if we're on a parent route
+  const isParentRoute = segments[0] === '(parent)' || user?.role === 'parent';
+  
+  // Get appropriate text color for hamburger menu
+  const hamburgerTextColor = getContrastColor(backgroundColor);
 
   React.useEffect(() => {
     if (visible) {
       setModalVisible(true);
       slideAnim.setValue(-DRAWER_WIDTH);
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
+      contentAnim.setValue(0);
+      
+      // Animate both the menu sliding in and content sliding right
+      Animated.parallel([
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(contentAnim, {
+          toValue: DRAWER_WIDTH,
+          duration: 300,
+          useNativeDriver: true,
+        })
+      ]).start();
     } else {
-      Animated.timing(slideAnim, {
-        toValue: -DRAWER_WIDTH,
-        duration: 250,
-        useNativeDriver: true,
-      }).start(() => {
+      // Animate both the menu sliding out and content sliding back
+      Animated.parallel([
+        Animated.timing(slideAnim, {
+          toValue: -DRAWER_WIDTH,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+        Animated.timing(contentAnim, {
+          toValue: 0,
+          duration: 250,
+          useNativeDriver: true,
+        })
+      ]).start(() => {
         setModalVisible(false);
       });
     }
-  }, [visible, slideAnim]);
+  }, [visible, slideAnim, contentAnim]);
 
   const handleNavigate = (route: string) => {
     onClose();
@@ -45,100 +95,204 @@ export default function HamburgerMenu({ visible, onClose, backgroundColor = '#52
     }, 300);
   };
 
-  const handleSignOut = () => {
+
+  const handleAchievements = () => {
     onClose();
     setTimeout(() => {
-      router.replace('/(auth)/signup' as any);
+      // Determine route based on current segments
+      if (segments[0] === '(indv)') {
+        router.push('/(indv)/(tabs)/account/achievements' as any);
+      } else {
+        router.push('/(child)/(tabs)/account/achievements' as any);
+      }
+    }, 300);
+  };
+
+  const handleHelp = () => {
+    onClose();
+    setTimeout(() => {
+      // Determine route based on current segments
+      if (segments[0] === '(indv)') {
+        router.push('/(indv)/(tabs)/account/help-center' as any);
+      } else if (segments[0] === '(parent)') {
+        router.push('/(parent)/(tabs)/account/help-center' as any);
+      } else {
+        router.push('/(child)/(tabs)/account/help-center' as any);
+      }
+    }, 300);
+  };
+
+  const handleDarkModeToggle = (value: boolean) => {
+    if (value !== isDarkMode) {
+      toggleDarkMode();
+    }
+  };
+
+  const handleTheme = () => {
+    onClose();
+    setTimeout(() => {
+      router.push('/(child)/(tabs)/account/theme' as any);
     }, 300);
   };
 
   return (
-    <Modal
-      transparent
-      visible={modalVisible}
-      animationType="none"
-      onRequestClose={onClose}
-    >
-      <View style={styles.overlay}>
-        <TouchableOpacity 
-          style={styles.backdrop} 
-          activeOpacity={1} 
-          onPress={onClose}
-        />
-        
-        <Animated.View 
-          style={[
-            styles.drawer,
-            { 
-              backgroundColor,
-              transform: [{ translateX: slideAnim }],
-              width: DRAWER_WIDTH 
-            }
-          ]}
-        >
-          <View style={styles.header}>
-            <Text style={styles.headerText}>Menu</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Ionicons name="close" size={28} color="#000" />
-            </TouchableOpacity>
+    <View style={styles.container}>
+      {/* Menu drawer - positioned behind content */}
+      <Animated.View 
+        style={[
+          styles.drawer,
+          { 
+            backgroundColor,
+            transform: [{ translateX: slideAnim }],
+            width: DRAWER_WIDTH 
+          }
+        ]}
+      >
+        <View style={[styles.header, { borderBottomColor: 'rgba(0, 0, 0, 0.15)' }]}>
+          <Text style={[styles.headerText, { color: hamburgerTextColor }]}>PetQuest</Text>
+        </View>
+
+        {/* User Profile Section */}
+        <View style={[styles.profileSection, { borderBottomColor: 'rgba(0, 0, 0, 0.15)' }]}>
+          <View style={styles.profileImageContainer}>
+            <Image 
+              key={user?.profileImageUri || 'default'}
+              source={
+                user?.profileImageUri 
+                  ? { uri: user.profileImageUri } 
+                  : require('@/assets/images/defaultpp.jpg')
+              }
+              style={styles.profileImage}
+              defaultSource={require('@/assets/images/defaultpp.jpg')}
+            />
           </View>
+          <Text style={[styles.profileName, { color: hamburgerTextColor }]}>
+            {user?.firstName || user?.name || 'User'}
+          </Text>
+        </View>
 
-          <View style={styles.menuItems}>
+        <View style={styles.menuItems}>
+          {!isParentRoute && (
             <TouchableOpacity 
               style={styles.menuItem}
-              onPress={() => handleNavigate('/(child)/(tabs)/pet')}
+              onPress={handleAchievements}
             >
-              <IconSymbol name="pawprint.fill" size={24} color="#000" style={styles.menuIcon} />
-              <Text style={styles.menuText}>Pet</Text>
+              <IconSymbol name="trophy.fill" size={24} color={hamburgerTextColor} style={styles.menuIcon} />
+              <Text style={[styles.menuText, { color: hamburgerTextColor }]}>Achievements</Text>
             </TouchableOpacity>
+          )}
 
-            <TouchableOpacity 
-              style={styles.menuItem}
-              onPress={() => handleNavigate('/(child)/(tabs)/calendar')}
-            >
-              <IconSymbol name="calendar" size={24} color="#000" style={styles.menuIcon} />
-              <Text style={styles.menuText}>Calendar</Text>
-            </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={handleHelp}
+          >
+            <IconSymbol name="questionmark.circle.fill" size={24} color={hamburgerTextColor} style={styles.menuIcon} />
+            <Text style={[styles.menuText, { color: hamburgerTextColor }]}>Help Center</Text>
+          </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={styles.menuItem}
-              onPress={() => handleNavigate('/(child)/(tabs)/todo')}
-            >
-              <IconSymbol name="list.bullet" size={24} color="#000" style={styles.menuIcon} />
-              <Text style={styles.menuText}>To-Do</Text>
-            </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={() => setColorMenuOpen(!colorMenuOpen)}
+          >
+            <View style={styles.themeColorButton}>
+              <Ionicons name="color-palette-outline" size={24} color={hamburgerTextColor} style={styles.menuIcon} />
+              <Text style={[styles.menuText, { color: hamburgerTextColor }]}>Theme Color</Text>
+              <View style={{ flex: 1 }} />
+              <Ionicons 
+                name={colorMenuOpen ? 'chevron-up' : 'chevron-down'} 
+                size={20} 
+                color={hamburgerTextColor}
+              />
+            </View>
+          </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={styles.menuItem}
-              onPress={() => handleNavigate('/(child)/(tabs)/account')}
-            >
-              <IconSymbol name="person.fill" size={24} color="#000" style={styles.menuIcon} />
-              <Text style={styles.menuText}>Account</Text>
-            </TouchableOpacity>
+          {/* Color dropdown within menu */}
+          {colorMenuOpen && (
+            <View style={styles.colorDropdown}>
+              <View style={[styles.colorOptionsContainer, { backgroundColor: colors.surface, borderColor: '#000000' }]}>
+                {Object.entries(primaryColors).map(([key, color]) => (
+                  <TouchableOpacity
+                    key={key}
+                    style={styles.colorOption}
+                    onPress={() => {
+                      setPrimaryColor(key as PrimaryColorKey);
+                    }}
+                  >
+                    <View 
+                      style={[
+                        styles.colorCircle, 
+                        { backgroundColor: color },
+                        primaryColor === key && styles.colorCircleSelected
+                      ]}
+                    />
+                    {primaryColor === key && (
+                      <Ionicons name="checkmark" size={18} color="#000000" style={styles.checkmark} />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
+
+          <View style={styles.darkModeItem}>
+            <View style={styles.darkModeLabel}>
+              <IconSymbol name="moon.fill" size={24} color={hamburgerTextColor} style={styles.menuIcon} />
+              <Text style={[styles.menuText, { color: hamburgerTextColor }]}>Dark Mode</Text>
+            </View>
+            <Switch
+              value={isDarkMode}
+              onValueChange={handleDarkModeToggle}
+              trackColor={{ false: '#767577', true: hamburgerTextColor === '#FFFFFF' ? '#FFFFFF' : colors.primary }}
+              thumbColor={isDarkMode ? '#fff' : '#f4f3f4'}
+            />
           </View>
+        </View>
 
-          <View style={styles.footer}>
-            <TouchableOpacity 
-              style={styles.signOutButton}
-              onPress={handleSignOut}
-            >
-              <Ionicons name="log-out-outline" size={24} color="#fff" style={styles.menuIcon} />
-              <Text style={styles.signOutText}>Sign Out</Text>
-            </TouchableOpacity>
-          </View>
-        </Animated.View>
-      </View>
-    </Modal>
+      </Animated.View>
+
+      {/* Main content that slides */}
+      <Animated.View 
+        style={[
+          styles.contentContainer,
+          {
+            backgroundColor: colors.background,
+            transform: [{ translateX: contentAnim }]
+          }
+        ]}
+      >
+        {children}
+        {/* Backdrop overlay when menu is open */}
+        {visible && (
+          <TouchableOpacity 
+            style={styles.backdrop} 
+            activeOpacity={1} 
+            onPress={onClose}
+          />
+        )}
+      </Animated.View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
+  container: {
     flex: 1,
-    flexDirection: 'row',
+    position: 'relative',
+  },
+  contentContainer: {
+    flex: 1,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   backdrop: {
-    flex: 1,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   drawer: {
@@ -154,7 +308,7 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 60,
@@ -165,10 +319,33 @@ const styles = StyleSheet.create({
   headerText: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#000',
   },
-  closeButton: {
-    padding: 5,
+  profileSection: {
+    alignItems: 'center',
+    paddingVertical: 20,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  profileImageContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    overflow: 'hidden',
+    marginBottom: 12,
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+  },
+  profileName: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
   menuItems: {
     flex: 1,
@@ -185,29 +362,56 @@ const styles = StyleSheet.create({
   },
   menuText: {
     fontSize: 18,
-    color: '#000',
     fontWeight: '500',
   },
-  footer: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0, 0, 0, 0.1)',
-    paddingTop: 20,
-  },
-  signOutButton: {
+  darkModeItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#d9534f',
-    paddingVertical: 14,
+    justifyContent: 'space-between',
+    paddingVertical: 16,
     paddingHorizontal: 20,
+  },
+  darkModeLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  themeColorButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+  },
+  colorDropdown: {
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+  },
+  colorOptionsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     borderRadius: 8,
+    padding: 16,
+    gap: 12,
+    borderWidth: 1,
+  },
+  colorOption: {
+    width: '21%',
+    aspectRatio: 1,
+    alignItems: 'center',
     justifyContent: 'center',
   },
-  signOutText: {
-    fontSize: 18,
-    color: '#fff',
-    fontWeight: 'bold',
+  colorCircle: {
+    width: '100%',
+    aspectRatio: 1,
+    borderRadius: 50,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  colorCircleSelected: {
+    borderWidth: 3,
+    borderColor: '#000000',
+  },
+  checkmark: {
+    position: 'absolute',
   },
 });
 

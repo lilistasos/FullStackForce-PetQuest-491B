@@ -1,8 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image } from "react-native";
-import { useRouter } from "expo-router";
-import { IconSymbol } from "@/components/ui/icon-symbol";
 import { usePet } from "@/contexts/PetContext";
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface CollectionItem {
   id: string;
@@ -13,8 +12,8 @@ interface CollectionItem {
 }
 
 export default function CollectionScreen() {
-  const router = useRouter();
   const { selectedPet, setSelectedPet } = usePet();
+  const { colors } = useTheme();
 
   const collectionItems: CollectionItem[] = [
     { id: "dragon", name: "Dragon", icon: "", owned: true },
@@ -58,8 +57,9 @@ export default function CollectionScreen() {
     >
       <View style={[
         styles.itemBox,
-        selectedPet.id === item.id && item.owned && styles.selectedItemBox,
-        !item.owned && styles.unownedItemBox
+        { backgroundColor: item.owned ? colors.background : colors.surface, borderColor: colors.primary },
+        selectedPet.id === item.id && item.owned && { borderWidth: 4, borderColor: colors.primary },
+        !item.owned && { borderColor: colors.border }
       ]}>
         {item.id === "dragon" ? (
           <Image 
@@ -80,7 +80,7 @@ export default function CollectionScreen() {
             resizeMode="contain"
           />
         ) : item.owned ? (
-          <Text style={styles.itemTitle}>{item.name}</Text>
+          <Text style={[styles.itemTitle, { color: colors.text }]}>{item.name}</Text>
         ) : (
           // Empty box for unowned pets - no text
           null
@@ -90,20 +90,7 @@ export default function CollectionScreen() {
   );
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => router.back()}>
-          <IconSymbol 
-            name="chevron.left" 
-            size={24} 
-            color="#000" 
-            weight="medium"
-          />
-        </TouchableOpacity>
-      </View>
-
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} showsVerticalScrollIndicator={false}>
       <View style={styles.gridContainer}>
         <View style={styles.grid}>
           {collectionItems.map(renderCollectionItem)}
@@ -116,23 +103,6 @@ export default function CollectionScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
-  },
-  header: {
-    width: "100%",
-    paddingTop: 20,
-    paddingHorizontal: 20,
-    flexDirection: "row",
-    alignItems: "flex-start",
-  },
-  backButton: {
-    backgroundColor: "#52AFDD",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    minWidth: 40,
-    alignItems: "center",
-    justifyContent: "center",
   },
   gridContainer: {
     paddingHorizontal: 20,
@@ -152,31 +122,20 @@ const styles = StyleSheet.create({
   itemBox: {
     width: "100%",
     aspectRatio: 1,
-    backgroundColor: "#FFFFFF",
     borderRadius: 4,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
-    borderColor: "#52AFDD",
     padding: 10,
-  },
-  selectedItemBox: {
-    borderWidth: 4,
-    borderColor: "#52AFDD",
-  },
-  unownedItemBox: {
-    backgroundColor: "#F5F5F5",
-    borderColor: "#CCCCCC",
   },
   itemTitle: {
     fontFamily: "monospace",
     fontSize: 14,
     fontWeight: "bold",
-    color: "#000",
     textAlign: "center",
   },
   grayedOutText: {
-    color: "#999999",
+    opacity: 0.5,
   },
   itemImage: {
     width: 120,
