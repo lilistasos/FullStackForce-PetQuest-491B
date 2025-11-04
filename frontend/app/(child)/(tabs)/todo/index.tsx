@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState } from "react";
 import { View, Text, TouchableOpacity, FlatList, StyleSheet,  Image, ScrollView, Pressable, Modal } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -213,6 +213,7 @@ const handleSort = (sortType: React.SetStateAction<string>) => {
                 </Text>
                 </Pressable>
                 
+                {/* Task Details (description, points, delete button) */}
                 {showDetails === task.id && (
                   <View style={{marginTop: 4}}>
                     <Text style={{color: "#555"}}>Description: {task.description}</Text>
@@ -234,7 +235,7 @@ const handleSort = (sortType: React.SetStateAction<string>) => {
                 }}
                 >
                   <View style={styles.deleteModalContainer}>
-                    <Text style={{fontSize: 18, fontWeight: "600", marginBottom: 10, textAlign: "center"}}>Are you sure you want to delete? You won't get the points for this task if you do.</Text>
+                    <Text style={styles.deleteModalText}>Are you sure you want to delete? You won't get the points for this task if you do.</Text>
                     <View style={{flexDirection: "row", justifyContent: "space-between", width: "100%", marginTop: 10}}>
                       <TouchableOpacity onPress={() => setDeleteModal(false)} style={styles.cancelDeleteButton}>
                         <Text style={{color: 'white'}}>Cancel</Text>
@@ -436,21 +437,6 @@ const styles = StyleSheet.create({
     marginTop: 6,
     alignSelf: "flex-start"
   },
-
-  deleteModalContainer: {
-    flex: 1, 
-    justifyContent: "center", 
-    alignItems: "center", 
-    backgroundColor: "white", 
-    padding: 35, 
-    margin: 20, 
-    marginTop: "75%",
-    marginBottom: "75%",
-    borderColor: "#888", 
-    borderWidth: 1, 
-    borderRadius: 10,
-    height: 100
-  },
   cancelDeleteButton: {
     backgroundColor: "#888", 
     padding: 10, 
@@ -481,5 +467,24 @@ const styles = StyleSheet.create({
     borderColor: "#ccc", 
     borderRadius: 6, 
     zIndex: 1000
+  },
+  deleteModalContainer: {
+    flex: 1, 
+    justifyContent: "center", 
+    alignItems: "center", 
+    backgroundColor: "white", 
+    padding: 35, 
+    margin: 20, 
+    marginTop: "75%",
+    marginBottom: "75%",
+    borderColor: "#888", 
+    borderWidth: 1, 
+    borderRadius: 10,
+  },
+  deleteModalText: {
+    fontSize: 18, 
+    fontWeight: "600", 
+    marginBottom: 10, 
+    textAlign: "center"
   }
 });
