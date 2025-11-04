@@ -85,11 +85,7 @@ const [tasksByDate, setTasksByDate] = useState<{
   "2025-11-04": [
     { id: "8", text: "Take out trash", completed: false, category: "Chores", description: "Take out household trash", points: 5 },
   ],
-}
-
-const [tasksByDate, setTasksByDate] = useState<{
-  [key: string]: Task[];
-}>(taskList);
+});
 
 // Converts current date to a string
 const formatDateKey = (date: Date) => date.toISOString().split("T")[0];
@@ -621,7 +617,7 @@ const styles = StyleSheet.create({
     fontWeight: "600", 
     marginBottom: 10, 
     textAlign: "center"
-  }
+  },
   modalBox: { 
     flex: 1, 
     justifyContent: "center", 
