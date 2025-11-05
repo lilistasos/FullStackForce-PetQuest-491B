@@ -3,7 +3,6 @@ import { View, Text, TouchableOpacity, FlatList, StyleSheet,  Image, ScrollView,
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
-
 // Defines what a task looks like
 type Task = {
   id: string;
@@ -16,11 +15,13 @@ type Task = {
 };
 
 const ToDoScreen = ()=> {
+  const { getTasksByChild, toggleComplete: contextToggleComplete } = useTasks();
+  const { user } = useAuth();
 
-// Current Date State
-// useState hook to store the current date and update it... allows the app to display and maipulate the date dynamically 
+  // Current Date State
   const [currentDate, setCurrentDate] = useState(new Date());
 
+  //const [showDetails, setShowDetails] = useState(false);
   const [showDetails, setShowDetails] = useState<string | null>(null);
   const dropdownOptions = ["Default", "Points: High to Low", "Points: Low to High"];
   
@@ -33,13 +34,9 @@ const ToDoScreen = ()=> {
   const [taskDelete, setTaskDelete] = useState<string | null>(null);
 
   const handlePressTask = (taskId: string) => {
-    setShowDetails((prev) => (prev === taskId ? null : taskId)
-   );
-  };
-
-  const toggleDropdown = () => {
-    setDropdown((prev) => !prev);
-  };
+  setShowDetails((prev) => (prev === taskId ? null : taskId)
+  );
+}
 
 // States for Categories
 // expanded state object to track which categories are currently expanded or collapsed
@@ -50,39 +47,21 @@ const ToDoScreen = ()=> {
     Completed: false,
 });
 
-// States for editting modal
-  const [editModal, setEditModal] = useState(false);
-  const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
-  const [editText, setEditText] = useState("");
-  const [editDescription, setEditDescription] = useState("");
-  const [editPoints, setEditPoints] = useState("");
-  
-// States for completion confirmation
-  const [confirmModal, setConfirmModal] = useState(false);
-  const [taskToConfirm, setTaskToConfirm] = useState<Task | null>(null);
-
-// Points Added Pop Up
-const [pointsPopup, setPointsPopup] = useState<{ visible: boolean; message: string }>({
-  visible: false,
-  message: "",
-});
-const fadeAnim = useState(new Animated.Value(0))[0]; // controls opacity of Pop Up
-
 const [tasksByDate, setTasksByDate] = useState<{
   [key: string]: Task[];
 }>({
-  "2025-11-02": [
+  "2025-10-20": [
     { id: "1", text: "Read ch.1", completed: false, category: "Homework", description: "Read chapter 1 of history textbook", points: 10 },
     { id: "2", text: "Clean kitchen", completed: false, category: "Chores", description: "Wash dishes and wipe counters", points: 5 },
-    { id: "3", text: "Clean room", completed: false, category: "Chores", description: "Tidy up and vacuum", points: 10 },
-    { id: "4", text: "Wash dishes", completed: false, category: "Chores", description: "Clean dirty dishes", points: 10 },
+    { id: "3", text: "Clean room", completed: false, category: "Chores", description: "Tidy up and vacuum", points: 5 },
+    { id: "4", text: "Wash dishes", completed: false, category: "Chores", description: "Clean dirty dishes", points: 5 },
     { id: "5", text: "Laundry", completed: false, category: "Chores", description: "Wash and fold clothes", points: 5 },
   ],
-  "2025-11-03": [
+  "2025-10-21": [
     { id: "6", text: "Math worksheet", completed: false, category: "Homework", description: "Complete assigned math worksheet", points: 10 },
     { id: "7", text: "Soccer practice", completed: false, category: "Extracurriculars", description: "Attend soccer practice", points: 15 },
   ],
-  "2025-11-04": [
+  "2025-10-22": [
     { id: "8", text: "Take out trash", completed: false, category: "Chores", description: "Take out household trash", points: 5 },
   ],
 });
@@ -92,8 +71,8 @@ const formatDateKey = (date: Date) => date.toISOString().split("T")[0];
 const formattedKey = formatDateKey(currentDate);
 const tasks = tasksByDate[formattedKey] || [];
 
-// Helper functions for changing date
-// Able to move back and forth between days 
+  // Helper functions for changing date
+  // Able to move back and forth between days 
   const changeDate = (days: number) => {
     const newDate = new Date(currentDate);
     newDate.setDate(newDate.getDate() + days);
@@ -145,7 +124,7 @@ const showPopup = (message: string) => {
 };
 
 
-// When a user taps tasks it is moved to completed and can be moved back if not
+// Update toggleComplete
 const toggleComplete = (taskId: string) => {
   setTasksByDate((prev) => {
     const updatedDayTasks = (prev[formattedKey] || []).map((task) => {
@@ -173,21 +152,6 @@ const toggleComplete = (taskId: string) => {
     return { ...prev, [formattedKey]: updatedDayTasks };
   });
 };
-
-// handles sort selection from dropdown
-const handleSort = (sortType: React.SetStateAction<string>) => {
-    setSortType(sortType);
-    setDropdown(false);
-    
-  };
-
-  //delete task function
-  const deleteTask = (date: string, taskId: string) => {
-    setTasksByDate(prev => {
-      const updatedTasks = prev[date].filter(task => task.id !== taskId);
-      return {...prev, [date]: updatedTasks};
-    })
-  };
 
 // The four categories for tasks
   const categories = [
@@ -343,6 +307,19 @@ const handleSort = (sortType: React.SetStateAction<string>) => {
     );
   };
 
+  const handlePressTask = (taskId: string) => {
+  setShowDetails((prev) => (prev === taskId ? null : taskId)
+  );
+}
+
+// States for Categories
+// expanded state object to track which categories are currently expanded or collapsed
+  const [expanded, setExpanded] = useState<{ [key: string]: boolean }>({
+    Homework: false, // All categories are collaspsed at first
+    Chores: false,
+    Extracurriculars: false,
+    Completed: false,
+});
 
   return (
     <SafeAreaView style={styles.container}>

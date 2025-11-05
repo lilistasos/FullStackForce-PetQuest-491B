@@ -51,7 +51,8 @@
         {
           "photosPermission": "Allow PetQuest to access your photos to upload a profile picture."
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true,

@@ -1,98 +1,180 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+// Parent chooses which child to create a task for
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import React, { useState } from "react";
+import { View, Text, TouchableOpacity, StyleSheet, FlatList, Image, Dimensions } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter, useFocusEffect } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 
-export default function PostScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+
+const ParentSelectChildScreen = () => {
+  const [selectedChild, setSelectedChild] = useState<string | null>(null);
+
+  const children = [
+    { id: "1", name: "Joey" },
+    { id: "2", name: "Theodore" },
+    { id: "3", name: "Madalynn" },
+    { id: "4", name: "Rinsley" },
+  ];
+
+  
+  const router = useRouter();
+  const screenWidth = Dimensions.get('window').width;
+  const cardSize = (screenWidth - 60) / 2; // 2 cards per row with padding
+
+  // Reset selected child when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      setSelectedChild(null);
+    }, [])
   );
-}
+
+  const handleSelectChild = (childId: string) => {
+    setSelectedChild(childId);
+  };
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <Text style={styles.header}>
+        {selectedChild ? `Create a task for ${selectedChild}` : "Select a child to create a task"}
+      </Text>
+
+      <FlatList
+        data={children}
+        numColumns={2}
+        keyExtractor={(item) => item.id}
+        columnWrapperStyle={styles.row}
+        renderItem={({ item }) => (
+          <TouchableOpacity
+            style={[
+              styles.childCard,
+              { width: cardSize, height: cardSize },
+              selectedChild === item.name && styles.selectedChild,
+            ]}
+            onPress={() => setSelectedChild(item.name)}
+          >
+            <View style={styles.cardContent}>
+              <View style={styles.profileImageContainer}>
+                <Image
+                  source={require('@/assets/images/defaultpp.jpg')}
+                  style={styles.profileImage}
+                  defaultSource={require('@/assets/images/defaultpp.jpg')}
+                />
+              </View>
+              <Text style={styles.childName}>{item.name}</Text>
+            </View>
+            {selectedChild === item.name && (
+              <View style={styles.checkmarkContainer}>
+                <Ionicons name="checkmark-circle" size={24} color="#0077B6" />
+              </View>
+            )}
+          </TouchableOpacity>
+        )}
+      />
+
+      {selectedChild && (
+        <TouchableOpacity
+          style={styles.nextButton}
+          onPress={() =>
+            router.push({
+              pathname: "/(parent)/(tabs)/post/parentcreatetaskscreen",
+              params: { childName: selectedChild },
+            })
+          }
+        >
+          <Text style={styles.nextArrow}>→</Text>
+        </TouchableOpacity>
+      )}
+    </SafeAreaView>
+  );
+};
+
+export default ParentSelectChildScreen;
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: {
+    flex: 1,
+    backgroundColor: "#fff",
+    padding: 20,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  header: {
+    fontSize: 22,
+    fontWeight: "700",
+    textAlign: "center",
+    color: "#0077B6",
+    marginBottom: 30,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  row: {
+    justifyContent: "space-between",
+  },
+  childCard: {
+    backgroundColor: "#E1F5FE",
+    borderRadius: 16,
+    marginBottom: 15,
+    padding: 16,
+    borderWidth: 2,
+    borderColor: "transparent",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  selectedChild: {
+    borderColor: "#0077B6",
+    backgroundColor: "#B3E5FC",
+  },
+  cardContent: {
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  profileImageContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    overflow: "hidden",
+    marginBottom: 12,
+    backgroundColor: "#fff",
+    borderWidth: 2,
+    borderColor: "#0077B6",
+  },
+  profileImage: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
+  },
+  childName: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#0077B6",
+    textAlign: "center",
+  },
+  checkmarkContainer: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+  },
+  nextButton: {
+    position: "absolute",
+    top: 20,
+    right: 20,
+    backgroundColor: "#0077B6",
+    borderRadius: 30,
+    width: 50,
+    height: 50,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  nextArrow: {
+    color: "white",
+    fontSize: 28,
+    fontWeight: "bold",
   },
 });

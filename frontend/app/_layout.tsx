@@ -7,6 +7,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { PetProvider } from '@/contexts/PetContext';
 import { ThemeProvider as CustomThemeProvider } from '@/contexts/ThemeContext';
 import { AuthProvider } from '@/hooks/useAuth';
+import { TaskProvider } from '@/contexts/TaskContext';
 
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
@@ -65,16 +66,18 @@ export default function RootLayout() {
     <AuthProvider>
       <CustomThemeProvider>
         <PetProvider>
-          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-              <Stack.Screen name="(child)" options={{ headerShown: false }} />
-              <Stack.Screen name="(parent)" options={{ headerShown: false }} />
-              <Stack.Screen name="(indv)" options={{ headerShown: false }} />
-              <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-            </Stack>
-            <StatusBar style="auto" />
-          </ThemeProvider>
+          <TaskProvider>
+            <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+              <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                <Stack.Screen name="(child)" options={{ headerShown: false }} />
+                <Stack.Screen name="(parent)" options={{ headerShown: false }} />
+                <Stack.Screen name="(indv)" options={{ headerShown: false }} />
+                <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+              </Stack>
+              <StatusBar style="auto" />
+            </ThemeProvider>
+          </TaskProvider>
         </PetProvider>
       </CustomThemeProvider>
     </AuthProvider>
