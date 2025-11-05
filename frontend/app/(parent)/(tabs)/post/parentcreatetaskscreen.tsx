@@ -9,6 +9,7 @@ import {
   Platform,
   Modal,
   FlatList,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import DateTimePicker from "@react-native-community/datetimepicker";
@@ -37,7 +38,27 @@ const ParentCreateTaskScreen = () => {
         router.back(); // Return to previous screen for now
       };
     const handleCancel = () => {
-        router.back(); // Just go back to child selection
+        Alert.alert(
+          "Discard Task?",
+          "Are you sure you want to discard this task? All your changes will be lost.",
+          [
+            {
+              text: "Go Back",
+              style: "cancel",
+              onPress: () => {
+                // Do nothing, just close the alert
+              },
+            },
+            {
+              text: "Discard",
+              style: "destructive",
+              onPress: () => {
+                router.back(); // Navigate back to previous screen
+              },
+            },
+          ],
+          { cancelable: true }
+        );
       };
     const onDateChange = (_event: any, selectedDate?: Date) => {
         if (Platform.OS === "android") {
