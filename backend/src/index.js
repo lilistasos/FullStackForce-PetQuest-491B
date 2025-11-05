@@ -407,13 +407,13 @@ app.put('/api/users/me', authMiddleware, async (req, res) => {
   }
 });
 
-// Update account info (first name, username only)
+// Update account info (first name, username, profile image)
 app.put('/api/account/update-account', authMiddleware, async (req, res) => {
-  const { firstName, username } = req.body;
+  const { firstName, username, profileImage } = req.body;
   const userId = req.user.sub;
 
-  if (!firstName && !username) {
-    return res.status(400).json({ error: 'At least one field (firstName or username) is required.' });
+  if (!firstName && !username && !profileImage) {
+    return res.status(400).json({ error: 'At least one field must be provided.' });
   }
 
   try {
@@ -429,6 +429,10 @@ app.put('/api/account/update-account', authMiddleware, async (req, res) => {
       updates.push(`username = $${idx++}`);
       values.push(username);
     }
+    if (profileImage) {
+      updates.push(`profile_image = $${idx++}`);
+      values.push(profileImage);
+    }
 
     values.push(userId);
 
@@ -436,7 +440,7 @@ app.put('/api/account/update-account', authMiddleware, async (req, res) => {
       UPDATE users
       SET ${updates.join(', ')}
       WHERE id = $${idx}
-      RETURNING id, email, username, first_name AS "firstName", last_name AS "lastName", role;
+      RETURNING id, email, username, first_name AS "firstName", profile_image AS "profileImage", role;
     `;
 
     const { rows } = await pool.query(query, values);
@@ -446,6 +450,7 @@ app.put('/api/account/update-account', authMiddleware, async (req, res) => {
     res.status(500).json({ error: 'Failed to update account info.' });
   }
 });
+
 
 // Delete account route
 app.delete('/api/account/delete-account', authMiddleware, async (req, res) => {

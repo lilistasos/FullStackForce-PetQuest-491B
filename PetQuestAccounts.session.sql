@@ -1,6 +1,8 @@
 CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
   email TEXT UNIQUE NOT NULL,
+  profile_image TEXT,
+  username TEXT,
   password_hash TEXT NOT NULL,
   first_name TEXT NOT NULL,
   last_name TEXT NOT NULL,
@@ -12,6 +14,4 @@ CREATE TABLE IF NOT EXISTS users (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-ALTER TABLE users
-ADD COLUMN IF NOT EXISTS reset_token TEXT,
-ADD COLUMN IF NOT EXISTS reset_expires TIMESTAMP;
+ALTER TABLE users ADD COLUMN profile_image TEXT;

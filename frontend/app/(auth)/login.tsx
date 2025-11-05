@@ -1,11 +1,11 @@
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { useAuth } from "@/hooks/useAuth"; // ✅ import the auth hook
+import { useAuth } from "@/hooks/useAuth";
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { login } = useAuth(); // ✅ access login() from context
+  const { login } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -35,7 +35,7 @@ export default function LoginScreen() {
         return;
       }
 
-      // ✅ Save token + user in global auth and SecureStore
+      // Save token + user in global auth and SecureStore
       await login(data.token, data.user);
 
       setMessage("Login successful!");

@@ -5,6 +5,7 @@ type Role = "child" | "parent" | "indv";
 type User = {
   id: string;
   email: string;
+  username?: string;
   role: Role;
   name?: string;
   firstName?: string;
@@ -12,6 +13,7 @@ type User = {
   profileImageUri?: string;
   dateOfBirth?: string;
   familyCode?: string;
+  token?: string;
 };
 
 type AuthContextType = {
@@ -52,7 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           // ✅ Preload demo account and token
           const demoUser: User = {
-            id: "4e63d8aa-d56f-4913-a0a2-ef1f57822292", // match backend ID
+            id: "1c2fcc1c-0497-462c-9779-803dc06251f8", // match backend ID
             email: "demo@example.com",
             role: "individual",
             firstName: "Demo",
