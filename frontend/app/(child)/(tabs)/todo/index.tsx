@@ -17,54 +17,52 @@ type Task = {
 };
 
 const ToDoScreen = ()=> {
+  const { getTasksByChild, toggleComplete: contextToggleComplete } = useTasks();
+  const { user } = useAuth();
 
-// Current Date State
-// useState hook to store the current date and update it... allows the app to display and maipulate the date dynamically 
+  // Current Date State
   const [currentDate, setCurrentDate] = useState(new Date());
-
-  //const [showDetails, setShowDetails] = useState(false);
   const [showDetails, setShowDetails] = useState<string | null>(null);
 
-  const handlePressTask = (taskId: string) => {
-  setShowDetails((prev) => (prev === taskId ? null : taskId)
-  );
-}
+  // Get tasks - try multiple name variations
+  const childName = user?.firstName || user?.name || '';
+  const allChildTasks = getTasksByChild(childName);
 
-// States for Categories
-// expanded state object to track which categories are currently expanded or collapsed
-  const [expanded, setExpanded] = useState<{ [key: string]: boolean }>({
-    Homework: false, // All categories are collaspsed at first
-    Chores: false,
-    Extracurriculars: false,
-    Completed: false,
-});
+  // If no tasks found, try with common child names (for testing)
+  const fallbackTasks = allChildTasks.length === 0 
+    ? getTasksByChild('Joey').concat(
+        getTasksByChild('Theodore'),
+        getTasksByChild('Madalynn'),
+        getTasksByChild('Rinsley')
+      )
+    : allChildTasks;
 
-const [tasksByDate, setTasksByDate] = useState<{
-  [key: string]: Task[];
-}>({
-  "2025-10-20": [
-    { id: "1", text: "Read ch.1", completed: false, category: "Homework", description: "Read chapter 1 of history textbook", points: 10 },
-    { id: "2", text: "Clean kitchen", completed: false, category: "Chores", description: "Wash dishes and wipe counters", points: 5 },
-    { id: "3", text: "Clean room", completed: false, category: "Chores", description: "Tidy up and vacuum", points: 5 },
-    { id: "4", text: "Wash dishes", completed: false, category: "Chores", description: "Clean dirty dishes", points: 5 },
-    { id: "5", text: "Laundry", completed: false, category: "Chores", description: "Wash and fold clothes", points: 5 },
-  ],
-  "2025-10-21": [
-    { id: "6", text: "Math worksheet", completed: false, category: "Homework", description: "Complete assigned math worksheet", points: 10 },
-    { id: "7", text: "Soccer practice", completed: false, category: "Extracurriculars", description: "Attend soccer practice", points: 15 },
-  ],
-  "2025-10-22": [
-    { id: "8", text: "Take out trash", completed: false, category: "Chores", description: "Take out household trash", points: 5 },
-  ],
-});
+  // Convert to tasksByDate format
+  const formatDateKey = (date: Date) => date.toISOString().split("T")[0];
 
-// Converts current date to a string
-const formatDateKey = (date: Date) => date.toISOString().split("T")[0];
-const formattedKey = formatDateKey(currentDate);
-const tasks = tasksByDate[formattedKey] || [];
+  const tasksByDate = fallbackTasks.reduce((acc, task) => {
+    const taskDate = new Date(task.dueDate);
+    const dateKey = formatDateKey(taskDate);
+    if (!acc[dateKey]) {
+      acc[dateKey] = [];
+    }
+    acc[dateKey].push({
+      id: task.id,
+      text: task.text,
+      completed: task.completed,
+      category: task.completed ? 'Completed' : task.category,
+      originalCategory: task.completed ? task.category : undefined,
+      description: task.description,
+      points: task.points,
+    });
+    return acc;
+  }, {} as { [key: string]: Task[] });
 
-// Helper functions for changing date
-// Able to move back and forth between days 
+  const formattedKey = formatDateKey(currentDate);
+  const tasks = tasksByDate[formattedKey] || [];
+
+  // Helper functions for changing date
+  // Able to move back and forth between days 
   const changeDate = (days: number) => {
     const newDate = new Date(currentDate);
     newDate.setDate(newDate.getDate() + days);
@@ -78,33 +76,9 @@ const monthDay = currentDate.toLocaleDateString("en-US", {
 });
 const year = currentDate.getFullYear();
 
-// When a user taps tasks it is moved to completed and can be moved back if not
+// Update toggleComplete
 const toggleComplete = (taskId: string) => {
-  setTasksByDate((prev) => {
-    const updatedDayTasks = (prev[formattedKey] || []).map((task) => {
-      if (task.id === taskId) {
-        if (task.completed && task.category === "Completed" && task.originalCategory) {
-          // unmark completed → move back to original
-          return {
-            ...task,
-            completed: false,
-            category: task.originalCategory,
-            originalCategory: undefined,
-          };
-        } else if (!task.completed && task.category !== "Completed") {
-          // mark as completed → move to Completed section
-          return {
-            ...task,
-            completed: true,
-            originalCategory: task.category,
-            category: "Completed",
-          };
-        }
-      }
-      return task;
-    });
-    return { ...prev, [formattedKey]: updatedDayTasks };
-  });
+  contextToggleComplete(taskId);
 };
 
 // The four categories for tasks
@@ -185,15 +159,19 @@ const toggleComplete = (taskId: string) => {
     );
   };
 
-  const { tasks: contextTasks, toggleComplete: contextToggleComplete } = useTasks();
-  const { user } = useAuth();
-  
-  // Get tasks for this child
-  const childTasks = contextTasks.filter((task) => task.assignedTo === user?.firstName);
-  
-  // Update your tasksByDate state to use childTasks instead of hardcoded tasks
-  // You'll need to map childTasks to the format expected by your existing code
+  const handlePressTask = (taskId: string) => {
+  setShowDetails((prev) => (prev === taskId ? null : taskId)
+  );
+}
 
+// States for Categories
+// expanded state object to track which categories are currently expanded or collapsed
+  const [expanded, setExpanded] = useState<{ [key: string]: boolean }>({
+    Homework: false, // All categories are collaspsed at first
+    Chores: false,
+    Extracurriculars: false,
+    Completed: false,
+});
 
   return (
     <SafeAreaView style={styles.container}>
