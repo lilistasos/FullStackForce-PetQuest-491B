@@ -162,20 +162,6 @@ export default function EditProfileScreen() {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={[styles.backButton, { backgroundColor: colors.primary }]}
-          onPress={() => router.back()}>
-          <IconSymbol 
-            name="chevron.left" 
-            size={24} 
-            color={colors.text} 
-            weight="medium"
-          />
-        </TouchableOpacity>
-        <View style={styles.headerSpacer} />
-      </View>
-      
       <View style={styles.content}>
         {/* Profile Photo Section */}
         <View style={styles.profileSection}>
@@ -242,26 +228,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    width: "100%",
-    paddingTop: 20,
-    paddingHorizontal: 20,
-    flexDirection: "row",
-    justifyContent: "flex-start",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  backButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    minWidth: 40,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  headerSpacer: {
-    flex: 1,
-  },
   content: {
     paddingHorizontal: 20,
     alignItems: 'center',
@@ -269,7 +235,7 @@ const styles = StyleSheet.create({
   profileSection: {
     alignItems: 'center',
     marginBottom: 30,
-    marginTop: 10,
+    marginTop: 50,
   },
   profileImageContainer: {
     width: 160,
