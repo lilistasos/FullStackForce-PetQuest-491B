@@ -118,6 +118,7 @@ function authMiddleware(req, res, next) {
     }
     const token = auth.split(' ')[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log("✅ Authenticated user:", decoded);
     req.user = decoded;
     next();
   } catch {
@@ -323,9 +324,8 @@ app.post('/api/auth/verify-code', async (req, res) => {
 // In-memory password reset codes (temporary)
 const resetCodes = {};
 
-// Request reset code — sends email now
+// Request reset code — no email, just console log(backend)
 app.post('/api/auth/forgot-password', async (req, res) => {
-  console.log('📩 /forgot-password called with:', req.body)
   const { email } = req.body;
   if (!email) return res.status(400).json({ error: 'Email is required.' });
 
@@ -336,18 +336,8 @@ app.post('/api/auth/forgot-password', async (req, res) => {
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     resetCodes[email] = code;
 
-    const msg = {
-      to: email,
-      from: process.env.SENDGRID_FROM_EMAIL || 'lolerpops1@gmail.com',
-      subject: 'Your Pet Quest Password Reset Code',
-      text: `Your Password Reset code is: ${code}`,
-      html: `<p>Your Password Reset code is: <strong>${code}</strong></p>`,
-    };
-
-    await sgMail.send(msg);
-    console.log({message: 'Password reset code sent to ${email}: ${code}`'});
-    res.json({message:'Password reset code sent to your email.'});
-
+    console.log(`🔐 Password reset code for ${email}: ${code}`);
+    res.json({ message: 'Password reset code generated. Check console.' });
   } catch (err) {
     console.error('Error generating reset code:', err);
     res.status(500).json({ error: 'Server error during password reset request.' });
@@ -414,6 +404,64 @@ app.put('/api/users/me', authMiddleware, async (req, res) => {
     const status = err.status || 500;
     console.error('PUT /me error:', err);
     res.status(status).json({ error: err.message || 'Server error' });
+  }
+});
+
+// Update account info (first name, username, profile image)
+app.put('/api/account/update-account', authMiddleware, async (req, res) => {
+  const { firstName, username, profileImage } = req.body;
+  const userId = req.user.sub;
+
+  if (!firstName && !username && !profileImage) {
+    return res.status(400).json({ error: 'At least one field must be provided.' });
+  }
+
+  try {
+    const updates = [];
+    const values = [];
+    let idx = 1;
+
+    if (firstName) {
+      updates.push(`first_name = $${idx++}`);
+      values.push(firstName);
+    }
+    if (username) {
+      updates.push(`username = $${idx++}`);
+      values.push(username);
+    }
+    if (profileImage) {
+      updates.push(`profile_image = $${idx++}`);
+      values.push(profileImage);
+    }
+
+    values.push(userId);
+
+    const query = `
+      UPDATE users
+      SET ${updates.join(', ')}
+      WHERE id = $${idx}
+      RETURNING id, email, username, first_name AS "firstName", profile_image AS "profileImage", role;
+    `;
+
+    const { rows } = await pool.query(query, values);
+    res.json(rows[0]);
+  } catch (err) {
+    console.error('Error updating account:', err);
+    res.status(500).json({ error: 'Failed to update account info.' });
+  }
+});
+
+
+// Delete account route
+app.delete('/api/account/delete-account', authMiddleware, async (req, res) => {
+  const userId = req.user.sub;
+
+  try {
+    await pool.query('DELETE FROM users WHERE id = $1', [userId]);
+    res.json({ message: 'Account deleted permanently.' });
+  } catch (err) {
+    console.error('Error deleting account:', err);
+    res.status(500).json({ error: 'Error deleting account.' });
   }
 });
 
