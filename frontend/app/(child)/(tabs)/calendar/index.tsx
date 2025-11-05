@@ -302,7 +302,7 @@ export default function CalendarScreen() {
         paddingRight: 10,
         marginBottom: 0,
         backgroundColor: calendarBg,
-        paddingTop: 10,
+        paddingTop: 4,
         paddingBottom: 0,
       },
       monthText: {
@@ -329,7 +329,8 @@ export default function CalendarScreen() {
       },
       week: {
         backgroundColor: calendarBg,
-        paddingTop: 24,
+        paddingTop: 8,
+        paddingBottom: 4,
       },
     },
   }), [colors.background, colors.text, colors.primary, buttonTextColor, isDarkMode]);
@@ -686,8 +687,8 @@ const styles = StyleSheet.create({
   calendarWrapper: {
     overflow: 'visible',
     position: 'relative',
-    paddingBottom: 8,
-    paddingTop: 16,
+    paddingBottom: 4,
+    paddingTop: 4,
     ...noShadow,
   },
   calendar: {

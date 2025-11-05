@@ -1,73 +1,128 @@
 import React, { useState } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, TextInput, Alert, ScrollView } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet, TextInput, Alert, ScrollView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/contexts/ThemeContext';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import * as ImagePicker from 'expo-image-picker';
+
+// Get API URL based on platform
+const getApiUrl = () => {
+  if (Platform.OS === 'android') {
+    return "http://10.0.2.2:4000";
+  } else if (Platform.OS === 'ios') {
+    return "http://localhost:4000";
+  } else {
+    return "http://localhost:4000";
+  }
+};
 
 export default function EditProfileScreen() {
   const router = useRouter();
-  const { user, updateUser } = useAuth();
+  const { user, token, updateUser } = useAuth();
   const { colors } = useTheme();
-  
-  const [username, setUsername] = useState(user?.name || '');
+
+  const [username, setUsername] = useState(user?.username || user?.name || '');
   const [firstName, setFirstName] = useState(user?.firstName || '');
   const [profileImage, setProfileImage] = useState(
-    user?.profileImageUri 
-      ? { uri: user.profileImageUri } 
+    user?.profileImageUri
+      ? { uri: user.profileImageUri }
       : require('@/assets/images/defaultpp.jpg')
   );
   const [imageChanged, setImageChanged] = useState(false);
-  
+
   // Check if any changes have been made
   // Check if profileImage is a URI object (has uri property) or a require() number
-  const currentImageUri = (typeof profileImage === 'object' && profileImage !== null && 'uri' in profileImage) 
-    ? profileImage.uri 
+  const currentImageUri = (typeof profileImage === 'object' && profileImage !== null && 'uri' in profileImage)
+    ? profileImage.uri
     : null;
-  const hasChanges = username !== (user?.name || '') || firstName !== (user?.firstName || '') || 
-                     (imageChanged && currentImageUri !== user?.profileImageUri);
+  const hasChanges = username !== (user?.username || user?.name || '') || firstName !== (user?.firstName || '') ||
+    (imageChanged && currentImageUri !== user?.profileImageUri);
 
   const handleSaveProfile = async () => {
     try {
-      // Get the profile image URI if it was changed
-      const currentImageUri = (typeof profileImage === 'object' && profileImage !== null && 'uri' in profileImage) 
-        ? profileImage.uri 
+      const updatedFirstName = firstName.trim();
+      const updatedUsername = username.trim();
+
+      const currentUsername = user?.username || user?.name || '';
+      const currentImageUri = (typeof profileImage === 'object' && profileImage !== null && 'uri' in profileImage)
+        ? profileImage.uri
         : null;
       
-      const updates: { name?: string; firstName?: string; profileImageUri?: string } = {};
+      // Check if anything changed
+      const firstNameChanged = updatedFirstName !== (user?.firstName || '') && updatedFirstName.length > 0;
+      const usernameChanged = updatedUsername !== currentUsername && updatedUsername.length > 0;
+      const imageWasChanged = imageChanged && currentImageUri && currentImageUri !== user?.profileImageUri;
       
-      // Save username as name field
-      const updatedName = username.trim();
-      if (updatedName) {
-        updates.name = updatedName;
+      if (!firstNameChanged && !usernameChanged && !imageWasChanged) {
+        Alert.alert("No changes", "You haven't changed any information.");
+        return;
       }
-      
-      // Save firstName separately
-      const updatedFirstName = firstName.trim();
-      if (updatedFirstName) {
-        updates.firstName = updatedFirstName;
+
+      // Build request body with only changed fields
+      const requestBody: { firstName?: string; username?: string; profileImage?: string } = {};
+      if (firstNameChanged) {
+        requestBody.firstName = updatedFirstName;
       }
-      
-      // Save the image if it was changed
-      if (imageChanged && currentImageUri) {
-        updates.profileImageUri = currentImageUri;
+      if (usernameChanged) {
+        requestBody.username = updatedUsername;
       }
-      
-      if (Object.keys(updates).length > 0) {
-        await updateUser(updates);
-        // Reset imageChanged flag after successful save
-        setImageChanged(false);
+      if (imageWasChanged && currentImageUri) {
+        // For now, send the local URI. In production, you'd want to upload the image first
+        // and send the server URL instead
+        requestBody.profileImage = currentImageUri;
       }
+
+      // Double-check we have at least one field to update
+      if (Object.keys(requestBody).length === 0) {
+        Alert.alert("No changes", "You haven't changed any information or fields cannot be empty.");
+        return;
+      }
+
+      // Check if token exists
+      if (!token) {
+        Alert.alert("Error", "You must be logged in to update your profile.");
+        return;
+      }
+
+      // Send to backend route
+      const res = await fetch(`${getApiUrl()}/api/account/update-account`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, // Uses token for authMiddleware
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        Alert.alert("Error", data.error || "Failed to update account info.");
+        return;
+      }
+
+      // Update local user context
+      await updateUser({
+        ...user,
+        firstName: data.firstName,
+        username: data.username, // Backend returns username
+        name: data.username, // Also update name for compatibility
+        profileImageUri: data.profileImage || user?.profileImageUri, // Update profile image if changed
+      });
       
-      Alert.alert("Success", "Profile updated successfully!", [
+      // Reset image changed flag after successful save
+      setImageChanged(false);
+
+      Alert.alert("Success", "Account information updated successfully!", [
         {
           text: "OK",
           onPress: () => router.back()
         }
       ]);
     } catch (error) {
-      console.error("Error updating profile:", error);
-      Alert.alert("Error", "Failed to update profile. Please try again.");
+      console.error("Error updating account:", error);
+      Alert.alert("Error", "Failed to update account. Please try again.");
     }
   };
 
@@ -175,13 +230,12 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 20,
-    paddingTop: 20,
     alignItems: 'center',
   },
   profileSection: {
     alignItems: 'center',
     marginBottom: 30,
-    marginTop: 10,
+    marginTop: 50,
   },
   profileImageContainer: {
     width: 160,
@@ -233,3 +287,4 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 });
+
