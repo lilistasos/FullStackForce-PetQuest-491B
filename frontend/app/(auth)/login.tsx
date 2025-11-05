@@ -23,6 +23,7 @@ export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
@@ -120,13 +121,23 @@ export default function LoginScreen() {
         onChangeText={setEmail}
       />
 
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
+      <View style={styles.passwordContainer}>
+        <TextInput
+          style={[styles.input, { flex: 1, marginBottom: 0 }]}
+          placeholder="Password"
+          secureTextEntry={!showPassword}
+          value={password}
+          onChangeText={setPassword}
+        />
+        <TouchableOpacity
+          style={styles.showButton}
+          onPress={() => setShowPassword(!showPassword)}
+        >
+          <Text style={styles.showButtonText}>
+            {showPassword ? "Hide" : "Show"}
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       {message ? (
         <Text style={[styles.message, message.includes("successful") ? styles.successMessage : styles.errorMessage]}>
@@ -182,4 +193,7 @@ const styles = StyleSheet.create({
   createAccount: { marginTop: 20, color: "#000", fontSize: 14 },
   forgotPassword: {marginTop: 20, color: "#000", fontSize: 14},
   back: { marginTop: 10, color: "#555" },
+  passwordContainer: { flexDirection: "row", alignItems: "center", width: "90%", marginBottom: 15},
+  showButton: { position: "absolute", right: 15},
+  showButtonText: {color: "#52AFDD", fontWeight: "bold"},
 });
