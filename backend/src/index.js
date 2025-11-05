@@ -443,11 +443,24 @@ app.put('/api/account/update-account', authMiddleware, async (req, res) => {
       RETURNING id, email, username, first_name AS "firstName", profile_image AS "profileImage", role;
     `;
 
+    console.log('Executing query:', query);
+    console.log('With values:', values);
     const { rows } = await pool.query(query, values);
+    console.log('Query successful, rows returned:', rows);
     res.json(rows[0]);
   } catch (err) {
     console.error('Error updating account:', err);
-    res.status(500).json({ error: 'Failed to update account info.' });
+    console.error('Error details:', {
+      message: err.message,
+      code: err.code,
+      detail: err.detail,
+      hint: err.hint,
+      position: err.position
+    });
+    res.status(500).json({ 
+      error: 'Failed to update account info.',
+      details: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
   }
 });
 

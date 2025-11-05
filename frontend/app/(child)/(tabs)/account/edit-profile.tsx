@@ -1,17 +1,28 @@
 import React, { useState } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, TextInput, Alert, ScrollView } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet, TextInput, Alert, ScrollView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/contexts/ThemeContext';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import * as ImagePicker from 'expo-image-picker';
 
+// Get API URL based on platform
+const getApiUrl = () => {
+  if (Platform.OS === 'android') {
+    return "http://10.0.2.2:4000";
+  } else if (Platform.OS === 'ios') {
+    return "http://localhost:4000";
+  } else {
+    return "http://localhost:4000";
+  }
+};
+
 export default function EditProfileScreen() {
   const router = useRouter();
   const { user, token, updateUser } = useAuth();
   const { colors } = useTheme();
 
-  const [username, setUsername] = useState(user?.name || '');
+  const [username, setUsername] = useState(user?.username || user?.name || '');
   const [firstName, setFirstName] = useState(user?.firstName || '');
   const [profileImage, setProfileImage] = useState(
     user?.profileImageUri
@@ -25,7 +36,7 @@ export default function EditProfileScreen() {
   const currentImageUri = (typeof profileImage === 'object' && profileImage !== null && 'uri' in profileImage)
     ? profileImage.uri
     : null;
-  const hasChanges = username !== (user?.name || '') || firstName !== (user?.firstName || '') ||
+  const hasChanges = username !== (user?.username || user?.name || '') || firstName !== (user?.firstName || '') ||
     (imageChanged && currentImageUri !== user?.profileImageUri);
 
   const handleSaveProfile = async () => {
@@ -33,25 +44,55 @@ export default function EditProfileScreen() {
       const updatedFirstName = firstName.trim();
       const updatedUsername = username.trim();
 
-      if (
-        updatedFirstName === (user?.firstName || '') &&
-        updatedUsername === (user?.username || '')
-      ) {
+      const currentUsername = user?.username || user?.name || '';
+      const currentImageUri = (typeof profileImage === 'object' && profileImage !== null && 'uri' in profileImage)
+        ? profileImage.uri
+        : null;
+      
+      // Check if anything changed
+      const firstNameChanged = updatedFirstName !== (user?.firstName || '') && updatedFirstName.length > 0;
+      const usernameChanged = updatedUsername !== currentUsername && updatedUsername.length > 0;
+      const imageWasChanged = imageChanged && currentImageUri && currentImageUri !== user?.profileImageUri;
+      
+      if (!firstNameChanged && !usernameChanged && !imageWasChanged) {
         Alert.alert("No changes", "You haven't changed any information.");
         return;
       }
 
+      // Build request body with only changed fields
+      const requestBody: { firstName?: string; username?: string; profileImage?: string } = {};
+      if (firstNameChanged) {
+        requestBody.firstName = updatedFirstName;
+      }
+      if (usernameChanged) {
+        requestBody.username = updatedUsername;
+      }
+      if (imageWasChanged && currentImageUri) {
+        // For now, send the local URI. In production, you'd want to upload the image first
+        // and send the server URL instead
+        requestBody.profileImage = currentImageUri;
+      }
+
+      // Double-check we have at least one field to update
+      if (Object.keys(requestBody).length === 0) {
+        Alert.alert("No changes", "You haven't changed any information or fields cannot be empty.");
+        return;
+      }
+
+      // Check if token exists
+      if (!token) {
+        Alert.alert("Error", "You must be logged in to update your profile.");
+        return;
+      }
+
       // Send to backend route
-      const res = await fetch("http://10.0.2.2:4000/api/account/update-account", {
+      const res = await fetch(`${getApiUrl()}/api/account/update-account`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`, // Uses token for authMiddleware
         },
-        body: JSON.stringify({
-          firstName: updatedFirstName !== user?.firstName ? updatedFirstName : undefined,
-          username: updatedUsername !== user?.username ? updatedUsername : undefined,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       const data = await res.json();
@@ -65,8 +106,13 @@ export default function EditProfileScreen() {
       await updateUser({
         ...user,
         firstName: data.firstName,
-        username: data.username,
+        username: data.username, // Backend returns username
+        name: data.username, // Also update name for compatibility
+        profileImageUri: data.profileImage || user?.profileImageUri, // Update profile image if changed
       });
+      
+      // Reset image changed flag after successful save
+      setImageChanged(false);
 
       Alert.alert("Success", "Account information updated successfully!", [
         {
