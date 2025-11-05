@@ -381,4 +381,3 @@ const ParentCreateTaskScreen = () => {
         fontWeight: "600",
       },
     });
-
