@@ -3,71 +3,80 @@ import { View, Text, Image, TouchableOpacity, StyleSheet, TextInput, Alert, Scro
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/contexts/ThemeContext';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import * as ImagePicker from 'expo-image-picker';
 
 export default function EditProfileScreen() {
   const router = useRouter();
-  const { user, updateUser } = useAuth();
+  const { user, token, updateUser } = useAuth();
   const { colors } = useTheme();
-  
+
   const [username, setUsername] = useState(user?.name || '');
   const [firstName, setFirstName] = useState(user?.firstName || '');
   const [profileImage, setProfileImage] = useState(
-    user?.profileImageUri 
-      ? { uri: user.profileImageUri } 
+    user?.profileImageUri
+      ? { uri: user.profileImageUri }
       : require('@/assets/images/defaultpp.jpg')
   );
   const [imageChanged, setImageChanged] = useState(false);
-  
+
   // Check if any changes have been made
   // Check if profileImage is a URI object (has uri property) or a require() number
-  const currentImageUri = (typeof profileImage === 'object' && profileImage !== null && 'uri' in profileImage) 
-    ? profileImage.uri 
+  const currentImageUri = (typeof profileImage === 'object' && profileImage !== null && 'uri' in profileImage)
+    ? profileImage.uri
     : null;
-  const hasChanges = username !== (user?.name || '') || firstName !== (user?.firstName || '') || 
-                     (imageChanged && currentImageUri !== user?.profileImageUri);
+  const hasChanges = username !== (user?.name || '') || firstName !== (user?.firstName || '') ||
+    (imageChanged && currentImageUri !== user?.profileImageUri);
 
   const handleSaveProfile = async () => {
     try {
-      // Get the profile image URI if it was changed
-      const currentImageUri = (typeof profileImage === 'object' && profileImage !== null && 'uri' in profileImage) 
-        ? profileImage.uri 
-        : null;
-      
-      const updates: { name?: string; firstName?: string; profileImageUri?: string } = {};
-      
-      // Save username as name field
-      const updatedName = username.trim();
-      if (updatedName) {
-        updates.name = updatedName;
-      }
-      
-      // Save firstName separately
       const updatedFirstName = firstName.trim();
-      if (updatedFirstName) {
-        updates.firstName = updatedFirstName;
+      const updatedUsername = username.trim();
+
+      if (
+        updatedFirstName === (user?.firstName || '') &&
+        updatedUsername === (user?.username || '')
+      ) {
+        Alert.alert("No changes", "You haven't changed any information.");
+        return;
       }
-      
-      // Save the image if it was changed
-      if (imageChanged && currentImageUri) {
-        updates.profileImageUri = currentImageUri;
+
+      // Send to backend route
+      const res = await fetch("http://10.0.2.2:4000/api/account/update-account", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, // Uses token for authMiddleware
+        },
+        body: JSON.stringify({
+          firstName: updatedFirstName !== user?.firstName ? updatedFirstName : undefined,
+          username: updatedUsername !== user?.username ? updatedUsername : undefined,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        Alert.alert("Error", data.error || "Failed to update account info.");
+        return;
       }
-      
-      if (Object.keys(updates).length > 0) {
-        await updateUser(updates);
-        // Reset imageChanged flag after successful save
-        setImageChanged(false);
-      }
-      
-      Alert.alert("Success", "Profile updated successfully!", [
+
+      // Update local user context
+      await updateUser({
+        ...user,
+        firstName: data.firstName,
+        username: data.username,
+      });
+
+      Alert.alert("Success", "Account information updated successfully!", [
         {
           text: "OK",
           onPress: () => router.back()
         }
       ]);
     } catch (error) {
-      console.error("Error updating profile:", error);
-      Alert.alert("Error", "Failed to update profile. Please try again.");
+      console.error("Error updating account:", error);
+      Alert.alert("Error", "Failed to update account. Please try again.");
     }
   };
 
@@ -107,6 +116,20 @@ export default function EditProfileScreen() {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={[styles.backButton, { backgroundColor: colors.primary }]}
+          onPress={() => router.back()}>
+          <IconSymbol 
+            name="chevron.left" 
+            size={24} 
+            color={colors.text} 
+            weight="medium"
+          />
+        </TouchableOpacity>
+        <View style={styles.headerSpacer} />
+      </View>
+      
       <View style={styles.content}>
         {/* Profile Photo Section */}
         <View style={styles.profileSection}>
@@ -173,9 +196,28 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  header: {
+    width: "100%",
+    paddingTop: 20,
+    paddingHorizontal: 20,
+    flexDirection: "row",
+    justifyContent: "flex-start",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  backButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    minWidth: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerSpacer: {
+    flex: 1,
+  },
   content: {
     paddingHorizontal: 20,
-    paddingTop: 20,
     alignItems: 'center',
   },
   profileSection: {
@@ -233,3 +275,4 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 });
+
