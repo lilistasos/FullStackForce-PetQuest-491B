@@ -5,6 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/contexts/ThemeContext';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import * as SecureStore from "expo-secure-store";
+import { Platform } from "react-native";
 
 export default function AccountDetailsScreen() {
   const router = useRouter();
@@ -34,13 +36,55 @@ export default function AccountDetailsScreen() {
     );
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (deleteConfirmText === 'DELETE') {
       setShowDeleteModal(false);
       setDeleteConfirmText('');
-      // TODO: Implement account deletion
-      console.log('Account deletion confirmed');
-      Alert.alert("Account Deleted", "Your account has been permanently deleted.");
+
+      if (!user) {
+        Alert.alert("Error", "You must be logged in to delete your account.");
+        return;
+      }
+
+      try {
+        const token = await SecureStore.getItemAsync("token");
+
+        if (!token) {
+          Alert.alert("Error", "No authentication token found.");
+          return;
+        }
+
+        // ✅ Platform-safe backend URL (works for Android Emulator or local dev)
+        const API_BASE_URL =
+          Platform.OS === "android"
+            ? "http://10.0.2.2:4000"
+            : "http://localhost:4000";
+
+        const endpoint = `${API_BASE_URL}/api/account/delete-account`;
+        console.log("🪪 Deleting account at:", endpoint);
+
+        const response = await fetch(endpoint, {
+          method: "DELETE",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (response.ok) {
+          await SecureStore.deleteItemAsync("token");
+          await SecureStore.deleteItemAsync("user");
+          Alert.alert("Account Deleted", "Your account has been permanently deleted.", [
+            { text: "OK", onPress: () => router.replace("/(auth)/signup") }
+          ]);
+        } else {
+          const errorData = await response.json();
+          Alert.alert("Error", errorData.error || "Failed to delete account.");
+        }
+      } catch (err) {
+        console.error("❌ Error deleting account:", err);
+        Alert.alert("Error", "An unexpected error occurred while deleting the account.");
+      }
     } else {
       Alert.alert("Invalid Confirmation", "You must type 'DELETE' exactly to confirm.");
     }

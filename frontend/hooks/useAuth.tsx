@@ -50,26 +50,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(JSON.parse(u));
           console.log("✅ Loaded saved user and token");
         } else {
-          console.log("⚠️ No stored credentials found, loading demo user for testing.");
-
-          // ✅ Preload demo account and token
-          const demoUser: User = {
-            id: "1c2fcc1c-0497-462c-9779-803dc06251f8", // match backend ID
-            email: "demo@example.com",
-            role: "individual",
-            firstName: "Demo",
-            lastName: "User",
-          };
-
-          const demoToken =
-            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0ZTYzZDhhYS1kNTZmLTQ5MTMtYTBhMi1lZjFmNTc4MjIyOTIiLCJlbWFpbCI6ImRlbW9AZXhhbXBsZS5jb20iLCJpYXQiOjE3NjIyOTYyNTMsImV4cCI6MTc2MjkwMTA1M30.OnHEhpkF-IN1FEmP-U-xYgCvLpEmK_EvOumHxt0R1X0";
-
-          setUser(demoUser);
-          setToken(demoToken);
-          await SecureStore.setItemAsync("user", JSON.stringify(demoUser));
-          await SecureStore.setItemAsync("token", demoToken);
-
-          console.log("✅ Demo user and token loaded into SecureStore");
+          console.log("⚠️ No stored credentials found. User needs to log in.");
+          // Removed demo user auto-login - users must log in
         }
       } finally {
         setLoading(false);

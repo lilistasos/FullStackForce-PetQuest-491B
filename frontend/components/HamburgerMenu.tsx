@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, Animated, Dimensions, Image, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Animated, Dimensions, Image, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -13,15 +13,12 @@ interface HamburgerMenuProps {
   onClose: () => void;
   backgroundColor?: string;
   children?: React.ReactNode;
-  children?: React.ReactNode;
 }
 
-export default function HamburgerMenu({ visible, onClose, backgroundColor = '#52AFDD', children }: HamburgerMenuProps) {
 export default function HamburgerMenu({ visible, onClose, backgroundColor = '#52AFDD', children }: HamburgerMenuProps) {
   const router = useRouter();
   const { user } = useAuth();
   const slideAnim = React.useRef(new Animated.Value(-DRAWER_WIDTH)).current;
-  const contentAnim = React.useRef(new Animated.Value(0)).current;
   const contentAnim = React.useRef(new Animated.Value(0)).current;
   const [modalVisible, setModalVisible] = React.useState(false);
 
@@ -29,21 +26,6 @@ export default function HamburgerMenu({ visible, onClose, backgroundColor = '#52
     if (visible) {
       setModalVisible(true);
       slideAnim.setValue(-DRAWER_WIDTH);
-      contentAnim.setValue(0);
-      
-      // Animate both the menu sliding in and content sliding right
-      Animated.parallel([
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(contentAnim, {
-          toValue: DRAWER_WIDTH,
-          duration: 300,
-          useNativeDriver: true,
-        })
-      ]).start();
       contentAnim.setValue(0);
       
       // Animate both the menu sliding in and content sliding right
@@ -73,23 +55,9 @@ export default function HamburgerMenu({ visible, onClose, backgroundColor = '#52
           useNativeDriver: true,
         })
       ]).start(() => {
-      // Animate both the menu sliding out and content sliding back
-      Animated.parallel([
-        Animated.timing(slideAnim, {
-          toValue: -DRAWER_WIDTH,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-        Animated.timing(contentAnim, {
-          toValue: 0,
-          duration: 250,
-          useNativeDriver: true,
-        })
-      ]).start(() => {
         setModalVisible(false);
       });
     }
-  }, [visible, slideAnim, contentAnim]);
   }, [visible, slideAnim, contentAnim]);
 
   const handleNavigate = (route: string) => {
@@ -251,11 +219,6 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   contentContainer: {
-  container: {
-    flex: 1,
-    position: 'relative',
-  },
-  contentContainer: {
     flex: 1,
     position: 'absolute',
     top: 0,
@@ -265,11 +228,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   backdrop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
     position: 'absolute',
     top: 0,
     left: 0,
@@ -301,13 +259,6 @@ const styles = StyleSheet.create({
   headerText: {
     fontSize: 28,
     fontWeight: 'bold',
-  },
-  profileSection: {
-    alignItems: 'center',
-    paddingVertical: 20,
-    paddingHorizontal: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
   },
   profileSection: {
     alignItems: 'center',
@@ -354,6 +305,26 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '500',
   },
+  footer: {
+    paddingVertical: 20,
+    paddingHorizontal: 20,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  signOutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ff4444',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  signOutText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
   darkModeItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -367,4 +338,3 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 });
-
