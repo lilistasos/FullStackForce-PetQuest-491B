@@ -156,7 +156,7 @@ export default function CalendarScreen() {
       data: [
         { name: 'Soccer Practice', id: '1', description: 'Team practice at Riverside Field', time: '04:00 PM', points: 15, complete: false, category: 'Practice' },
         { name: 'Art Class', id: '2', description: 'After school art program', time: '03:00 PM', points: 10, complete: true, category: 'School' },
-        { name: 'Piano Lesson', id: '3', description: 'Weekly piano lesson', time: '02:00 PM', points: 20, complete: true, category: 'Practice' },
+        { name: 'Piano Lesson', id: '3', description: 'Weekly piano lesson', time: '12:00 PM', points: 20, complete: false, category: 'Practice' },
       ],
     },
     {

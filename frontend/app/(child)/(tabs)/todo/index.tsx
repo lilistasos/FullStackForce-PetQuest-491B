@@ -1,7 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { View, Text, TouchableOpacity, FlatList, StyleSheet,  Image, ScrollView, Pressable, Modal, TextInput, Animated } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { useTasks } from "@/contexts/TaskContext";
+import { useAuth } from "@/hooks/useAuth";
 
 // Defines what a task looks like
 type Task = {
@@ -32,6 +34,40 @@ const ToDoScreen = ()=> {
   //states for delete task
   const [deleteModal, setDeleteModal] = useState(false);
   const [taskDelete, setTaskDelete] = useState<string | null>(null);
+
+  //states for edit task
+  const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
+  const [editModal, setEditModal] = useState(false);
+  const [editText, setEditText] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editPoints, setEditPoints] = useState("");
+
+  //states for confirm modal
+  const [confirmModal, setConfirmModal] = useState(false);
+  const [taskToConfirm, setTaskToConfirm] = useState<Task | null>(null);
+
+  //states for points popup
+  const [pointsPopup, setPointsPopup] = useState({ visible: false, message: "" });
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  // Dropdown toggle function
+  const toggleDropdown = () => {
+    setDropdown((prev) => !prev);
+  };
+
+  // Handle sort selection
+  const handleSort = (option: string) => {
+    setSortType(option);
+    setDropdown(false);
+  };
+
+  // Delete task function
+  const deleteTask = (dateKey: string, taskId: string) => {
+    setTasksByDate((prev) => {
+      const updatedTasks = (prev[dateKey] || []).filter((task) => task.id !== taskId);
+      return { ...prev, [dateKey]: updatedTasks };
+    });
+  };
 
   const handlePressTask = (taskId: string) => {
   setShowDetails((prev) => (prev === taskId ? null : taskId)
@@ -306,20 +342,6 @@ const toggleComplete = (taskId: string) => {
       </View>
     );
   };
-
-  const handlePressTask = (taskId: string) => {
-  setShowDetails((prev) => (prev === taskId ? null : taskId)
-  );
-}
-
-// States for Categories
-// expanded state object to track which categories are currently expanded or collapsed
-  const [expanded, setExpanded] = useState<{ [key: string]: boolean }>({
-    Homework: false, // All categories are collaspsed at first
-    Chores: false,
-    Extracurriculars: false,
-    Completed: false,
-});
 
   return (
     <SafeAreaView style={styles.container}>
