@@ -101,6 +101,7 @@ export default function IndvLayout() {
           else if (accountPageName === 'feedback') setHeaderTitle('Feedback');
           else if (accountPageName === 'subscription') setHeaderTitle('Subscription');
           else if (accountPageName === 'achievements') setHeaderTitle('Achievements');
+          else if (accountPageName === 'preferences') setHeaderTitle('Preferences');
           else {
             setHeaderTitle('Account');
             setIsSubPage(false);

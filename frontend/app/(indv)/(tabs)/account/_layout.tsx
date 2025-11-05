@@ -14,6 +14,7 @@ export default function AccountLayout() {
       <Stack.Screen name="feedback" />
       <Stack.Screen name="subscription" />
       <Stack.Screen name="achievements" />
+      <Stack.Screen name="preferences" />
     </Stack>
   );
 }
