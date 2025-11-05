@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Modal } from "react-native";
 import { useTheme } from "@/contexts/ThemeContext";
+import { IconSymbol } from '@/components/ui/icon-symbol';
 
 interface ShopItem {
   id: string;
