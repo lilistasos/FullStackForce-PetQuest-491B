@@ -11,6 +11,8 @@ export default function ChildDetailsScreen() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [dob, setDob] = useState("");
   const [familyCode, setFamilyCode] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleCreateAccount = () =>{
     if (!email) {
@@ -66,21 +68,31 @@ export default function ChildDetailsScreen() {
 
       <TextInput style={styles.input} placeholder="Last Name" value={lastName} onChangeText={setLastName} />
       
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
+      <View style={styles.passwordContainer}>
+        <TextInput
+          style={styles.passwordInput}
+          placeholder="Password"
+          secureTextEntry={!showPassword}
+          value={password}
+          onChangeText={setPassword}
+        />
+        <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+          <Text style={styles.toggleText}>{showPassword ? "Hide" : "Show"}</Text>
+        </TouchableOpacity>
+      </View>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Confirm Password"
-        secureTextEntry
-        value={confirmPassword}
-        onChangeText={setConfirmPassword}
-      />
+      <View style={styles.passwordContainer}>
+        <TextInput
+          style={styles.passwordInput}
+          placeholder="Confirm Password"
+          secureTextEntry={!showConfirmPassword}
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+        />
+        <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+          <Text style={styles.toggleText}>{showConfirmPassword ? "Hide" : "Show"}</Text>
+        </TouchableOpacity>
+      </View>
 
       <TextInput
         style={styles.input}
@@ -114,4 +126,7 @@ const styles = StyleSheet.create({
   button: { backgroundColor: "#52AFDD", padding: 12, borderRadius: 10, width: "90%", alignItems: "center" },
   buttonText: { color: "#fff", fontWeight: "bold", fontSize: 16 },
   back: { marginTop: 20, color: "#555" },
+  passwordContainer: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: "#aaa", borderRadius: 10, width: "90%", marginBottom: 15, paddingHorizontal: 10,},
+  passwordInput: { flex: 1, paddingVertical: 10,},
+  toggleText: { color: "#52AFDD", fontWeight: "600", marginLeft: 10,},
 });

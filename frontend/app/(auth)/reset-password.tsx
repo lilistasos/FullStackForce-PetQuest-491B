@@ -7,6 +7,7 @@ export default function ResetPasswordScreen() {
   const [code, setCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [message, setMessage] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
 
   const handleReset = async () => {
@@ -50,13 +51,20 @@ export default function ResetPasswordScreen() {
         onChangeText={setCode}
       />
 
-      <TextInput
-        style={styles.input}
-        placeholder="New Password"
-        secureTextEntry
-        value={newPassword}
-        onChangeText={setNewPassword}
-      />
+      <View style={styles.passwordContainer}>
+        <TextInput
+          style={[styles.input, { flex: 1, marginBottom: 0, borderWidth: 0 }]}
+          placeholder="New Password"
+          secureTextEntry={!showPassword}
+          value={newPassword}
+          onChangeText={setNewPassword}
+        />
+        <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+          <Text style={styles.toggleText}>
+            {showPassword ? "Hide" : "Show"}
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       <TouchableOpacity style={styles.button} onPress={handleReset}>
         <Text style={styles.buttonText}>Reset Password</Text>
@@ -79,4 +87,6 @@ const styles = StyleSheet.create({
   button: { backgroundColor: "#52AFDD", padding: 12, borderRadius: 10, width: "90%", alignItems: "center", marginTop: 10 },
   buttonText: { color: "#fff", fontWeight: "bold", fontSize: 16 },
   back: { marginTop: 10, color: "#555" },
+    passwordContainer: { flexDirection: "row", alignItems: "center", width: "90%", borderWidth: 1, borderColor: "#aaa", borderRadius: 10, paddingHorizontal: 10, marginBottom: 15 },
+  toggleText: { marginLeft: 10, color: "#52AFDD", fontWeight: "bold" },
 });
