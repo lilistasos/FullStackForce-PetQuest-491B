@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, FlatList, Image, Dimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 
@@ -22,6 +22,13 @@ const ParentSelectChildScreen = () => {
   const router = useRouter();
   const screenWidth = Dimensions.get('window').width;
   const cardSize = (screenWidth - 60) / 2; // 2 cards per row with padding
+
+  // Reset selected child when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      setSelectedChild(null);
+    }, [])
+  );
 
   const handleSelectChild = (childId: string) => {
     setSelectedChild(childId);

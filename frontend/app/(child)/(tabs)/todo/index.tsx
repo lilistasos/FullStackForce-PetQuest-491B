@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { View, Text, TouchableOpacity, FlatList, StyleSheet,  Image, ScrollView, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { useTasks } from '@/contexts/TaskContext';
+import { useAuth } from '@/hooks/useAuth';
 
 // Defines what a task looks like
 type Task = {
@@ -182,6 +184,15 @@ const toggleComplete = (taskId: string) => {
       </View>
     );
   };
+
+  const { tasks: contextTasks, toggleComplete: contextToggleComplete } = useTasks();
+  const { user } = useAuth();
+  
+  // Get tasks for this child
+  const childTasks = contextTasks.filter((task) => task.assignedTo === user?.firstName);
+  
+  // Update your tasksByDate state to use childTasks instead of hardcoded tasks
+  // You'll need to map childTasks to the format expected by your existing code
 
 
   return (

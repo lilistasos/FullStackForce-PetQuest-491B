@@ -15,6 +15,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useTasks } from '@/contexts/TaskContext';
+import { useAuth } from '@/hooks/useAuth';
 
 const categories = [
   "Homework",
@@ -25,6 +27,8 @@ const categories = [
 const ParentCreateTaskScreen = () => {
     const router = useRouter();
     const { childName } = useLocalSearchParams(); // Get childId from index.tsk where parent selects child
+    const { addTask } = useTasks();
+    const { user } = useAuth(); // Get parent name
 
     const [taskName, setTaskName] = useState("");
     const [category, setCategory] = useState("");
@@ -33,9 +37,48 @@ const ParentCreateTaskScreen = () => {
     const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
     const [note, setNote] = useState("");
 
+    const resetForm = () => {
+      setTaskName("");
+      setCategory("");
+      setDate(new Date());
+      setNote("");
+    };
+
     const handleAssignTask = () => {
-        alert(`Task assigned to ${childName}!\n\nTask: ${taskName}\nCategory: ${category}\nDate: ${date.toDateString()}`);
-        router.back(); // Return to previous screen for now
+        // Create the task
+        addTask({
+          text: taskName,
+          category: category,
+          description: note || '',
+          points: 0, // You can add points logic later
+          dueDate: date.toISOString(),
+          assignedTo: childName as string,
+          assignedBy: user?.firstName || 'Parent',
+        });
+        
+        Alert.alert(
+          "Task Sent!",
+          `Task successfully assigned to ${childName}!`,
+          [
+            {
+              text: "Create Another Task",
+              onPress: () => {
+                router.back();
+              },
+            },
+            
+            {
+              text: "Go to Homepage",
+              onPress: () => {
+                // Replace current screen with post index to reset stack
+                router.replace("/(parent)/(tabs)/post");
+                // Navigate to calendar immediately
+                router.push("/(parent)/(tabs)/calendar");
+              },
+            },
+          ],
+          { cancelable: false }
+        );
       };
     const handleCancel = () => {
         Alert.alert(

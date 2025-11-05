@@ -1,5 +1,6 @@
 import { Redirect } from "expo-router";
 
 export default function Index() {
-  return <Redirect href="/(parent)/(tabs)/calendar" />;
+  return <Redirect href="/(child)/(tabs)/calendar" />;
+
 }
