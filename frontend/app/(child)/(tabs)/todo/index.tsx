@@ -55,6 +55,12 @@ const ToDoScreen = ()=> {
   const [pointsPopup, setPointsPopup] = useState({ visible: false, message: "" });
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
+  const closeDropdown = () => {
+    if (dropdown) {
+      setDropdown(false);
+    }
+  };
+
   // Dropdown toggle function
   const toggleDropdown = () => {
     setDropdown((prev) => !prev);
@@ -75,6 +81,7 @@ const ToDoScreen = ()=> {
   };
 
   const handlePressTask = (taskId: string) => {
+  closeDropdown();
   setShowDetails((prev) => (prev === taskId ? null : taskId)
   );
 }
@@ -115,17 +122,31 @@ const tasks = tasksByDate[formattedKey] || [];
   // Helper functions for changing date
   // Able to move back and forth between days 
   const changeDate = (days: number) => {
+    closeDropdown();
     const newDate = new Date(currentDate);
     newDate.setDate(newDate.getDate() + days);
     setCurrentDate(newDate);
 }
 //Format date in a 3 line stagger
+const getOrdinalSuffix = (day: number): string => {
+  if (day > 3 && day < 21) return "th";
+  switch (day % 10) {
+    case 1:
+      return "st";
+    case 2:
+      return "nd";
+    case 3:
+      return "rd";
+    default:
+      return "th";
+  }
+};
+
 const weekday = currentDate.toLocaleDateString("en-US", { weekday: "long" });
-const monthDay = currentDate.toLocaleDateString("en-US", {
-  month: "long",
-  day: "numeric",
-});
-const year = currentDate.getFullYear();
+const dayNumber = currentDate.getDate();
+const ordinalSuffix = getOrdinalSuffix(dayNumber);
+const monthName = currentDate.toLocaleDateString("en-US", { month: "long" });
+const monthDay = `${monthName} ${dayNumber}${ordinalSuffix}`;
 
 // Handling Edit Save Logic
   const handleEditSave = () => {
@@ -227,9 +248,10 @@ const toggleComplete = (taskId: string) => {
         {/* Header Row (Category Title + Arrow) */}
         <TouchableOpacity
           style={styles.cardHeader}
-          onPress={() =>
-            setExpanded((prev) => ({ ...prev, [category.id]: !prev[category.id] }))
-          }
+          onPress={() => {
+            closeDropdown();
+            setExpanded((prev) => ({ ...prev, [category.id]: !prev[category.id] }));
+          }}
         >
           <Ionicons
             name={isExpanded ? "chevron-down" : "chevron-forward"}
@@ -247,6 +269,7 @@ const toggleComplete = (taskId: string) => {
             visibleTasks.map((task) => (
               <View key={task.id} style={styles.taskItem}>
                 <TouchableOpacity onPress={() => {
+                  closeDropdown();
                   if (!task.completed) {
                     setTaskToConfirm(task);
                     setConfirmModal(true);
@@ -281,60 +304,21 @@ const toggleComplete = (taskId: string) => {
                     </Text>
                   </Pressable>
                 
-                {/* Task Details (description, points, delete button) */}
+                {/* Task Details (description, points) */}
                 {showDetails === task.id && (
                   <View style={{marginTop: 4}}>
                     <Text style={styles.detailText}>Description: {task.description}</Text>
-                    <Text style={styles.detailText}>Points: {task.points}</Text>
-                    <TouchableOpacity onPress={() => {setDeleteModal(true); setTaskDelete(task.id)}} style={styles.deleteButton}>
-                      <Text style={styles.deleteButtonText}>Delete</Text>
-                    </TouchableOpacity>
-                    {/* Edit Button */}
-                    {!task.completed && (
-                      <TouchableOpacity
-                        onPress={() => {
-                          setTaskToEdit(task);
-                          setEditText(task.text);
-                          setEditDescription(task.description);
-                          setEditPoints(task.points.toString());
-                          setEditModal(true);
-                        }}
-                        style={[styles.editButton, { backgroundColor: colors.primary }]}
-                      >
-                        <Text style={styles.editButtonText}>Edit</Text>
-                      </TouchableOpacity>
-                    )}
+                    <View style={styles.pointsBadge}>
+                      <Text style={[styles.pointsText, { color: colors.primary }]}>{task.points} pts</Text>
+                    </View>
+                    {/* Delete option removed for child view */}
+                    {/* Edit option removed for child view */}
                   </View>
                 )}
 
                 {/* Delete Confirmation Modal */}
                 
-                <Modal
-                  animationType="fade"
-                  transparent={true}
-                  visible={deleteModal}
-                  onRequestClose={() => {
-                  setDeleteModal(!deleteModal);
-                }}
-                >
-                  <View style={styles.modalOverlay}>
-                    <View style={styles.deleteModalContainer}>
-                      <Text style={styles.deleteModalText}>Are you sure you want to delete? You won't get the points for this task if you do.</Text>
-                      <View style={styles.modalButtonRow}>
-                        <TouchableOpacity onPress={() => setDeleteModal(false)} style={styles.cancelDeleteButton}>
-                          <Text style={styles.cancelDeleteButtonText}>Cancel</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.deleteConfirmButton} onPress={() => {
-                          if (taskDelete)
-                          deleteTask(formattedKey, taskDelete);
-                          setDeleteModal(false);
-                          setTaskDelete(null);}}>
-                          <Text style={styles.deleteConfirmButtonText}>Delete</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  </View>
-                </Modal>
+                {/* Delete modal removed for child view */}
                 </View>
               </View>
             ))
@@ -364,23 +348,37 @@ const toggleComplete = (taskId: string) => {
         {/* Date (centered + stacked) */}
         <View style={styles.dateSection}>
           <Text style={styles.weekday}>{weekday}</Text>
-          <Text style={styles.monthDay}>{monthDay},</Text>
-          <Text style={styles.year}>{year}</Text>
+          <Text style={styles.monthDay}>{`${monthDay}`}</Text>
         </View>
 
         {/* Date navigation arrows */}
-        <View style={styles.headerActions}>
+        <View style={styles.chevronRow}>
           <TouchableOpacity onPress={() => changeDate(-1)} style={styles.navButton}>
-            <Ionicons name="chevron-back" size={26} color={colors.primary} />
+            <Ionicons name="chevron-back" size={28} color={colors.primary} />
           </TouchableOpacity>
           <TouchableOpacity onPress={() => changeDate(1)} style={styles.navButton}>
-            <Ionicons name="chevron-forward" size={26} color={colors.primary} />
+            <Ionicons name="chevron-forward" size={28} color={colors.primary} />
           </TouchableOpacity>
-          <View style={styles.filterWrapper}>
-            <TouchableOpacity onPress={toggleDropdown} style={styles.filterButton}>
-              <Ionicons name="funnel-outline" size={20} color={colors.textSecondary} />
-            </TouchableOpacity>
-            {dropdown && (
+        </View>
+      </View>
+
+      {/* Task Categories */}
+      <ScrollView
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+        onTouchStart={() => {
+          if (dropdown) {
+            setDropdown(false);
+          }
+        }}
+      >
+        <View style={styles.filterWrapper}>
+          <TouchableOpacity onPress={toggleDropdown} style={styles.filterButton}>
+            <Ionicons name="funnel-outline" size={20} color={colors.primary} />
+          </TouchableOpacity>
+          {dropdown && (
+            <>
+              <TouchableOpacity style={styles.dropdownBackdrop} onPress={() => setDropdown(false)} />
               <View style={styles.dropdown}>
                 <TouchableOpacity onPress={() => handleSort(dropdownOptions[0])} style={styles.dropdownOption}>
                   <Text style={styles.dropdownOptionText}>Default</Text>
@@ -392,13 +390,9 @@ const toggleComplete = (taskId: string) => {
                   <Text style={styles.dropdownOptionText}>Points: Low to High</Text>
                 </TouchableOpacity>
               </View>
-            )}
-          </View>
+            </>
+          )}
         </View>
-      </View>
-
-      {/* Task Categories */}
-      <ScrollView contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
         {categories.map((category) => (
           <View key={category.id}>{renderCategory(category)}</View>
         ))}
@@ -492,19 +486,15 @@ const createStyles = (colors: any, isDarkMode: boolean) =>
       marginRight: 16,
     },
     weekday: {
-      fontSize: 20,
+      fontSize: 22,
       fontWeight: "700",
       color: colors.text,
     },
     monthDay: {
-      fontSize: 18,
+      fontSize: 20,
       color: colors.textSecondary,
     },
-    year: {
-      fontSize: 18,
-      color: colors.textSecondary,
-    },
-    headerActions: {
+    chevronRow: {
       flexDirection: "row",
       alignItems: "center",
       gap: 12,
@@ -514,9 +504,19 @@ const createStyles = (colors: any, isDarkMode: boolean) =>
     },
     filterWrapper: {
       position: "relative",
+      alignSelf: "flex-start",
+      marginBottom: 8,
     },
     filterButton: {
       padding: 4,
+    },
+    dropdownBackdrop: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: "transparent",
     },
     card: {
       backgroundColor: colors.surface,
@@ -575,6 +575,15 @@ const createStyles = (colors: any, isDarkMode: boolean) =>
       color: colors.textSecondary,
       marginTop: 4,
     },
+    pointsBadge: {
+      alignSelf: "flex-start",
+      marginTop: 8,
+    },
+    pointsText: {
+      fontSize: 14,
+      fontWeight: "bold",
+      fontFamily: "monospace",
+    },
     emptyText: {
       fontStyle: "italic",
       color: colors.textSecondary,
@@ -620,7 +629,7 @@ const createStyles = (colors: any, isDarkMode: boolean) =>
     dropdown: {
       position: "absolute",
       top: 34,
-      right: 0,
+      left: 0,
       backgroundColor: colors.surface,
       borderWidth: 1,
       borderColor: colors.border,
