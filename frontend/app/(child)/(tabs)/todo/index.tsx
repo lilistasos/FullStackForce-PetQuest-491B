@@ -1,9 +1,11 @@
-import React, { useState, useRef } from "react";
-import { View, Text, TouchableOpacity, FlatList, StyleSheet,  Image, ScrollView, Pressable, Modal, TextInput, Animated } from "react-native";
+import React, { useState, useRef, useMemo } from "react";
+import { View, Text, TouchableOpacity, StyleSheet, Image, Pressable, Modal, TextInput, Animated, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useTasks } from "@/contexts/TaskContext";
 import { useAuth } from "@/hooks/useAuth";
+import { useTheme } from "@/contexts/ThemeContext";
+import { usePet } from "@/contexts/PetContext";
 
 // Defines what a task looks like
 type Task = {
@@ -19,6 +21,9 @@ type Task = {
 const ToDoScreen = ()=> {
   const { getTasksByChild, toggleComplete: contextToggleComplete } = useTasks();
   const { user } = useAuth();
+  const { colors, isDarkMode } = useTheme();
+  const { selectedPet } = usePet();
+  const styles = useMemo(() => createStyles(colors, isDarkMode), [colors, isDarkMode]);
 
   // Current Date State
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -229,7 +234,8 @@ const toggleComplete = (taskId: string) => {
           <Ionicons
             name={isExpanded ? "chevron-down" : "chevron-forward"}
             size={20}
-            color="black"
+            color={colors.primary}
+            style={styles.cardHeaderIcon}
           />
           <Text style={styles.cardTitle}>{category.title}</Text>
         </TouchableOpacity>
@@ -254,35 +260,34 @@ const toggleComplete = (taskId: string) => {
                       task.completed ? "checkmark-circle" : "ellipse-outline"
                     }
                     size={20}
-                    color={task.completed ? "#0077B6" : "gray"}
+                    color={task.completed ? colors.primary : colors.textSecondary}
                   />
                 </TouchableOpacity>
-                <View style={{flex: 1, flexDirection: "column", marginLeft: 8}}>
-                <Pressable onPress={() => handlePressTask(task.id)}>
-                <Text
-                  style={[
-                    styles.taskText,
-                    task.completed && { textDecorationLine: "line-through" },
-                  ]}
-                >
-                  <Ionicons
-                    name={showDetails === task.id ? "chevron-down" : "chevron-forward"}
-                    size={16}
-                    color="gray"
-                    style={{marginRight: 6}}
-                  />
-                  {task.text}
-                  
-                </Text>
-                </Pressable>
+                <View style={styles.taskDetailsColumn}>
+                  <Pressable onPress={() => handlePressTask(task.id)} style={styles.taskTitleRow}>
+                    <Ionicons
+                      name={showDetails === task.id ? "chevron-down" : "chevron-forward"}
+                      size={16}
+                      color={colors.primary}
+                      style={styles.taskChevronIcon}
+                    />
+                    <Text
+                      style={[
+                        styles.taskText,
+                        task.completed && styles.completedTaskText,
+                      ]}
+                    >
+                      {task.text}
+                    </Text>
+                  </Pressable>
                 
                 {/* Task Details (description, points, delete button) */}
                 {showDetails === task.id && (
                   <View style={{marginTop: 4}}>
-                    <Text style={{color: "#555"}}>Description: {task.description}</Text>
-                    <Text style={{color: "#555"}}>Points: {task.points}</Text>
+                    <Text style={styles.detailText}>Description: {task.description}</Text>
+                    <Text style={styles.detailText}>Points: {task.points}</Text>
                     <TouchableOpacity onPress={() => {setDeleteModal(true); setTaskDelete(task.id)}} style={styles.deleteButton}>
-                      <Text>Delete</Text>
+                      <Text style={styles.deleteButtonText}>Delete</Text>
                     </TouchableOpacity>
                     {/* Edit Button */}
                     {!task.completed && (
@@ -294,9 +299,9 @@ const toggleComplete = (taskId: string) => {
                           setEditPoints(task.points.toString());
                           setEditModal(true);
                         }}
-                        style={{ backgroundColor: "#0077B6", padding: 10, borderRadius: 5, marginTop: 6 }}
+                        style={[styles.editButton, { backgroundColor: colors.primary }]}
                       >
-                        <Text style={{ color: "white" }}>Edit</Text>
+                        <Text style={styles.editButtonText}>Edit</Text>
                       </TouchableOpacity>
                     )}
                   </View>
@@ -305,26 +310,28 @@ const toggleComplete = (taskId: string) => {
                 {/* Delete Confirmation Modal */}
                 
                 <Modal
-                  animationType="slide"
+                  animationType="fade"
                   transparent={true}
                   visible={deleteModal}
                   onRequestClose={() => {
                   setDeleteModal(!deleteModal);
                 }}
                 >
-                  <View style={styles.deleteModalContainer}>
-                    <Text style={styles.deleteModalText}>Are you sure you want to delete? You won't get the points for this task if you do.</Text>
-                    <View style={{flexDirection: "row", justifyContent: "space-between", width: "100%", marginTop: 10}}>
-                      <TouchableOpacity onPress={() => setDeleteModal(false)} style={styles.cancelDeleteButton}>
-                        <Text style={{color: 'white'}}>Cancel</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={styles.deleteButton} onPress={() => {
-                        if (taskDelete)
-                        deleteTask(formattedKey, taskDelete);
-                        setDeleteModal(false);
-                        setTaskDelete(null);}}>
-                        <Text style={{color: 'white'}}>Delete</Text>
-                      </TouchableOpacity>
+                  <View style={styles.modalOverlay}>
+                    <View style={styles.deleteModalContainer}>
+                      <Text style={styles.deleteModalText}>Are you sure you want to delete? You won't get the points for this task if you do.</Text>
+                      <View style={styles.modalButtonRow}>
+                        <TouchableOpacity onPress={() => setDeleteModal(false)} style={styles.cancelDeleteButton}>
+                          <Text style={styles.cancelDeleteButtonText}>Cancel</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.deleteConfirmButton} onPress={() => {
+                          if (taskDelete)
+                          deleteTask(formattedKey, taskDelete);
+                          setDeleteModal(false);
+                          setTaskDelete(null);}}>
+                          <Text style={styles.deleteConfirmButtonText}>Delete</Text>
+                        </TouchableOpacity>
+                      </View>
                     </View>
                   </View>
                 </Modal>
@@ -344,100 +351,91 @@ const toggleComplete = (taskId: string) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Top bar */}
-      <View style={styles.topBar}>
-      </View>
-
+    <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
       {/* Header Section */}
       <View style={styles.header}>
-        <View style={styles.topRow}>
-          {/* Avatar */}
-          <Image
-            source={{
-              uri: "https://cdn-icons-png.flaticon.com/512/1067/1067840.png",
-            }}
-            style={styles.avatar}
-          />
+        {/* Avatar */}
+        <Image
+          source={selectedPet?.image || { uri: "https://cdn-icons-png.flaticon.com/512/1067/1067840.png" }}
+          style={styles.petImage}
+          resizeMode="contain"
+        />
 
-          {/* Date (centered + stacked) */}
-          <View style={styles.dateSection}>
-            <Text style={styles.weekday}>{weekday}</Text>
-            <Text style={styles.monthDay}>{monthDay},</Text>
-            <Text style={styles.year}>{year}</Text>
-          </View>
+        {/* Date (centered + stacked) */}
+        <View style={styles.dateSection}>
+          <Text style={styles.weekday}>{weekday}</Text>
+          <Text style={styles.monthDay}>{monthDay},</Text>
+          <Text style={styles.year}>{year}</Text>
+        </View>
 
-          {/* Date navigation arrows */}
-          <View style={styles.arrowContainer}>
-            <TouchableOpacity onPress={() => changeDate(-1)}>
-              <Ionicons name="chevron-back" size={26} color="#0077B6" />
+        {/* Date navigation arrows */}
+        <View style={styles.headerActions}>
+          <TouchableOpacity onPress={() => changeDate(-1)} style={styles.navButton}>
+            <Ionicons name="chevron-back" size={26} color={colors.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => changeDate(1)} style={styles.navButton}>
+            <Ionicons name="chevron-forward" size={26} color={colors.primary} />
+          </TouchableOpacity>
+          <View style={styles.filterWrapper}>
+            <TouchableOpacity onPress={toggleDropdown} style={styles.filterButton}>
+              <Ionicons name="funnel-outline" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => changeDate(1)}>
-              <Ionicons name="chevron-forward" size={26} color="#0077B6" />
-            </TouchableOpacity>
+            {dropdown && (
+              <View style={styles.dropdown}>
+                <TouchableOpacity onPress={() => handleSort(dropdownOptions[0])} style={styles.dropdownOption}>
+                  <Text style={styles.dropdownOptionText}>Default</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => handleSort(dropdownOptions[1])} style={styles.dropdownOption}>
+                  <Text style={styles.dropdownOptionText}>Points: High to Low</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => handleSort(dropdownOptions[2])} style={styles.dropdownOption}>
+                  <Text style={styles.dropdownOptionText}>Points: Low to High</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         </View>
       </View>
 
-      {/*Dropdown for sorting tasks */}
-
-      <View style={styles.dropdownContainer}>
-        <TouchableOpacity onPress={toggleDropdown}>
-          <Ionicons name="funnel-outline" size = {20} color="gray"/>
-        </TouchableOpacity>
-        {dropdown && (
-          <View style={styles.dropdown}>
-            <TouchableOpacity onPress={() => handleSort(dropdownOptions[0])} style={styles.dropdownOption}>
-              <Text>Default</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => handleSort(dropdownOptions[1])} style={styles.dropdownOption}>
-              <Text>Points: High to Low</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => handleSort(dropdownOptions[2])} style={styles.dropdownOption}>
-              <Text>Points: Low to High</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
-
-      {/* Task Categories; renders all categories vertically,flatlist for efficient scrolling */}
-      <FlatList
-        data={categories}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => renderCategory(item)}
-        contentContainerStyle={{ paddingBottom: 100 }}
-      />
+      {/* Task Categories */}
+      <ScrollView contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
+        {categories.map((category) => (
+          <View key={category.id}>{renderCategory(category)}</View>
+        ))}
+      </ScrollView>
 
       {/* Edit Task Modal */}
       <Modal visible={editModal} animationType="slide" transparent={true}>
-        <View style={styles.modalBox}>
-          <Text style={styles.modalTitle}>Edit Task</Text>
-          <TextInput placeholder="Task name" value={editText} onChangeText={setEditText} style={styles.input} />
-          <TextInput placeholder="Description" value={editDescription} onChangeText={setEditDescription} style={styles.input} />
-          <TextInput placeholder="Points" keyboardType="numeric" value={editPoints} onChangeText={setEditPoints} style={styles.input} />
-          <View style={styles.modalButtonRow}>
-            <TouchableOpacity onPress={() => setEditModal(false)} style={styles.cancelButton}>
-              <Text style={{ color: "white" }}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={handleEditSave} style={styles.saveButton}>
-              <Text style={{ color: "white" }}>Save</Text>
-            </TouchableOpacity>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>Edit Task</Text>
+            <TextInput placeholder="Task name" placeholderTextColor={colors.textSecondary} value={editText} onChangeText={setEditText} style={styles.input} />
+            <TextInput placeholder="Description" placeholderTextColor={colors.textSecondary} value={editDescription} onChangeText={setEditDescription} style={styles.input} />
+            <TextInput placeholder="Points" placeholderTextColor={colors.textSecondary} keyboardType="numeric" value={editPoints} onChangeText={setEditPoints} style={styles.input} />
+            <View style={styles.modalButtonRow}>
+              <TouchableOpacity onPress={() => setEditModal(false)} style={styles.cancelButton}>
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleEditSave} style={styles.saveButton}>
+                <Text style={styles.saveButtonText}>Save</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
 
       {/* Completion Confirmation Modal */}
-      <Modal visible={confirmModal} animationType="slide" transparent={true}>
-        <View style={styles.modalBox}>
+      <Modal visible={confirmModal} animationType="fade" transparent={true}>
+        <View style={styles.modalOverlay}>
           {taskToConfirm && (
-            <>
+            <View style={styles.modalBox}>
               <Text style={styles.modalTitle}>Complete this task?</Text>
-              <Text>Task: {taskToConfirm.text}</Text>
-              <Text>Description: {taskToConfirm.description}</Text>
-              <Text>Points: {taskToConfirm.points}</Text>
+              <Text style={styles.modalBodyText}>Task: {taskToConfirm.text}</Text>
+              <Text style={styles.modalBodyText}>Description: {taskToConfirm.description}</Text>
+              <Text style={styles.modalBodyText}>Points: {taskToConfirm.points}</Text>
               <View style={styles.modalButtonRow}>
                 <TouchableOpacity onPress={() => setConfirmModal(false)} style={styles.cancelButton}>
-                  <Text style={{ color: "white" }}>Cancel</Text>
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => {
@@ -447,10 +445,10 @@ const toggleComplete = (taskId: string) => {
                   }}
                   style={styles.saveButton}
                 >
-                  <Text style={{ color: "white" }}>Confirm</Text>
+                  <Text style={styles.saveButtonText}>Confirm</Text>
                 </TouchableOpacity>
               </View>
-            </>
+            </View>
           )}
         </View>
       </Modal>
@@ -466,211 +464,301 @@ const toggleComplete = (taskId: string) => {
 
 export default ToDoScreen;
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-    paddingHorizontal: 20,
-  },
-  topBar: {
-    alignItems: "center",
-    marginTop: 15,
-  },
-  topTitle: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: "#000",
-  },
-  header: {
-    marginTop: 10,
-  },
-  topRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-  },
-  dateSection: {
-    alignItems: "center",
-    flex: 1,
-  },
-  weekday: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#000",
-  },
-  monthDay: {
-    fontSize: 18,
-    color: "#333",
-  },
-  year: {
-    fontSize: 18,
-    color: "#333",
-  },
-  arrowContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 12,
-    marginVertical: 8,
-    borderWidth: 1,
-    borderColor: "#ccc",
-  },
-  cardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  cardTitle: {
-    marginLeft: 8,
-    fontSize: 18,
-    fontWeight: "600",
-  },
-  taskList: {
-    marginTop: 10,
-    paddingLeft: 24,
-  },
-  taskItem: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginVertical: 6,
-  },
-  taskText: {
-    marginLeft: 8,
-    fontSize: 16,
-    color: "#333",
-  },
-  emptyText: {
-    fontStyle: "italic",
-    color: "#aaa",
-    marginLeft: 30,
-    marginTop: 6,
-  },
-  moreText: {
-    marginTop: 4,
-    fontSize: 12,
-    color: "#888",
-    fontStyle: "italic",
-  },
-  deleteButton: {
-    backgroundColor:"#FF0000", 
-    padding: 10, 
-    marginHorizontal:10, 
-    borderRadius: 5,
-    marginTop: 6,
-    alignSelf: "flex-start"
-  },
-  cancelDeleteButton: {
-    backgroundColor: "#888", 
-    padding: 10, 
-    marginHorizontal: 10, 
-    borderRadius: 5, 
-    marginTop: 6
-  },
-  dropdownContainer: {
-    flex: 1, 
-    flexDirection: "row", 
-    justifyContent: "flex-end", 
-    padding: 10, 
-    marginBottom: 10, 
-    position: "relative", 
-    zIndex: 1
-  },
-  dropdownOption: {
-    padding: 10, 
-    borderBottomWidth: 1, 
-    borderBottomColor: "#eee"
-  },
-  dropdown: {
-    position: "absolute", 
-    top: 40, 
-    right: 10, 
-    backgroundColor: "#fff", 
-    borderWidth: 1, 
-    borderColor: "#ccc", 
-    borderRadius: 6, 
-    zIndex: 1000
-  },
-  deleteModalContainer: {
-    flex: 1, 
-    justifyContent: "center", 
-    alignItems: "center", 
-    backgroundColor: "white", 
-    padding: 35, 
-    margin: 20, 
-    marginTop: "75%",
-    marginBottom: "75%",
-    borderColor: "#888", 
-    borderWidth: 1, 
-    borderRadius: 10,
-  },
-  deleteModalText: {
-    fontSize: 18, 
-    fontWeight: "600", 
-    marginBottom: 10, 
-    textAlign: "center"
-  },
-  modalBox: { 
-    flex: 1, 
-    justifyContent: "center", 
-    alignItems: "center", 
-    backgroundColor: "white", 
-    margin: 20, 
-    borderRadius: 10, 
-    padding: 20 
-  },
-  modalTitle: { 
-    fontSize: 18, 
-    fontWeight: "600", 
-    marginBottom: 10 
-  },
-  input: { 
-    borderWidth: 1, 
-    borderColor: "#ccc", 
-    borderRadius: 5, 
-    padding: 8, 
-    width: "100%", 
-    marginBottom: 8 
-  },
-  modalButtonRow: { 
-    flexDirection: "row", 
-    justifyContent: "space-between", 
-    width: "100%", 
-    marginTop: 10 
-  },
-  cancelButton: { 
-    backgroundColor: "#888", 
-    padding: 10, 
-    borderRadius: 5 
-  },
-  saveButton: { backgroundColor: "#0077B6", 
-    padding: 10, 
-    borderRadius: 5 
-  },
-  pointsPopup: {
-  position: "absolute",
-  bottom: 100,
-  alignSelf: "center",
-  backgroundColor: "#0077B6",
-  paddingVertical: 10,
-  paddingHorizontal: 20,
-  borderRadius: 20,
-  shadowColor: "#000",
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.25,
-  shadowRadius: 4,
-  elevation: 5,
-  },
-  pointsPopupText: {
-    color: "white",
-    fontWeight: "600",
-    fontSize: 16,
-  },
-});
+const createStyles = (colors: any, isDarkMode: boolean) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+      paddingHorizontal: 16,
+      paddingTop: 0,
+    },
+    header: {
+      marginTop: 0,
+      paddingVertical: 12,
+      marginBottom: 0,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    petImage: {
+      width: 70,
+      height: 70,
+      marginRight: 16,
+    },
+    dateSection: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: 16,
+    },
+    weekday: {
+      fontSize: 20,
+      fontWeight: "700",
+      color: colors.text,
+    },
+    monthDay: {
+      fontSize: 18,
+      color: colors.textSecondary,
+    },
+    year: {
+      fontSize: 18,
+      color: colors.textSecondary,
+    },
+    headerActions: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+    },
+    navButton: {
+      padding: 4,
+    },
+    filterWrapper: {
+      position: "relative",
+    },
+    filterButton: {
+      padding: 4,
+    },
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      padding: 12,
+      marginTop: 6,
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    contentContainer: {
+      paddingBottom: 100,
+    },
+    cardHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    cardHeaderIcon: {
+      marginRight: 8,
+    },
+    cardTitle: {
+      fontSize: 18,
+      fontWeight: "600",
+      color: colors.text,
+    },
+    taskList: {
+      marginTop: 10,
+      paddingLeft: 8,
+    },
+    taskItem: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      marginVertical: 6,
+    },
+    taskDetailsColumn: {
+      flex: 1,
+      flexDirection: "column",
+      marginLeft: 12,
+    },
+    taskTitleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    taskChevronIcon: {
+      marginRight: 8,
+    },
+    taskText: {
+      fontSize: 16,
+      color: colors.text,
+    },
+    completedTaskText: {
+      textDecorationLine: "line-through",
+      color: colors.textSecondary,
+    },
+    detailText: {
+      color: colors.textSecondary,
+      marginTop: 4,
+    },
+    emptyText: {
+      fontStyle: "italic",
+      color: colors.textSecondary,
+      marginLeft: 30,
+      marginTop: 6,
+    },
+    moreText: {
+      marginTop: 4,
+      fontSize: 12,
+      color: colors.textSecondary,
+      fontStyle: "italic",
+    },
+    deleteButton: {
+      backgroundColor: "#FF4D4D",
+      padding: 10,
+      marginHorizontal: 0,
+      borderRadius: 5,
+      marginTop: 6,
+      alignSelf: "flex-start",
+    },
+    deleteButtonText: {
+      color: "#FFFFFF",
+      fontWeight: "600",
+    },
+    editButton: {
+      padding: 10,
+      borderRadius: 5,
+      marginTop: 6,
+      alignSelf: "flex-start",
+    },
+    editButtonText: {
+      color: "#FFFFFF",
+      fontWeight: "600",
+    },
+    dropdownOption: {
+      padding: 10,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    dropdownOptionText: {
+      color: colors.text,
+    },
+    dropdown: {
+      position: "absolute",
+      top: 34,
+      right: 0,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 6,
+      zIndex: 1000,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: isDarkMode ? 0.4 : 0.2,
+      shadowRadius: 4,
+      elevation: 5,
+    },
+    modalOverlay: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: isDarkMode ? "rgba(0,0,0,0.7)" : "rgba(0,0,0,0.4)",
+      padding: 20,
+    },
+    deleteModalContainer: {
+      width: "100%",
+      maxWidth: 360,
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderWidth: 1,
+      borderRadius: 10,
+      padding: 20,
+    },
+    deleteModalText: {
+      fontSize: 18,
+      fontWeight: "600",
+      marginBottom: 16,
+      textAlign: "center",
+      color: colors.text,
+    },
+    deleteConfirmButton: {
+      backgroundColor: "#FF4D4D",
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      borderRadius: 5,
+      marginLeft: 12,
+      flex: 1,
+      alignItems: "center",
+    },
+    deleteConfirmButtonText: {
+      color: "#FFFFFF",
+      fontWeight: "600",
+    },
+    cancelDeleteButton: {
+      backgroundColor: colors.secondary,
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      borderRadius: 5,
+      flex: 1,
+      alignItems: "center",
+    },
+    cancelDeleteButtonText: {
+      color: colors.text,
+      fontWeight: "600",
+    },
+    modalBox: {
+      width: "100%",
+      maxWidth: 360,
+      backgroundColor: colors.surface,
+      borderRadius: 10,
+      padding: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    modalTitle: {
+      fontSize: 18,
+      fontWeight: "700",
+      marginBottom: 10,
+      color: colors.text,
+      textAlign: "center",
+    },
+    modalBodyText: {
+      color: colors.textSecondary,
+      marginTop: 6,
+      textAlign: "center",
+    },
+    input: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 5,
+      padding: 10,
+      width: "100%",
+      marginBottom: 8,
+      color: colors.text,
+      backgroundColor: colors.background,
+    },
+    modalButtonRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      width: "100%",
+      marginTop: 10,
+      gap: 12,
+    },
+    cancelButton: {
+      backgroundColor: colors.secondary,
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      borderRadius: 5,
+      flex: 1,
+      alignItems: "center",
+    },
+    cancelButtonText: {
+      color: colors.text,
+      fontWeight: "600",
+    },
+    saveButton: {
+      backgroundColor: colors.primary,
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      borderRadius: 5,
+      flex: 1,
+      alignItems: "center",
+    },
+    saveButtonText: {
+      color: "#FFFFFF",
+      fontWeight: "600",
+    },
+    pointsPopup: {
+      position: "absolute",
+      bottom: 100,
+      alignSelf: "center",
+      backgroundColor: colors.primary,
+      paddingVertical: 10,
+      paddingHorizontal: 20,
+      borderRadius: 20,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 5,
+    },
+    pointsPopupText: {
+      color: "#FFFFFF",
+      fontWeight: "600",
+      fontSize: 16,
+    },
+  });
