@@ -1,5 +1,12 @@
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  createContext,
+  useContext,
+  useState,
+  ReactNode,
+  useEffect,
+} from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import NotificationService from "@/services/NotificationService";
 
 export type Task = {
   id: string;
@@ -16,7 +23,7 @@ export type Task = {
 
 interface TaskContextType {
   tasks: Task[];
-  addTask: (task: Omit<Task, 'id' | 'completed' | 'createdAt'>) => void;
+  addTask: (task: Omit<Task, "id" | "completed" | "createdAt">) => void;
   toggleComplete: (taskId: string) => void;
   getTasksByChild: (childName: string) => Task[];
 }
@@ -25,17 +32,18 @@ const TaskContext = createContext<TaskContextType | undefined>(undefined);
 
 export const TaskProvider = ({ children }: { children: ReactNode }) => {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const notificationService = NotificationService.getInstance();
 
   // Load tasks from AsyncStorage on mount
   useEffect(() => {
     const loadTasks = async () => {
       try {
-        const savedTasks = await AsyncStorage.getItem('tasks');
+        const savedTasks = await AsyncStorage.getItem("tasks");
         if (savedTasks) {
           setTasks(JSON.parse(savedTasks));
         }
       } catch (error) {
-        console.log('Error loading tasks:', error);
+        console.log("Error loading tasks:", error);
       }
     };
     loadTasks();
@@ -45,15 +53,30 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const saveTasks = async () => {
       try {
-        await AsyncStorage.setItem('tasks', JSON.stringify(tasks));
+        await AsyncStorage.setItem("tasks", JSON.stringify(tasks));
       } catch (error) {
-        console.log('Error saving tasks:', error);
+        console.log("Error saving tasks:", error);
       }
     };
     saveTasks();
   }, [tasks]);
 
-  const addTask = (taskData: Omit<Task, 'id' | 'completed' | 'createdAt'>) => {
+  // Schedule notifs whenever tasks change
+  useEffect(() => {
+    const scheduleNotifications = async () => {
+      try {
+        await notificationService.scheduleUpcomingTaskNotifications(tasks);
+      } catch (error) {
+        console.log("Error scheduling notifications:", error);
+      }
+    };
+
+    if (tasks.length > 0) {
+      scheduleNotifications();
+    }
+  }, [tasks]);
+
+  const addTask = (taskData: Omit<Task, "id" | "completed" | "createdAt">) => {
     const newTask: Task = {
       ...taskData,
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
@@ -63,7 +86,14 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
     setTasks((prevTasks) => [...prevTasks, newTask]);
   };
 
-  const toggleComplete = (taskId: string) => {
+  const toggleComplete = async (taskId: string) => {
+    // Cancel notifs for this task when marked as completed
+    const task = tasks.find((t) => t.id === taskId);
+    if (task && !task.completed) {
+      // Task marked as completed so cancel notifs
+      await notificationService.cancelTaskNotifications(taskId);
+    }
+
     setTasks((prevTasks) =>
       prevTasks.map((task) =>
         task.id === taskId ? { ...task, completed: !task.completed } : task
@@ -76,7 +106,9 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <TaskContext.Provider value={{ tasks, addTask, toggleComplete, getTasksByChild }}>
+    <TaskContext.Provider
+      value={{ tasks, addTask, toggleComplete, getTasksByChild }}
+    >
       {children}
     </TaskContext.Provider>
   );
@@ -85,7 +117,7 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
 export const useTasks = () => {
   const context = useContext(TaskContext);
   if (context === undefined) {
-    throw new Error('useTasks must be used within a TaskProvider');
+    throw new Error("useTasks must be used within a TaskProvider");
   }
   return context;
 };
