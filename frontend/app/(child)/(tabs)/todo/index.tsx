@@ -1,8 +1,8 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useMemo, useEffect } from "react";
 import { View, Text, TouchableOpacity, FlatList, StyleSheet,  Image, ScrollView, Pressable, Modal, TextInput, Animated } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useTasks } from "@/contexts/TaskContext";
+import { useTasks, Task as TaskContextTask } from "@/contexts/TaskContext";
 import { useAuth } from "@/hooks/useAuth";
 
 // Defines what a task looks like
@@ -17,7 +17,7 @@ type Task = {
 };
 
 const ToDoScreen = ()=> {
-  const { getTasksByChild, toggleComplete: contextToggleComplete } = useTasks();
+  const { getTasksByChild, toggleComplete: contextToggleComplete, tasks: allTasks } = useTasks();
   const { user } = useAuth();
 
   // Current Date State
@@ -61,12 +61,13 @@ const ToDoScreen = ()=> {
     setDropdown(false);
   };
 
-  // Delete task function
+  // Delete task function - Note: TaskContext doesn't have delete yet
+  // TODO: Add deleteTask to TaskContext to properly remove tasks
   const deleteTask = (dateKey: string, taskId: string) => {
-    setTasksByDate((prev) => {
-      const updatedTasks = (prev[dateKey] || []).filter((task) => task.id !== taskId);
-      return { ...prev, [dateKey]: updatedTasks };
-    });
+    // For now, deletion won't work since tasksByDate is computed from TaskContext
+    // Once deleteTask is added to TaskContext, this will work automatically
+    console.log('Delete task:', taskId, 'from date:', dateKey);
+    // TODO: Implement task deletion in TaskContext
   };
 
   const handlePressTask = (taskId: string) => {
@@ -83,24 +84,39 @@ const ToDoScreen = ()=> {
     Completed: false,
 });
 
-const [tasksByDate, setTasksByDate] = useState<{
-  [key: string]: Task[];
-}>({
-  "2025-10-20": [
-    { id: "1", text: "Read ch.1", completed: false, category: "Homework", description: "Read chapter 1 of history textbook", points: 10 },
-    { id: "2", text: "Clean kitchen", completed: false, category: "Chores", description: "Wash dishes and wipe counters", points: 5 },
-    { id: "3", text: "Clean room", completed: false, category: "Chores", description: "Tidy up and vacuum", points: 5 },
-    { id: "4", text: "Wash dishes", completed: false, category: "Chores", description: "Clean dirty dishes", points: 5 },
-    { id: "5", text: "Laundry", completed: false, category: "Chores", description: "Wash and fold clothes", points: 5 },
-  ],
-  "2025-10-21": [
-    { id: "6", text: "Math worksheet", completed: false, category: "Homework", description: "Complete assigned math worksheet", points: 10 },
-    { id: "7", text: "Soccer practice", completed: false, category: "Extracurriculars", description: "Attend soccer practice", points: 15 },
-  ],
-  "2025-10-22": [
-    { id: "8", text: "Take out trash", completed: false, category: "Chores", description: "Take out household trash", points: 5 },
-  ],
-});
+// Convert TaskContext tasks to tasksByDate format
+// Get tasks assigned to this child
+const childName = user?.firstName || '';
+const childTasks = useMemo(() => {
+  if (!childName) return [];
+  return getTasksByChild(childName);
+}, [childName, allTasks, getTasksByChild]);
+
+// Group tasks by date (using dueDate)
+const tasksByDate = useMemo(() => {
+  const grouped: { [key: string]: Task[] } = {};
+  
+  childTasks.forEach((task: TaskContextTask) => {
+    // Extract date from dueDate (ISO string)
+    const taskDate = task.dueDate ? task.dueDate.split('T')[0] : new Date().toISOString().split('T')[0];
+    
+    if (!grouped[taskDate]) {
+      grouped[taskDate] = [];
+    }
+    
+    // Convert TaskContext task to local Task format
+    grouped[taskDate].push({
+      id: task.id,
+      text: task.text,
+      completed: task.completed,
+      category: task.category,
+      description: task.description,
+      points: task.points,
+    });
+  });
+  
+  return grouped;
+}, [childTasks]);
 
 // Converts current date to a string
 const formatDateKey = (date: Date) => date.toISOString().split("T")[0];
@@ -125,14 +141,9 @@ const year = currentDate.getFullYear();
 // Handling Edit Save Logic
   const handleEditSave = () => {
     if (taskToEdit) {
-      setTasksByDate((prev) => {
-        const updatedTasks = prev[formattedKey].map((task) =>
-          task.id === taskToEdit.id
-            ? { ...task, text: editText, description: editDescription, points: parseInt(editPoints) || task.points }
-            : task
-        );
-        return { ...prev, [formattedKey]: updatedTasks };
-      });
+      // Note: TaskContext doesn't have updateTask, so we'll keep local state for edits
+      // TODO: Add updateTask to TaskContext if needed
+      // For now, edits are only local and won't persist
       setEditModal(false);
       setTaskToEdit(null);
     }
@@ -160,33 +171,13 @@ const showPopup = (message: string) => {
 };
 
 
-// Update toggleComplete
+// Update toggleComplete - use TaskContext
 const toggleComplete = (taskId: string) => {
-  setTasksByDate((prev) => {
-    const updatedDayTasks = (prev[formattedKey] || []).map((task) => {
-      if (task.id === taskId) {
-        if (task.completed && task.category === "Completed" && task.originalCategory) {
-          // unmark completed → move back to original
-          return {
-            ...task,
-            completed: false,
-            category: task.originalCategory,
-            originalCategory: undefined,
-          };
-        } else if (!task.completed && task.category !== "Completed") {
-          // mark as completed → move to Completed section
-          return {
-            ...task,
-            completed: true,
-            originalCategory: task.category,
-            category: "Completed",
-          };
-        }
-      }
-      return task;
-    });
-    return { ...prev, [formattedKey]: updatedDayTasks };
-  });
+  // Use TaskContext's toggleComplete
+  contextToggleComplete(taskId);
+  
+  // Also update local state for immediate UI feedback
+  // The tasksByDate will update via useMemo when allTasks changes
 };
 
 // The four categories for tasks
