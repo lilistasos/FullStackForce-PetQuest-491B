@@ -55,3 +55,6 @@ ADD COLUMN cost INTEGER NOT NULL DEFAULT 0;
 
 ALTER TABLE tasks
 ADD COLUMN assigned_to UUID REFERENCES public.users(id) ON DELETE SET NULL;
+
+ALTER TABLE tasks ADD COLUMN category VARCHAR(20) 
+CHECK (category IN ('Homework', 'Chores', 'Extracurriculars', 'Practice', 'Appointments', 'Other'));
