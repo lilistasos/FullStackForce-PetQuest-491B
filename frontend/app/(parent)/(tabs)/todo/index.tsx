@@ -154,7 +154,7 @@ const [tasksByDate, setTasksByDate] = useState<{
     { id: "2", text: "Practice piano", completed: false, category: "Work", description: "Practice scales and new piece for 30 minutes", points: 15, childName: "Emma" },
     { id: "3", text: "Clean bedroom", completed: false, category: "Chores", description: "Organize toys and make bed", points: 10, childName: "Lucas" },
     { id: "4", text: "Read chapter 5", completed: false, category: "Homework", description: "Read and summarize chapter 5 of history book", points: 20, childName: "Sophia" },
-    { id: "5", text: "Set dinner table", completed: true, category: "Chores", description: "Set plates, utensils, and napkins", points: 5, childName: "Lucas" },
+    { id: "5", text: "Set dinner table", completed: true, category: "Completed", originalCategory: "Chores", description: "Set plates, utensils, and napkins", points: 5, childName: "Lucas" },
     { id: "6", text: "Math homework pages 45-47", completed: false, category: "Homework", description: "Complete all problems and show work", points: 15, childName: "Emma" },
     { id: "7", text: "Basketball practice", completed: false, category: "Work", description: "Team practice at the community center", points: 20, childName: "Lucas" },
     { id: "8", text: "Feed the dog", completed: false, category: "Chores", description: "Morning and evening feeding", points: 8, childName: "Sophia" },
@@ -421,7 +421,7 @@ const toggleComplete = (taskId: string) => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
+    <SafeAreaView style={styles.container} edges={["left", "right"]}>
       {/* Header Section */}
       <View style={styles.header}>
         {/* Child Selector */}
@@ -718,7 +718,7 @@ const createStyles = (colors: any, isDarkMode: boolean) =>
       borderColor: colors.border,
     },
     contentContainer: {
-      paddingBottom: 100,
+      paddingBottom: 20,
     },
     cardHeader: {
       flexDirection: "row",
