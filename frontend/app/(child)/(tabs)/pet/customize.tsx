@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, FlatList } from "react-native";
 import { usePet } from "@/contexts/PetContext";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useAchievements } from "@/contexts/AchievementContext";
 
 interface AccessoryItem {
   id: string;
@@ -18,6 +19,7 @@ interface AccessoriesData {
 export default function CustomizeScreen() {
   const { selectedPet, selectedAccessories, setSelectedAccessories } = usePet();
   const { colors } = useTheme();
+  const { recordCustomization } = useAchievements();
   const [selectedCategory, setSelectedCategory] = useState<keyof AccessoriesData>("hats");
   const [visibleRows, setVisibleRows] = useState(2);
   const [userAccessories, setUserAccessories] = useState<AccessoriesData>({
@@ -45,6 +47,10 @@ export default function CustomizeScreen() {
   }, []);
 
   const handleAccessorySelect = (item: AccessoryItem) => {
+    // Only track customization if selecting a non-empty accessory (not "none")
+    if (item.id !== "none" && selectedAccessories[selectedCategory] !== item.id) {
+      recordCustomization();
+    }
     setSelectedAccessories({
       ...selectedAccessories,
       [selectedCategory]: item.id

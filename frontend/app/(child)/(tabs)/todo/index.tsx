@@ -7,6 +7,7 @@ import { useTasks } from "@/contexts/TaskContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/contexts/ThemeContext";
 import { usePet } from "@/contexts/PetContext";
+import { useAchievements } from "@/contexts/AchievementContext";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { TodoCategoryPreferences } from '../account/preferences';
 
@@ -35,6 +36,7 @@ const ToDoScreen = ()=> {
   const { user } = useAuth();
   const { colors, isDarkMode } = useTheme();
   const { selectedPet } = usePet();
+  const { recordTaskCompletion } = useAchievements();
   const styles = useMemo(() => createStyles(colors, isDarkMode), [colors, isDarkMode]);
 
   // Current Date State
@@ -243,6 +245,8 @@ const toggleComplete = (taskId: string) => {
           };
         } else if (!task.completed && task.category !== "Completed") {
           // mark as completed → move to Completed section
+          // Track achievement when task is completed
+          recordTaskCompletion();
           return {
             ...task,
             completed: true,

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Modal } from "react-native";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useAchievements } from "@/contexts/AchievementContext";
 import { IconSymbol } from '@/components/ui/icon-symbol';
 
 interface ShopItem {
@@ -18,6 +19,7 @@ interface ShopData {
 
 export default function ShopScreen() {
   const { colors } = useTheme();
+  const { recordPurchase } = useAchievements();
   const [selectedTab, setSelectedTab] = useState<keyof ShopData>("pets");
   const [userCoins, setUserCoins] = useState(100);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -47,6 +49,13 @@ export default function ShopScreen() {
   const confirmPurchase = () => {
     if (itemToBuy) {
       setUserCoins(userCoins - itemToBuy.price);
+      
+      // Track achievement based on purchase type
+      if (selectedTab === 'pets') {
+        recordPurchase('pet');
+      } else if (selectedTab === 'customization') {
+        recordPurchase('accessory');
+      }
       
       // Update the item to owned in the shopItems state
       setShopItems(prevItems => {
