@@ -1,11 +1,23 @@
-import React, { useState, useRef, useMemo } from "react";
+import React, { useState, useRef, useMemo, useEffect, useCallback } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Image, Pressable, Modal, TextInput, Animated, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from 'expo-router';
 import { useTasks } from "@/contexts/TaskContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/contexts/ThemeContext";
 import { usePet } from "@/contexts/PetContext";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { TodoCategoryPreferences } from '../account/preferences';
+
+const TODO_CATEGORIES_KEY = '@petquest:todoCategories';
+
+const defaultCategoryPreferences: TodoCategoryPreferences = {
+  Homework: true,
+  Chores: true,
+  Work: true,
+  Extra: true,
+};
 
 // Defines what a task looks like
 type Task = {
@@ -91,9 +103,39 @@ const ToDoScreen = ()=> {
   const [expanded, setExpanded] = useState<{ [key: string]: boolean }>({
     Homework: false, // All categories are collaspsed at first
     Chores: false,
-    Extracurriculars: false,
+    Work: false,
+    Extra: false,
+    Extracurriculars: false, // Keep for backward compatibility
     Completed: false,
-});
+  });
+
+  // Category preferences state
+  const [categoryPreferences, setCategoryPreferences] = useState<TodoCategoryPreferences>(defaultCategoryPreferences);
+
+  // Load category preferences function
+  const loadCategoryPreferences = useCallback(async () => {
+    try {
+      const savedCategories = await AsyncStorage.getItem(TODO_CATEGORIES_KEY);
+      if (savedCategories !== null) {
+        const parsed = JSON.parse(savedCategories);
+        setCategoryPreferences({ ...defaultCategoryPreferences, ...parsed });
+      }
+    } catch (error) {
+      console.error('Error loading category preferences:', error);
+    }
+  }, []);
+
+  // Load category preferences on mount and when screen comes into focus
+  useEffect(() => {
+    loadCategoryPreferences();
+  }, [loadCategoryPreferences]);
+
+  // Reload preferences when screen comes into focus (e.g., returning from preferences screen)
+  useFocusEffect(
+    useCallback(() => {
+      loadCategoryPreferences();
+    }, [loadCategoryPreferences])
+  );
 
 const [tasksByDate, setTasksByDate] = useState<{
   [key: string]: Task[];
@@ -215,13 +257,34 @@ const toggleComplete = (taskId: string) => {
   });
 };
 
-// The four categories for tasks
-  const categories = [
+// Categories for tasks - filter based on preferences
+  // Map category IDs to preference keys (for backward compatibility, map Extracurriculars to Work)
+  const categoryMapping: { [key: string]: keyof TodoCategoryPreferences } = {
+    "Homework": "Homework",
+    "Chores": "Chores",
+    "Work": "Work",
+    "Extra": "Extra",
+    "Extracurriculars": "Work", // Map old category to Work preference
+  };
+
+  const allCategories = [
     { id: "Homework", title: "Homework" },
     { id: "Chores", title: "Chores" },
-    { id: "Extracurriculars", title: "Extracurriculars" },
-    { id: "Completed", title: "Completed" },
+    { id: "Work", title: "Work" },
+    { id: "Extra", title: "Extra" },
+    { id: "Extracurriculars", title: "Extracurriculars" }, // Keep for backward compatibility
+    { id: "Completed", title: "Completed" }, // Always visible
   ];
+
+  // Filter categories based on preferences (Completed is always shown)
+  const categories = useMemo(() => {
+    return allCategories.filter((category) => {
+      if (category.id === "Completed") return true; // Always show Completed
+      const preferenceKey = categoryMapping[category.id];
+      if (!preferenceKey) return true; // Show if no mapping found (safety)
+      return categoryPreferences[preferenceKey] !== false;
+    });
+  }, [categoryPreferences]);
   const renderCategory = (category: { id: string; title: string }) => {
     const isExpanded = expanded[category.id];
     const tasks = tasksByDate[formattedKey] || [];
@@ -311,24 +374,26 @@ const toggleComplete = (taskId: string) => {
                     <View style={styles.pointsBadge}>
                       <Text style={[styles.pointsText, { color: colors.primary }]}>{task.points} pts</Text>
                     </View>
-                    <TouchableOpacity onPress={() => {setDeleteModal(true); setTaskDelete(task.id)}} style={styles.deleteButton}>
-                      <Text style={styles.deleteButtonText}>Delete</Text>
-                    </TouchableOpacity>
-                    {/* Edit Button */}
-                    {!task.completed && (
-                      <TouchableOpacity
-                        onPress={() => {
-                          setTaskToEdit(task);
-                          setEditText(task.text);
-                          setEditDescription(task.description);
-                          setEditPoints(task.points.toString());
-                          setEditModal(true);
-                        }}
-                        style={[styles.editButton, { backgroundColor: colors.primary }]}
-                      >
-                        <Text style={styles.editButtonText}>Edit</Text>
+                    <View style={styles.buttonRow}>
+                      {/* Edit Button */}
+                      {!task.completed && (
+                        <TouchableOpacity
+                          onPress={() => {
+                            setTaskToEdit(task);
+                            setEditText(task.text);
+                            setEditDescription(task.description);
+                            setEditPoints(task.points.toString());
+                            setEditModal(true);
+                          }}
+                          style={[styles.editButton, { backgroundColor: colors.primary }]}
+                        >
+                          <Text style={styles.editButtonText}>Edit</Text>
+                        </TouchableOpacity>
+                      )}
+                      <TouchableOpacity onPress={() => {setDeleteModal(true); setTaskDelete(task.id)}} style={styles.deleteButton}>
+                        <Text style={styles.deleteButtonText}>Delete</Text>
                       </TouchableOpacity>
-                    )}
+                    </View>
                   </View>
                 )}
 
@@ -637,27 +702,31 @@ const createStyles = (colors: any, isDarkMode: boolean) =>
       color: colors.textSecondary,
       fontStyle: "italic",
     },
+    buttonRow: {
+      flexDirection: "row",
+      gap: 8,
+      marginTop: 6,
+    },
     deleteButton: {
       backgroundColor: "#FF4D4D",
       padding: 10,
-      marginHorizontal: 0,
       borderRadius: 5,
-      marginTop: 6,
-      alignSelf: "flex-start",
+      flex: 1,
     },
     deleteButtonText: {
       color: "#FFFFFF",
       fontWeight: "600",
+      textAlign: "center",
     },
     editButton: {
       padding: 10,
       borderRadius: 5,
-      marginTop: 6,
-      alignSelf: "flex-start",
+      flex: 1,
     },
     editButtonText: {
       color: "#FFFFFF",
       fontWeight: "600",
+      textAlign: "center",
     },
     dropdownOption: {
       padding: 10,

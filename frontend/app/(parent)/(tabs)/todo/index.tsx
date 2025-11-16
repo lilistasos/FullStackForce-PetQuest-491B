@@ -1,10 +1,22 @@
-import React, { useState, useRef, useMemo } from "react";
+import React, { useState, useRef, useMemo, useEffect, useCallback } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Pressable, Modal, TextInput, Animated, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from 'expo-router';
 import { useTasks } from "@/contexts/TaskContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/contexts/ThemeContext";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { TodoCategoryPreferences } from '../account/preferences';
+
+const TODO_CATEGORIES_KEY = '@petquest:todoCategories';
+
+const defaultCategoryPreferences: TodoCategoryPreferences = {
+  Homework: true,
+  Chores: true,
+  Work: true,
+  Extra: true,
+};
 
 // Defines what a task looks like
 type Task = {
@@ -15,6 +27,7 @@ type Task = {
   originalCategory?: string;
   description: string;
   points: number;
+  childName?: string; // Which child the task is assigned to
 };
 
 const ToDoScreen = ()=> {
@@ -27,11 +40,11 @@ const ToDoScreen = ()=> {
   const [currentDate, setCurrentDate] = useState(new Date());
 
   // Child selection state
-  const [selectedChild, setSelectedChild] = useState<string>("Emma");
+  const [selectedChild, setSelectedChild] = useState<string>("All");
   const [childSelectorOpen, setChildSelectorOpen] = useState(false);
   
   // Example children list - in production, this would come from the backend
-  const children = ["Emma", "Lucas", "Sophia"];
+  const children = ["All", "Emma", "Lucas", "Sophia"];
 
   const [showDetails, setShowDetails] = useState<string | null>(null);
   const dropdownOptions = ["Default", "Points: High to Low", "Points: Low to High"];
@@ -51,9 +64,6 @@ const ToDoScreen = ()=> {
   const [editDescription, setEditDescription] = useState("");
   const [editPoints, setEditPoints] = useState("");
 
-  //states for confirm modal
-  const [confirmModal, setConfirmModal] = useState(false);
-  const [taskToConfirm, setTaskToConfirm] = useState<Task | null>(null);
 
   //states for points popup
   const [pointsPopup, setPointsPopup] = useState({ visible: false, message: "" });
@@ -98,31 +108,66 @@ const ToDoScreen = ()=> {
   const [expanded, setExpanded] = useState<{ [key: string]: boolean }>({
     Homework: false, // All categories are collaspsed at first
     Chores: false,
-    Extracurriculars: false,
+    Work: false,
+    Extra: false,
+    Extracurriculars: false, // Keep for backward compatibility
     Completed: false,
-});
+  });
+
+  // Category preferences state
+  const [categoryPreferences, setCategoryPreferences] = useState<TodoCategoryPreferences>(defaultCategoryPreferences);
+
+  // Load category preferences function
+  const loadCategoryPreferences = useCallback(async () => {
+    try {
+      const savedCategories = await AsyncStorage.getItem(TODO_CATEGORIES_KEY);
+      if (savedCategories !== null) {
+        const parsed = JSON.parse(savedCategories);
+        setCategoryPreferences({ ...defaultCategoryPreferences, ...parsed });
+      }
+    } catch (error) {
+      console.error('Error loading category preferences:', error);
+    }
+  }, []);
+
+  // Load category preferences on mount and when screen comes into focus
+  useEffect(() => {
+    loadCategoryPreferences();
+  }, [loadCategoryPreferences]);
+
+  // Reload preferences when screen comes into focus (e.g., returning from preferences screen)
+  useFocusEffect(
+    useCallback(() => {
+      loadCategoryPreferences();
+    }, [loadCategoryPreferences])
+  );
+
+// Converts current date to a string
+const formatDateKey = (date: Date) => date.toISOString().split("T")[0];
+const todayKey = formatDateKey(new Date());
 
 const [tasksByDate, setTasksByDate] = useState<{
   [key: string]: Task[];
 }>({
-  "2025-10-20": [
-    { id: "1", text: "Read ch.1", completed: false, category: "Homework", description: "Read chapter 1 of history textbook", points: 10 },
-    { id: "2", text: "Clean kitchen", completed: false, category: "Chores", description: "Wash dishes and wipe counters", points: 5 },
-    { id: "3", text: "Clean room", completed: false, category: "Chores", description: "Tidy up and vacuum", points: 5 },
-    { id: "4", text: "Wash dishes", completed: false, category: "Chores", description: "Clean dirty dishes", points: 5 },
-    { id: "5", text: "Laundry", completed: false, category: "Chores", description: "Wash and fold clothes", points: 5 },
-  ],
-  "2025-10-21": [
-    { id: "6", text: "Math worksheet", completed: false, category: "Homework", description: "Complete assigned math worksheet", points: 10 },
-    { id: "7", text: "Soccer practice", completed: false, category: "Extracurriculars", description: "Attend soccer practice", points: 15 },
-  ],
-  "2025-10-22": [
-    { id: "8", text: "Take out trash", completed: false, category: "Chores", description: "Take out household trash", points: 5 },
+  [todayKey]: [
+    { id: "1", text: "Complete science project", completed: false, category: "Homework", description: "Finish the solar system model for science class", points: 25, childName: "Emma" },
+    { id: "2", text: "Practice piano", completed: false, category: "Work", description: "Practice scales and new piece for 30 minutes", points: 15, childName: "Emma" },
+    { id: "3", text: "Clean bedroom", completed: false, category: "Chores", description: "Organize toys and make bed", points: 10, childName: "Lucas" },
+    { id: "4", text: "Read chapter 5", completed: false, category: "Homework", description: "Read and summarize chapter 5 of history book", points: 20, childName: "Sophia" },
+    { id: "5", text: "Set dinner table", completed: true, category: "Chores", description: "Set plates, utensils, and napkins", points: 5, childName: "Lucas" },
+    { id: "6", text: "Math homework pages 45-47", completed: false, category: "Homework", description: "Complete all problems and show work", points: 15, childName: "Emma" },
+    { id: "7", text: "Basketball practice", completed: false, category: "Work", description: "Team practice at the community center", points: 20, childName: "Lucas" },
+    { id: "8", text: "Feed the dog", completed: false, category: "Chores", description: "Morning and evening feeding", points: 8, childName: "Sophia" },
+    { id: "9", text: "Art club meeting", completed: false, category: "Extra", description: "After school art club session", points: 12, childName: "Emma" },
+    { id: "10", text: "Take out recycling", completed: false, category: "Chores", description: "Sort and take recycling bins to curb", points: 7, childName: "Lucas" },
+    { id: "11", text: "Book report draft", completed: false, category: "Homework", description: "Write first draft of book report on 'The Giver'", points: 30, childName: "Sophia" },
+    { id: "12", text: "Water plants", completed: false, category: "Chores", description: "Water all indoor plants", points: 5, childName: "Emma" },
+    { id: "13", text: "Swimming lessons", completed: false, category: "Work", description: "Weekly swimming lesson at the pool", points: 18, childName: "Lucas" },
+    { id: "14", text: "Science fair preparation", completed: false, category: "Extra", description: "Work on display board and presentation", points: 25, childName: "Sophia" },
   ],
 });
 
-// Converts current date to a string
-const formatDateKey = (date: Date) => date.toISOString().split("T")[0];
+// Converts current date to a string (already defined above)
 const formattedKey = formatDateKey(currentDate);
 const tasks = tasksByDate[formattedKey] || [];
 
@@ -222,17 +267,44 @@ const toggleComplete = (taskId: string) => {
   });
 };
 
-// The four categories for tasks
-  const categories = [
+// Categories for tasks - filter based on preferences
+  // Map category IDs to preference keys (for backward compatibility, map Extracurriculars to Work)
+  const categoryMapping: { [key: string]: keyof TodoCategoryPreferences } = {
+    "Homework": "Homework",
+    "Chores": "Chores",
+    "Work": "Work",
+    "Extra": "Extra",
+    "Extracurriculars": "Work", // Map old category to Work preference
+  };
+
+  const allCategories = [
     { id: "Homework", title: "Homework" },
     { id: "Chores", title: "Chores" },
-    { id: "Extracurriculars", title: "Extracurriculars" },
-    { id: "Completed", title: "Completed" },
+    { id: "Work", title: "Work" },
+    { id: "Extra", title: "Extra" },
+    { id: "Extracurriculars", title: "Extracurriculars" }, // Keep for backward compatibility
+    { id: "Completed", title: "Completed" }, // Always visible
   ];
+
+  // Filter categories based on preferences (Completed is always shown)
+  const categories = useMemo(() => {
+    return allCategories.filter((category) => {
+      if (category.id === "Completed") return true; // Always show Completed
+      const preferenceKey = categoryMapping[category.id];
+      if (!preferenceKey) return true; // Show if no mapping found (safety)
+      return categoryPreferences[preferenceKey] !== false;
+    });
+  }, [categoryPreferences]);
   const renderCategory = (category: { id: string; title: string }) => {
     const isExpanded = expanded[category.id];
     const tasks = tasksByDate[formattedKey] || [];
-    const categoryTasks = tasks.filter((t) => t.category === category.id);
+    // Filter tasks by category and selected child
+    let categoryTasks = tasks.filter((t) => t.category === category.id);
+    
+    // Filter by selected child if not "All"
+    if (selectedChild !== "All") {
+      categoryTasks = categoryTasks.filter((t) => t.childName === selectedChild);
+    }
     //sort tasks based on selected sort
     switch(sortType) {
       case (dropdownOptions[1]):
@@ -275,16 +347,7 @@ const toggleComplete = (taskId: string) => {
           {visibleTasks.length > 0 ? (
             visibleTasks.map((task) => (
               <View key={task.id} style={styles.taskItem}>
-                <TouchableOpacity onPress={() => {
-                  closeDropdown();
-                  if (!task.completed) {
-                    setTaskToConfirm(task);
-                    setConfirmModal(true);
-                  } else {
-                    toggleComplete(task.id);
-                  }
-                }}
-                >
+                <View>
                   <Ionicons
                     name={
                       task.completed ? "checkmark-circle" : "ellipse-outline"
@@ -292,7 +355,7 @@ const toggleComplete = (taskId: string) => {
                     size={20}
                     color={task.completed ? colors.primary : colors.textSecondary}
                   />
-                </TouchableOpacity>
+                </View>
                 <View style={styles.taskDetailsColumn}>
                   <Pressable onPress={() => handlePressTask(task.id)} style={styles.taskTitleRow}>
                     <Ionicons
@@ -307,7 +370,9 @@ const toggleComplete = (taskId: string) => {
                         task.completed && styles.completedTaskText,
                       ]}
                     >
-                      {task.text}
+                      {selectedChild === "All" && task.childName 
+                        ? `${task.childName}: ${task.text}` 
+                        : task.text}
                     </Text>
                   </Pressable>
                 
@@ -318,24 +383,26 @@ const toggleComplete = (taskId: string) => {
                     <View style={styles.pointsBadge}>
                       <Text style={[styles.pointsText, { color: colors.primary }]}>{task.points} pts</Text>
                     </View>
-                    <TouchableOpacity onPress={() => {setDeleteModal(true); setTaskDelete(task.id)}} style={styles.deleteButton}>
-                      <Text style={styles.deleteButtonText}>Delete</Text>
-                    </TouchableOpacity>
-                    {/* Edit Button */}
-                    {!task.completed && (
-                      <TouchableOpacity
-                        onPress={() => {
-                          setTaskToEdit(task);
-                          setEditText(task.text);
-                          setEditDescription(task.description);
-                          setEditPoints(task.points.toString());
-                          setEditModal(true);
-                        }}
-                        style={[styles.editButton, { backgroundColor: colors.primary }]}
-                      >
-                        <Text style={styles.editButtonText}>Edit</Text>
+                    <View style={styles.buttonRow}>
+                      {/* Edit Button */}
+                      {!task.completed && (
+                        <TouchableOpacity
+                          onPress={() => {
+                            setTaskToEdit(task);
+                            setEditText(task.text);
+                            setEditDescription(task.description);
+                            setEditPoints(task.points.toString());
+                            setEditModal(true);
+                          }}
+                          style={[styles.editButton, { backgroundColor: colors.primary }]}
+                        >
+                          <Text style={styles.editButtonText}>Edit</Text>
+                        </TouchableOpacity>
+                      )}
+                      <TouchableOpacity onPress={() => {setDeleteModal(true); setTaskDelete(task.id)}} style={styles.deleteButton}>
+                        <Text style={styles.deleteButtonText}>Delete</Text>
                       </TouchableOpacity>
-                    )}
+                    </View>
                   </View>
                 )}
                 </View>
@@ -474,35 +541,6 @@ const toggleComplete = (taskId: string) => {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
-      </Modal>
-
-      {/* Completion Confirmation Modal */}
-      <Modal visible={confirmModal} animationType="fade" transparent={true}>
-        <View style={styles.modalOverlay}>
-          {taskToConfirm && (
-            <View style={styles.modalBox}>
-              <Text style={styles.modalTitle}>Complete this task?</Text>
-              <Text style={styles.modalBodyText}>Task: {taskToConfirm.text}</Text>
-              <Text style={styles.modalBodyText}>Description: {taskToConfirm.description}</Text>
-              <Text style={styles.modalBodyText}>Points: {taskToConfirm.points}</Text>
-              <View style={styles.modalButtonRow}>
-                <TouchableOpacity onPress={() => setConfirmModal(false)} style={styles.cancelButton}>
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => {
-                    toggleComplete(taskToConfirm.id);
-                    setConfirmModal(false);
-                    setTaskToConfirm(null);
-                  }}
-                  style={styles.saveButton}
-                >
-                  <Text style={styles.saveButtonText}>Confirm</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
         </View>
       </Modal>
 
@@ -748,27 +786,31 @@ const createStyles = (colors: any, isDarkMode: boolean) =>
       color: colors.textSecondary,
       fontStyle: "italic",
     },
+    buttonRow: {
+      flexDirection: "row",
+      gap: 8,
+      marginTop: 6,
+    },
     deleteButton: {
       backgroundColor: "#FF4D4D",
       padding: 10,
-      marginHorizontal: 0,
       borderRadius: 5,
-      marginTop: 6,
-      alignSelf: "flex-start",
+      flex: 1,
     },
     deleteButtonText: {
       color: "#FFFFFF",
       fontWeight: "600",
+      textAlign: "center",
     },
     editButton: {
       padding: 10,
       borderRadius: 5,
-      marginTop: 6,
-      alignSelf: "flex-start",
+      flex: 1,
     },
     editButtonText: {
       color: "#FFFFFF",
       fontWeight: "600",
+      textAlign: "center",
     },
     dropdownOption: {
       padding: 10,
