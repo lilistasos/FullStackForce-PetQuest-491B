@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image } from "react-native";
 import { usePet } from "@/contexts/PetContext";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useAuth } from "@/hooks/useAuth";
 
 interface CollectionItem {
   id: string;
@@ -11,11 +12,40 @@ interface CollectionItem {
   owned: boolean;
 }
 
+interface BackendAccessory {
+  id: number;
+  name: string;
+  imageUrl: string | null;
+  isUnlocked: boolean;
+  isVisible: boolean;
+  cost: number;
+}
+
+interface BackendPet {
+  id: number;
+  userId: string;
+  name: string;
+  imageUrl: string | null;
+  isUnlocked: boolean;
+  isVisible: boolean;
+  cost: number;
+  accessories: BackendAccessory[];
+}
+
+const petKeyFromName = (name: string) =>
+  name.toLowerCase().replace(/\s+/g, "-");
+
+
 export default function CollectionScreen() {
   const { selectedPet, setSelectedPet } = usePet();
   const { colors } = useTheme();
+  const { token } = useAuth();
 
-  const collectionItems: CollectionItem[] = [
+  const [backendPets, setBackendPets] = useState<BackendPet[]>([]);
+  const [loading, setLoading] = useState(false);
+
+
+  const staticCollectionItems: CollectionItem[] = [
     { id: "dragon", name: "Dragon", icon: "", owned: true },
     { id: "cat", name: "Cat", icon: "", owned: true },
     { id: "bird", name: "Bird", icon: "", owned: false },
@@ -23,6 +53,16 @@ export default function CollectionScreen() {
     { id: "rabbit", name: "Rabbit", icon: "", owned: false },
     { id: "hamster", name: "Hamster", icon: "", owned: false },
   ];
+
+  const collectionItems: CollectionItem[] =
+    backendPets.length > 0
+      ? backendPets.map((p) => ({
+          id: petKeyFromName(p.name),
+          name: p.name,
+          icon: "",
+          owned: p.isUnlocked,
+        }))
+      : staticCollectionItems;
 
   const getPetImage = (petId: string) => {
     switch (petId) {
@@ -35,17 +75,90 @@ export default function CollectionScreen() {
     }
   };
 
-  const handlePetSelect = (petId: string) => {
-    const pet = collectionItems.find(item => item.id === petId);
-    // Only allow selection if the pet is owned
-    if (pet && pet.owned) {
-      setSelectedPet({
-        id: petId,
-        name: pet.name,
-        image: getPetImage(petId)
-      });
+  // Load pets from backend when token is available
+  useEffect(() => {
+    if (!token) return;
+
+    const loadPets = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch("http://10.0.2.2:4000/api/pets", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!res.ok) {
+          console.log("Failed to fetch pets:", await res.text());
+          return;
+        }
+
+        const data: BackendPet[] = await res.json();
+        setBackendPets(data);
+
+        // Pick an active / visible pet for the main view
+        if (data.length > 0) {
+          const active =
+            data.find((p) => p.isVisible) ||
+            data.find((p) => p.isUnlocked) ||
+            data[0];
+
+          if (active) {
+            const key = petKeyFromName(active.name);
+            setSelectedPet({
+              id: key,
+              name: active.name,
+              image: getPetImage(key),
+            });
+          }
+        }
+      } catch (err) {
+        console.log("Error fetching pets:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadPets();
+  }, [token]);
+
+  const handlePetSelect = async (petKey: string) => {
+    // Find matching item in the current list (static OR backend-derived)
+    const petItem = collectionItems.find((item) => item.id === petKey);
+    if (!petItem || !petItem.owned) return;
+
+    // Update UI selection
+    setSelectedPet({
+      id: petKey,
+      name: petItem.name,
+      image: getPetImage(petKey),
+    });
+
+    // If we have backend data + token, also update which pet is visible
+    if (token && backendPets.length > 0) {
+      const backendPet = backendPets.find(
+        (p) => petKeyFromName(p.name) === petKey
+      );
+      if (!backendPet) return;
+
+      try {
+        await fetch(
+          `http://10.0.2.2:4000/api/pets/${backendPet.id}/visibility`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ isVisible: true }),
+          }
+        );
+      } catch (err) {
+        console.log("Error updating pet visibility:", err);
+      }
     }
   };
+
 
   const renderCollectionItem = (item: CollectionItem) => (
     <TouchableOpacity 

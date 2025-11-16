@@ -489,6 +489,132 @@ app.delete('/api/account/delete-account', authMiddleware, async (req, res) => {
   }
 });
 
+// Get all pets for current user (with accessories)
+app.get('/api/pets', authMiddleware, async (req, res) => {
+  const userId = req.user.sub;
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT
+         p.id,
+         p.user_id      AS "userId",
+         p.name,
+         p.image_url    AS "imageUrl",
+         p.is_unlocked  AS "isUnlocked",
+         p.is_visible   AS "isVisible",
+         p.cost,
+         COALESCE(
+           json_agg(
+             json_build_object(
+               'id', a.id,
+               'name', a.name,
+               'imageUrl', a.image_url,
+               'isUnlocked', a.is_unlocked,
+               'isVisible', a.is_visible,
+               'cost', a.cost
+             )
+           ) FILTER (WHERE a.id IS NOT NULL),
+           '[]'
+         ) AS accessories
+       FROM pets p
+       LEFT JOIN pet_accessories a ON a.pet_id = p.id
+       WHERE p.user_id = $1
+       GROUP BY p.id
+       ORDER BY p.id`,
+      [userId]
+    );
+
+    res.json(rows);
+  } catch (err) {
+    console.error('GET /api/pets error:', err);
+    res.status(500).json({ error: 'Failed to fetch pet collection' });
+  }
+});
+
+// Toggle pet visibility
+app.patch('/api/pets/:id/visibility', authMiddleware, async (req, res) => {
+  const userId = req.user.sub;
+  const petId = parseInt(req.params.id, 10);
+  const { isVisible } = req.body;
+
+  if (Number.isNaN(petId)) {
+    return res.status(400).json({ error: 'Invalid pet id' });
+  }
+  if (typeof isVisible !== 'boolean') {
+    return res.status(400).json({ error: 'isVisible must be boolean' });
+  }
+
+  try {
+    const { rows } = await pool.query(
+      `UPDATE pets
+       SET is_visible = $1
+       WHERE id = $2 AND user_id = $3
+       RETURNING
+         id,
+         user_id     AS "userId",
+         name,
+         image_url   AS "imageUrl",
+         is_unlocked AS "isUnlocked",
+         is_visible  AS "isVisible",
+         cost`,
+      [isVisible, petId, userId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Pet not found' });
+    }
+
+    res.json(rows[0]);
+  } catch (err) {
+    console.error('PATCH /api/pets/:id/visibility error:', err);
+    res.status(500).json({ error: 'Failed to update pet visibility' });
+  }
+});
+
+// Toggle accessory visibility
+app.patch('/api/pet-accessories/:id/visibility', authMiddleware, async (req, res) => {
+  const userId = req.user.sub;
+  const accessoryId = parseInt(req.params.id, 10);
+  const { isVisible } = req.body;
+
+  if (Number.isNaN(accessoryId)) {
+    return res.status(400).json({ error: 'Invalid accessory id' });
+  }
+  if (typeof isVisible !== 'boolean') {
+    return res.status(400).json({ error: 'isVisible must be boolean' });
+  }
+
+  try {
+    const { rows } = await pool.query(
+      `UPDATE pet_accessories a
+       SET is_visible = $1
+       FROM pets p
+       WHERE a.id = $2
+         AND a.pet_id = p.id
+         AND p.user_id = $3
+       RETURNING
+         a.id,
+         a.pet_id,
+         a.name,
+         a.image_url AS "imageUrl",
+         a.is_unlocked AS "isUnlocked",
+         a.is_visible AS "isVisible",
+         a.cost`,
+      [isVisible, accessoryId, userId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Accessory not found' });
+    }
+
+    res.json(rows[0]);
+  } catch (err) {
+    console.error('PATCH /api/pet-accessories/:id/visibility error:', err);
+    res.status(500).json({ error: 'Failed to update accessory visibility' });
+  }
+});
+
+
 // Starts Server
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
