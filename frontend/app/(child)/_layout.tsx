@@ -8,6 +8,9 @@ import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import HamburgerMenu from '@/components/HamburgerMenu';
 import { useTheme } from '@/contexts/ThemeContext';
+import { NewTaskProvider } from '@/contexts/NewTaskContext';
+import NewTaskPopup from '@/components/NewTaskPopup';
+
 
 // Function to calculate luminance and determine text color
 const getContrastColor = (backgroundColor: string): string => {
@@ -113,6 +116,7 @@ export default function ChildLayout() {
   }, [navigationState]);
 
   return (
+    <NewTaskProvider>
     <HamburgerMenu 
       visible={menuVisible} 
       onClose={() => setMenuVisible(false)}
@@ -182,6 +186,10 @@ export default function ChildLayout() {
         }}
       />
     </Tabs>
+
+
     </HamburgerMenu>
+     <NewTaskPopup />
+     </NewTaskProvider>
   );
 }

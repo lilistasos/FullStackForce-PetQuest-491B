@@ -3,7 +3,7 @@ import { View, Text, Modal, Button, StyleSheet } from 'react-native';
 import { useNewTask } from '@/contexts/NewTaskContext';
 
 export default function NewTaskPopup() {
-  const { newTask, hideNewTask } = useNewTask();
+  const { newTask, hideTask } = useNewTask();
 
   if (!newTask) return null;
 
@@ -19,7 +19,7 @@ export default function NewTaskPopup() {
           <Text style={styles.text}>Task: {newTask.title}</Text>
           <Text style={styles.text}>Description: {newTask.description}</Text>
 
-          <Button title="Close" onPress={hideNewTask} />
+          <Button title="Close" onPress={hideTask} />
         </View>
       </View>
     </Modal>
