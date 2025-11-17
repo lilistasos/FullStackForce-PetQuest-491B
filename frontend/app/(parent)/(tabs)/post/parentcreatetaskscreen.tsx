@@ -40,6 +40,8 @@ const categories = [
   "Other",
 ];
 
+const pointOptions = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
+
 const ParentCreateTaskScreen = () => {
     const router = useRouter();
 
@@ -53,6 +55,11 @@ const ParentCreateTaskScreen = () => {
     const [date, setDate] = useState(new Date());
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+
+    //Adding Task Points
+    const [showPointsDropdown, setShowPointsDropdown] = useState(false);
+    const [points, setPoints] = useState(0);
+
     const [note, setNote] = useState("");
 
     const onDateChange = (_event: any, selectedDate?: Date) => {
@@ -64,6 +71,11 @@ const ParentCreateTaskScreen = () => {
       setCategory(selectedCategory);
       setShowCategoryDropdown(false);
     };
+
+    const handlePointsSelect = (selectedPoints: number) => {
+      setPoints(selectedPoints);
+      setShowPointsDropdown(false);
+    };    
 
     const handleAssignTask = async () => {
       try {
@@ -78,7 +90,7 @@ const ParentCreateTaskScreen = () => {
             title: taskName,
             description: note,
             dueDate: date.toISOString(),
-            pointValue: 0,
+            pointValue: points,
             category: category || "Other",
             assignedTo: childId,
           }),
@@ -137,7 +149,24 @@ const ParentCreateTaskScreen = () => {
               <Ionicons name="chevron-down-outline" size={24} color="#0077B6" />
             </TouchableOpacity>
           </View>
-  
+
+          {/* Points */}
+          <Text style={styles.label}>Points</Text>
+          <View style={styles.categoryInputContainer}>
+            <TextInput
+              placeholder="Select points"
+              value={points > 0 ? `${points} points` : ""}
+              editable={false}
+              style={styles.categoryInput}
+            />
+            <TouchableOpacity
+              style={styles.dropdownIconButton}
+              onPress={() => setShowPointsDropdown(true)}
+            >
+              <Ionicons name="chevron-down-outline" size={24} color="#0077B6" />
+            </TouchableOpacity>
+          </View>
+
           {/* Due Date */}
           <Text style={styles.label}>Due Date</Text>
           <View style={styles.dateInputContainer}>
@@ -219,6 +248,47 @@ const ParentCreateTaskScreen = () => {
                       {item}
                     </Text>
                     {category === item && (
+                      <Ionicons name="checkmark" size={20} color="#0077B6" />
+                    )}
+                  </TouchableOpacity>
+                )}
+              />
+            </View>
+          </TouchableOpacity>
+        </Modal>
+
+        <Modal
+          visible={showPointsDropdown}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowPointsDropdown(false)}
+        >
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowPointsDropdown(false)}
+          >
+            <View style={styles.dropdownContainer}>
+              <FlatList
+                data={pointOptions}
+                keyExtractor={(item) => item.toString()}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={[
+                      styles.categoryItem,
+                      points === item && styles.categoryItemSelected,
+                    ]}
+                    onPress={() => handlePointsSelect(item)}
+                  >
+                    <Text
+                      style={[
+                        styles.categoryItemText,
+                        points === item && styles.categoryItemTextSelected,
+                      ]}
+                    >
+                      {item} points
+                    </Text>
+                    {points === item && (
                       <Ionicons name="checkmark" size={20} color="#0077B6" />
                     )}
                   </TouchableOpacity>
