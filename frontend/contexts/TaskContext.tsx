@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -46,6 +46,7 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const { token, user } = useAuth();
+  const previousTaskIdsRef = useRef<Set<string>>(new Set());
 
   // Load tasks from backend on mount and when token/user changes
   const loadTasks = async () => {
@@ -96,6 +97,8 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
         };
       });
 
+      // Update previous task IDs
+      previousTaskIdsRef.current = new Set(transformedTasks.map(t => t.id.toString()));
       setTasks(transformedTasks);
     } catch (error) {
       console.error('Error loading tasks:', error);

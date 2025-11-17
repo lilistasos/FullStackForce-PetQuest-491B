@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Tabs, useRouter } from 'expo-router';
-import { TouchableOpacity } from 'react-native';
+import { TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigationState } from '@react-navigation/native';
 
@@ -10,6 +10,7 @@ import HamburgerMenu from '@/components/HamburgerMenu';
 import { useTheme } from '@/contexts/ThemeContext';
 import { NewTaskProvider } from '@/contexts/NewTaskContext';
 import NewTaskPopup from '@/components/NewTaskPopup';
+import NewTaskDetector from '@/components/NewTaskDetector';
 
 
 // Function to calculate luminance and determine text color
@@ -189,6 +190,7 @@ export default function ChildLayout() {
 
 
     </HamburgerMenu>
+     <NewTaskDetector />
      <NewTaskPopup />
      </NewTaskProvider>
   );

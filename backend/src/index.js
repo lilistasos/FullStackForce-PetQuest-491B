@@ -139,12 +139,14 @@ async function findUserByEmail(email) {
 }
 
 async function findUserById(id) {
+  // Ensure id is converted to integer for database query
+  const userId = typeof id === 'string' ? parseInt(id, 10) : id;
   const { rows } = await pool.query(
     `SELECT id, email, first_name AS "firstName", last_name AS "lastName",
             role, family_code AS "familyCode", date_of_birth AS "dateOfBirth", created_at AS "createdAt"
      FROM users
      WHERE id = $1`,
-    [id]
+    [userId]
   );
   return rows[0] || null;
 }
@@ -605,7 +607,8 @@ app.get('/api/tasks', authMiddleware, async (req, res) => {
 // Update task (toggle complete, update fields)
 app.put('/api/tasks/:id', authMiddleware, async (req, res) => {
   try {
-    const userId = req.user.sub;
+    // Ensure userId is a number (JWT sub might be string)
+    const userId = typeof req.user.sub === 'string' ? parseInt(req.user.sub, 10) : req.user.sub;
     const taskId = req.params.id;
     const { completed, text, category, description, points, dueDate } = req.body;
 
@@ -623,7 +626,29 @@ app.put('/api/tasks/:id', authMiddleware, async (req, res) => {
     const user = await findUserById(userId);
 
     // Only the assigned child can toggle completion, or parent can update any field
-    if (completed !== undefined && task.assigned_to_user_id !== parseInt(userId)) {
+    // Convert both to numbers for proper comparison (handle both string and number types)
+    const assignedToUserId = Number(task.assigned_to_user_id);
+    const currentUserId = Number(userId);
+    
+    // Debug logging
+    console.log('Task completion check:', {
+      taskId,
+      assignedToUserId,
+      currentUserId,
+      assignedToUserIdRaw: task.assigned_to_user_id,
+      currentUserIdRaw: userId,
+      assignedToUserIdType: typeof task.assigned_to_user_id,
+      currentUserIdType: typeof userId,
+      areEqual: assignedToUserId === currentUserId
+    });
+    
+    if (completed !== undefined && assignedToUserId !== currentUserId) {
+      console.error('Permission denied - User ID mismatch:', {
+        assignedTo: assignedToUserId,
+        current: currentUserId,
+        taskAssignedTo: task.assigned_to_user_id,
+        reqUserId: userId
+      });
       return res.status(403).json({ error: 'Only the assigned user can complete tasks' });
     }
 
