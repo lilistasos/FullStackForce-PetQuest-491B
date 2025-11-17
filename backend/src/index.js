@@ -621,6 +621,72 @@ app.patch('/api/pet-accessories/:id/visibility', authMiddleware, async (req, res
   }
 });
 
+// Grabs children in family for task creation
+app.get('/api/parent/children', authMiddleware, async (req, res) => {
+  const parentId = req.user.sub;
+
+  try {
+    // Get parent to extract their family_code
+    const { rows: parentRows } = await pool.query(
+      `SELECT family_code FROM users WHERE id = $1 AND role = 'parent'`,
+      [parentId]
+    );
+
+    if (parentRows.length === 0) {
+      return res.status(400).json({ error: 'Parent account not found.' });
+    }
+
+    const familyCode = parentRows[0].family_code;
+
+    // Get all children in that family
+    const { rows: children } = await pool.query(
+      `SELECT id, first_name AS "firstName", last_name AS "lastName", email
+       FROM users
+       WHERE family_code = $1 AND role = 'child'`,
+      [familyCode]
+    );
+
+    res.json(children);
+  } catch (err) {
+    console.error('GET /parent/children error:', err);
+    res.status(500).json({ error: 'Failed to load children list' });
+  }
+});
+
+// Create and Send Task to Child
+app.post('/api/tasks', authMiddleware, async (req, res) => {
+  const parentId = req.user.sub;
+  const { title, description, dueDate, pointValue, category, assignedTo } = req.body;
+
+  if (!title || !assignedTo) {
+    return res.status(400).json({ error: 'Title and assignedTo are required.' });
+  }
+
+  try {
+    const { rows } = await pool.query(
+      `INSERT INTO tasks
+        (user_id, title, description, due_date, point_value, category, assigned_to)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING *`,
+      [
+        parentId,
+        title,
+        description || '',
+        dueDate || null,
+        pointValue || 0,
+        category || 'Other',
+        assignedTo
+      ]
+    );
+
+    res.status(201).json(rows[0]);
+  } catch (err) {
+    console.error('POST /api/tasks error:', err);
+    res.status(500).json({ error: 'Failed to create task' });
+  }
+});
+
+
 
 // Starts Server
 const PORT = process.env.PORT || 4000;
