@@ -65,16 +65,22 @@ export default function NewTaskDetector() {
     previousTaskIdsRef.current = new Set(tasks.map(t => t.id.toString()));
   }, [tasks, user?.role, showTask, loading]);
 
-  // Set up periodic refresh for child users (every 30 seconds)
+  // Set up periodic refresh for child users (every 10 seconds for better responsiveness)
   useEffect(() => {
     if (user?.role !== 'child') {
       return;
     }
 
+    // Wait for initial load to complete before starting periodic refresh
+    if (isInitialLoadRef.current) {
+      return;
+    }
+
     // Refresh tasks periodically to catch new assignments
     refreshIntervalRef.current = setInterval(() => {
+      console.log('NewTaskDetector: Periodic refresh triggered');
       refreshTasks();
-    }, 30000); // 30 seconds
+    }, 10000); // 10 seconds for better responsiveness
 
     // Cleanup on unmount
     return () => {
@@ -82,7 +88,7 @@ export default function NewTaskDetector() {
         clearInterval(refreshIntervalRef.current);
       }
     };
-  }, [user?.role, refreshTasks]);
+  }, [user?.role, refreshTasks, loading]);
 
   return null; // This component doesn't render anything
 }

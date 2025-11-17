@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Tabs, useRouter } from 'expo-router';
-import { TouchableOpacity, Platform } from 'react-native';
+import { Tabs, useRouter, useFocusEffect } from 'expo-router';
+import { TouchableOpacity, Platform, AppState } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigationState } from '@react-navigation/native';
 
@@ -11,6 +11,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { NewTaskProvider } from '@/contexts/NewTaskContext';
 import NewTaskPopup from '@/components/NewTaskPopup';
 import NewTaskDetector from '@/components/NewTaskDetector';
+import { useTasks } from '@/contexts/TaskContext';
 
 
 // Function to calculate luminance and determine text color
