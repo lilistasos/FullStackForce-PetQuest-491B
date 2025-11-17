@@ -1,27 +1,69 @@
 // Parent chooses which child to create a task for
 
-import React, { useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, FlatList, Image, Dimensions } from "react-native";
+import React, { useState, useEffect } from "react";
+import { View, Text, TouchableOpacity, StyleSheet, FlatList, Image, Dimensions, Platform, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useAuth } from "@/hooks/useAuth";
 
-
+// Get API URL based on platform
+const getApiUrl = () => {
+  if (Platform.OS === 'android') {
+    return "http://10.0.2.2:4000";
+  } else if (Platform.OS === 'ios') {
+    return "http://localhost:4000";
+  } else {
+    return "http://localhost:4000";
+  }
+};
 
 const ParentSelectChildScreen = () => {
   const [selectedChild, setSelectedChild] = useState<string | null>(null);
-
-  const children = [
-    { id: "1", name: "Joey" },
-    { id: "2", name: "Theodore" },
-    { id: "3", name: "Madalynn" },
-    { id: "4", name: "Rinsley" },
-  ];
-
+  const [children, setChildren] = useState<{ id: number; name: string }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { token } = useAuth();
   
   const router = useRouter();
   const screenWidth = Dimensions.get('window').width;
   const cardSize = (screenWidth - 60) / 2; // 2 cards per row with padding
+
+  // Fetch children from backend
+  useEffect(() => {
+    const fetchChildren = async () => {
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const apiUrl = getApiUrl();
+        const response = await fetch(`${apiUrl}/api/users/children`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setChildren(data.map((child: any) => ({
+            id: child.id,
+            name: child.firstName,
+          })));
+        } else {
+          console.error('Failed to fetch children');
+        }
+      } catch (error) {
+        console.error('Error fetching children:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchChildren();
+  }, [token]);
 
   // Reset selected child when screen comes into focus
   useFocusEffect(
@@ -34,6 +76,29 @@ const ParentSelectChildScreen = () => {
     setSelectedChild(childId);
   };
 
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#0077B6" />
+          <Text style={styles.loadingText}>Loading children...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (children.length === 0) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <Text style={styles.header}>Select a child to create a task</Text>
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>No children found in your family.</Text>
+          <Text style={styles.emptyText}>Make sure child accounts are registered with your family code.</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.header}>
@@ -43,7 +108,7 @@ const ParentSelectChildScreen = () => {
       <FlatList
         data={children}
         numColumns={2}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.id.toString()}
         columnWrapperStyle={styles.row}
         renderItem={({ item }) => (
           <TouchableOpacity
@@ -176,5 +241,27 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 28,
     fontWeight: "bold",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: "#0077B6",
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: "#666",
+    textAlign: "center",
+    marginBottom: 10,
   },
 });

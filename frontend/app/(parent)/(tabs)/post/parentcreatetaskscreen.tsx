@@ -44,41 +44,55 @@ const ParentCreateTaskScreen = () => {
       setNote("");
     };
 
-    const handleAssignTask = () => {
-        // Create the task
-        addTask({
-          text: taskName,
-          category: category,
-          description: note || '',
-          points: 0, // You can add points logic later
-          dueDate: date.toISOString(),
-          assignedTo: childName as string,
-          assignedBy: user?.firstName || 'Parent',
-        });
-        
-        Alert.alert(
-          "Task Sent!",
-          `Task successfully assigned to ${childName}!`,
-          [
-            {
-              text: "Create Another Task",
-              onPress: () => {
-                router.back();
+    const handleAssignTask = async () => {
+        if (!taskName || !category) {
+          Alert.alert("Error", "Please fill in all required fields");
+          return;
+        }
+
+        try {
+          // Create the task
+          await addTask({
+            text: taskName,
+            category: category,
+            description: note || '',
+            points: 0, // You can add points logic later
+            dueDate: date.toISOString(),
+            assignedTo: childName as string,
+            assignedBy: user?.firstName || 'Parent',
+          });
+          
+          Alert.alert(
+            "Task Sent!",
+            `Task successfully assigned to ${childName}!`,
+            [
+              {
+                text: "Create Another Task",
+                onPress: () => {
+                  resetForm();
+                  router.back();
+                },
               },
-            },
-            
-            {
-              text: "Go to Homepage",
-              onPress: () => {
-                // Replace current screen with post index to reset stack
-                router.replace("/(parent)/(tabs)/post");
-                // Navigate to calendar immediately
-                router.push("/(parent)/(tabs)/calendar");
+              
+              {
+                text: "Go to Homepage",
+                onPress: () => {
+                  // Replace current screen with post index to reset stack
+                  router.replace("/(parent)/(tabs)/post");
+                  // Navigate to calendar immediately
+                  router.push("/(parent)/(tabs)/calendar");
+                },
               },
-            },
-          ],
-          { cancelable: false }
-        );
+            ],
+            { cancelable: false }
+          );
+        } catch (error: any) {
+          console.error('Error creating task:', error);
+          Alert.alert(
+            "Error",
+            error.message || "Failed to create task. Please try again."
+          );
+        }
       };
     const handleCancel = () => {
         Alert.alert(

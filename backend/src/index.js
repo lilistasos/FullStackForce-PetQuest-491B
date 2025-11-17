@@ -489,6 +489,252 @@ app.delete('/api/account/delete-account', authMiddleware, async (req, res) => {
   }
 });
 
+// Task Routes
+// Create task schema
+const CreateTaskSchema = z.object({
+  text: z.string().min(1),
+  category: z.string().min(1),
+  description: z.string().optional().default(''),
+  points: z.number().int().min(0).optional().default(0),
+  dueDate: z.string(), // ISO string
+  assignedToUserId: z.number().int(),
+});
+
+// Create a task (parent creates task for child)
+app.post('/api/tasks', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.sub;
+    const data = validate(CreateTaskSchema, req.body);
+    
+    // Verify the user is a parent
+    const user = await findUserById(userId);
+    if (!user || user.role !== 'parent') {
+      return res.status(403).json({ error: 'Only parents can create tasks' });
+    }
+
+    // Verify assignedToUserId exists and is a child in the same family
+    const { rows: assignedUserRows } = await pool.query(
+      `SELECT id, role, family_code FROM users WHERE id = $1`,
+      [data.assignedToUserId]
+    );
+    
+    if (assignedUserRows.length === 0) {
+      return res.status(404).json({ error: 'Assigned user not found' });
+    }
+    
+    const assignedUser = assignedUserRows[0];
+    if (assignedUser.role !== 'child') {
+      return res.status(400).json({ error: 'Can only assign tasks to child accounts' });
+    }
+    
+    if (assignedUser.family_code !== user.familyCode) {
+      return res.status(403).json({ error: 'Can only assign tasks to children in your family' });
+    }
+
+    const { rows } = await pool.query(
+      `INSERT INTO tasks (text, category, description, points, due_date, assigned_to_user_id, assigned_by_user_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING id, text, completed, category, description, points, 
+                 due_date AS "dueDate", assigned_to_user_id AS "assignedToUserId",
+                 assigned_by_user_id AS "assignedByUserId", created_at AS "createdAt"`,
+      [data.text, data.category, data.description, data.points, data.dueDate, data.assignedToUserId, userId]
+    );
+
+    res.status(201).json(rows[0]);
+  } catch (err) {
+    const status = err.status || 500;
+    console.error('Create task error:', err);
+    res.status(status).json({ error: err.message || 'Server error' });
+  }
+});
+
+// Get tasks (for both parent and child)
+app.get('/api/tasks', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.sub;
+    const user = await findUserById(userId);
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    let query;
+    let params;
+
+    if (user.role === 'parent') {
+      // Parents see all tasks they created
+      query = `SELECT t.id, t.text, t.completed, t.category, t.description, t.points,
+                      t.due_date AS "dueDate", t.assigned_to_user_id AS "assignedToUserId",
+                      t.assigned_by_user_id AS "assignedByUserId", t.created_at AS "createdAt",
+                      u.first_name AS "assignedToName"
+               FROM tasks t
+               JOIN users u ON t.assigned_to_user_id = u.id
+               WHERE t.assigned_by_user_id = $1
+               ORDER BY t.due_date ASC, t.created_at DESC`;
+      params = [userId];
+    } else if (user.role === 'child') {
+      // Children see tasks assigned to them
+      query = `SELECT t.id, t.text, t.completed, t.category, t.description, t.points,
+                      t.due_date AS "dueDate", t.assigned_to_user_id AS "assignedToUserId",
+                      t.assigned_by_user_id AS "assignedByUserId", t.created_at AS "createdAt",
+                      u.first_name AS "assignedByName"
+               FROM tasks t
+               JOIN users u ON t.assigned_by_user_id = u.id
+               WHERE t.assigned_to_user_id = $1
+               ORDER BY t.due_date ASC, t.created_at DESC`;
+      params = [userId];
+    } else {
+      // Individual users see their own tasks (if any)
+      query = `SELECT t.id, t.text, t.completed, t.category, t.description, t.points,
+                      t.due_date AS "dueDate", t.assigned_to_user_id AS "assignedToUserId",
+                      t.assigned_by_user_id AS "assignedByUserId", t.created_at AS "createdAt"
+               FROM tasks t
+               WHERE t.assigned_to_user_id = $1 OR t.assigned_by_user_id = $1
+               ORDER BY t.due_date ASC, t.created_at DESC`;
+      params = [userId];
+    }
+
+    const { rows } = await pool.query(query, params);
+    res.json(rows);
+  } catch (err) {
+    console.error('Get tasks error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Update task (toggle complete, update fields)
+app.put('/api/tasks/:id', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.sub;
+    const taskId = req.params.id;
+    const { completed, text, category, description, points, dueDate } = req.body;
+
+    // Get the task first
+    const { rows: taskRows } = await pool.query(
+      `SELECT * FROM tasks WHERE id = $1`,
+      [taskId]
+    );
+
+    if (taskRows.length === 0) {
+      return res.status(404).json({ error: 'Task not found' });
+    }
+
+    const task = taskRows[0];
+    const user = await findUserById(userId);
+
+    // Only the assigned child can toggle completion, or parent can update any field
+    if (completed !== undefined && task.assigned_to_user_id !== parseInt(userId)) {
+      return res.status(403).json({ error: 'Only the assigned user can complete tasks' });
+    }
+
+    // Build update query dynamically
+    const updates = [];
+    const values = [];
+    let paramIndex = 1;
+
+    if (completed !== undefined) {
+      updates.push(`completed = $${paramIndex++}`);
+      values.push(completed);
+    }
+    if (text !== undefined) {
+      updates.push(`text = $${paramIndex++}`);
+      values.push(text);
+    }
+    if (category !== undefined) {
+      updates.push(`category = $${paramIndex++}`);
+      values.push(category);
+    }
+    if (description !== undefined) {
+      updates.push(`description = $${paramIndex++}`);
+      values.push(description);
+    }
+    if (points !== undefined) {
+      updates.push(`points = $${paramIndex++}`);
+      values.push(points);
+    }
+    if (dueDate !== undefined) {
+      updates.push(`due_date = $${paramIndex++}`);
+      values.push(dueDate);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    updates.push(`updated_at = NOW()`);
+    values.push(taskId);
+
+    const query = `
+      UPDATE tasks
+      SET ${updates.join(', ')}
+      WHERE id = $${paramIndex}
+      RETURNING id, text, completed, category, description, points,
+                due_date AS "dueDate", assigned_to_user_id AS "assignedToUserId",
+                assigned_by_user_id AS "assignedByUserId", created_at AS "createdAt"
+    `;
+
+    const { rows } = await pool.query(query, values);
+    res.json(rows[0]);
+  } catch (err) {
+    console.error('Update task error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Delete task
+app.delete('/api/tasks/:id', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.sub;
+    const taskId = req.params.id;
+
+    // Get the task first
+    const { rows: taskRows } = await pool.query(
+      `SELECT assigned_by_user_id FROM tasks WHERE id = $1`,
+      [taskId]
+    );
+
+    if (taskRows.length === 0) {
+      return res.status(404).json({ error: 'Task not found' });
+    }
+
+    // Only the parent who created the task can delete it
+    if (taskRows[0].assigned_by_user_id !== parseInt(userId)) {
+      return res.status(403).json({ error: 'Only the task creator can delete tasks' });
+    }
+
+    await pool.query('DELETE FROM tasks WHERE id = $1', [taskId]);
+    res.json({ message: 'Task deleted successfully' });
+  } catch (err) {
+    console.error('Delete task error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Get children for a parent (to populate the child selection dropdown)
+app.get('/api/users/children', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.sub;
+    const user = await findUserById(userId);
+
+    if (!user || user.role !== 'parent') {
+      return res.status(403).json({ error: 'Only parents can access this endpoint' });
+    }
+
+    const { rows } = await pool.query(
+      `SELECT id, first_name AS "firstName", last_name AS "lastName", email
+       FROM users
+       WHERE family_code = $1 AND role = 'child'
+       ORDER BY first_name`,
+      [user.familyCode]
+    );
+
+    res.json(rows);
+  } catch (err) {
+    console.error('Get children error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Starts Server
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));

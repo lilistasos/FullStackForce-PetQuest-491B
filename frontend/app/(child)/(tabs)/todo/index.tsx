@@ -31,20 +31,6 @@ const ToDoScreen = ()=> {
   const [dropdown, setDropdown] = useState(false);
   const [sortType, setSortType] = useState(dropdownOptions[0]);
 
-  //states for delete task
-  const [deleteModal, setDeleteModal] = useState(false);
-  const [taskDelete, setTaskDelete] = useState<string | null>(null);
-
-  //states for edit task
-  const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
-  const [editModal, setEditModal] = useState(false);
-  const [editText, setEditText] = useState("");
-  const [editDescription, setEditDescription] = useState("");
-  const [editPoints, setEditPoints] = useState("");
-
-  //states for confirm modal
-  const [confirmModal, setConfirmModal] = useState(false);
-  const [taskToConfirm, setTaskToConfirm] = useState<Task | null>(null);
 
   //states for points popup
   const [pointsPopup, setPointsPopup] = useState({ visible: false, message: "" });
@@ -61,14 +47,6 @@ const ToDoScreen = ()=> {
     setDropdown(false);
   };
 
-  // Delete task function - Note: TaskContext doesn't have delete yet
-  // TODO: Add deleteTask to TaskContext to properly remove tasks
-  const deleteTask = (dateKey: string, taskId: string) => {
-    // For now, deletion won't work since tasksByDate is computed from TaskContext
-    // Once deleteTask is added to TaskContext, this will work automatically
-    console.log('Delete task:', taskId, 'from date:', dateKey);
-    // TODO: Implement task deletion in TaskContext
-  };
 
   const handlePressTask = (taskId: string) => {
   setShowDetails((prev) => (prev === taskId ? null : taskId)
@@ -105,11 +83,14 @@ const tasksByDate = useMemo(() => {
     }
     
     // Convert TaskContext task to local Task format
+    // Store original category if not already stored
+    const originalCategory = task.originalCategory || task.category;
     grouped[taskDate].push({
-      id: task.id,
+      id: task.id.toString(),
       text: task.text,
       completed: task.completed,
-      category: task.category,
+      category: task.completed ? 'Completed' : task.category,
+      originalCategory: originalCategory,
       description: task.description,
       points: task.points,
     });
@@ -138,16 +119,6 @@ const monthDay = currentDate.toLocaleDateString("en-US", {
 });
 const year = currentDate.getFullYear();
 
-// Handling Edit Save Logic
-  const handleEditSave = () => {
-    if (taskToEdit) {
-      // Note: TaskContext doesn't have updateTask, so we'll keep local state for edits
-      // TODO: Add updateTask to TaskContext if needed
-      // For now, edits are only local and won't persist
-      setEditModal(false);
-      setTaskToEdit(null);
-    }
-  };
 
 // Points PopUp Function
 const showPopup = (message: string) => {
@@ -172,12 +143,16 @@ const showPopup = (message: string) => {
 
 
 // Update toggleComplete - use TaskContext
-const toggleComplete = (taskId: string) => {
-  // Use TaskContext's toggleComplete
-  contextToggleComplete(taskId);
-  
-  // Also update local state for immediate UI feedback
-  // The tasksByDate will update via useMemo when allTasks changes
+const toggleComplete = async (taskId: string | number) => {
+  try {
+    // Use TaskContext's toggleComplete (now async)
+    await contextToggleComplete(taskId);
+    
+    // The tasksByDate will update via useMemo when allTasks changes
+  } catch (error: any) {
+    console.error('Error toggling task completion:', error);
+    // You could show an alert here if needed
+  }
 };
 
 // The four categories for tasks
@@ -190,7 +165,11 @@ const toggleComplete = (taskId: string) => {
   const renderCategory = (category: { id: string; title: string }) => {
     const isExpanded = expanded[category.id];
     const tasks = tasksByDate[formattedKey] || [];
-    const categoryTasks = tasks.filter((t) => t.category === category.id);
+    // For "Completed" section, show all completed tasks
+    // For other sections, show tasks that match category AND are not completed
+    const categoryTasks = category.id === "Completed" 
+      ? tasks.filter((t) => t.completed === true)
+      : tasks.filter((t) => (t.originalCategory || t.category) === category.id && t.completed === false);
     //sort tasks based on selected sort
     switch(sortType) {
       case (dropdownOptions[1]):
@@ -231,13 +210,8 @@ const toggleComplete = (taskId: string) => {
           {visibleTasks.length > 0 ? (
             visibleTasks.map((task) => (
               <View key={task.id} style={styles.taskItem}>
-                <TouchableOpacity onPress={() => {
-                  if (!task.completed) {
-                    setTaskToConfirm(task);
-                    setConfirmModal(true);
-                  } else {
-                    toggleComplete(task.id);
-                  }
+                <TouchableOpacity onPress={async () => {
+                  await toggleComplete(task.id);
                 }}
                 >
                   <Ionicons
@@ -267,58 +241,13 @@ const toggleComplete = (taskId: string) => {
                 </Text>
                 </Pressable>
                 
-                {/* Task Details (description, points, delete button) */}
+                {/* Task Details (description and points only) */}
                 {showDetails === task.id && (
                   <View style={{marginTop: 4}}>
-                    <Text style={{color: "#555"}}>Description: {task.description}</Text>
+                    <Text style={{color: "#555", marginBottom: 4}}>Description: {task.description || "No description"}</Text>
                     <Text style={{color: "#555"}}>Points: {task.points}</Text>
-                    <TouchableOpacity onPress={() => {setDeleteModal(true); setTaskDelete(task.id)}} style={styles.deleteButton}>
-                      <Text>Delete</Text>
-                    </TouchableOpacity>
-                    {/* Edit Button */}
-                    {!task.completed && (
-                      <TouchableOpacity
-                        onPress={() => {
-                          setTaskToEdit(task);
-                          setEditText(task.text);
-                          setEditDescription(task.description);
-                          setEditPoints(task.points.toString());
-                          setEditModal(true);
-                        }}
-                        style={{ backgroundColor: "#0077B6", padding: 10, borderRadius: 5, marginTop: 6 }}
-                      >
-                        <Text style={{ color: "white" }}>Edit</Text>
-                      </TouchableOpacity>
-                    )}
                   </View>
                 )}
-
-                {/* Delete Confirmation Modal */}
-                
-                <Modal
-                  animationType="slide"
-                  transparent={true}
-                  visible={deleteModal}
-                  onRequestClose={() => {
-                  setDeleteModal(!deleteModal);
-                }}
-                >
-                  <View style={styles.deleteModalContainer}>
-                    <Text style={styles.deleteModalText}>Are you sure you want to delete? You won't get the points for this task if you do.</Text>
-                    <View style={{flexDirection: "row", justifyContent: "space-between", width: "100%", marginTop: 10}}>
-                      <TouchableOpacity onPress={() => setDeleteModal(false)} style={styles.cancelDeleteButton}>
-                        <Text style={{color: 'white'}}>Cancel</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={styles.deleteButton} onPress={() => {
-                        if (taskDelete)
-                        deleteTask(formattedKey, taskDelete);
-                        setDeleteModal(false);
-                        setTaskDelete(null);}}>
-                        <Text style={{color: 'white'}}>Delete</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </Modal>
                 </View>
               </View>
             ))
@@ -399,52 +328,6 @@ const toggleComplete = (taskId: string) => {
         contentContainerStyle={{ paddingBottom: 100 }}
       />
 
-      {/* Edit Task Modal */}
-      <Modal visible={editModal} animationType="slide" transparent={true}>
-        <View style={styles.modalBox}>
-          <Text style={styles.modalTitle}>Edit Task</Text>
-          <TextInput placeholder="Task name" value={editText} onChangeText={setEditText} style={styles.input} />
-          <TextInput placeholder="Description" value={editDescription} onChangeText={setEditDescription} style={styles.input} />
-          <TextInput placeholder="Points" keyboardType="numeric" value={editPoints} onChangeText={setEditPoints} style={styles.input} />
-          <View style={styles.modalButtonRow}>
-            <TouchableOpacity onPress={() => setEditModal(false)} style={styles.cancelButton}>
-              <Text style={{ color: "white" }}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={handleEditSave} style={styles.saveButton}>
-              <Text style={{ color: "white" }}>Save</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Completion Confirmation Modal */}
-      <Modal visible={confirmModal} animationType="slide" transparent={true}>
-        <View style={styles.modalBox}>
-          {taskToConfirm && (
-            <>
-              <Text style={styles.modalTitle}>Complete this task?</Text>
-              <Text>Task: {taskToConfirm.text}</Text>
-              <Text>Description: {taskToConfirm.description}</Text>
-              <Text>Points: {taskToConfirm.points}</Text>
-              <View style={styles.modalButtonRow}>
-                <TouchableOpacity onPress={() => setConfirmModal(false)} style={styles.cancelButton}>
-                  <Text style={{ color: "white" }}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => {
-                    toggleComplete(taskToConfirm.id);
-                    setConfirmModal(false);
-                    setTaskToConfirm(null);
-                  }}
-                  style={styles.saveButton}
-                >
-                  <Text style={{ color: "white" }}>Confirm</Text>
-                </TouchableOpacity>
-              </View>
-            </>
-          )}
-        </View>
-      </Modal>
       {/* Animated points gained popup */}
         {pointsPopup.visible && (
           <Animated.View style={[styles.pointsPopup, { opacity: fadeAnim }]}>
@@ -550,21 +433,6 @@ const styles = StyleSheet.create({
     color: "#888",
     fontStyle: "italic",
   },
-  deleteButton: {
-    backgroundColor:"#FF0000", 
-    padding: 10, 
-    marginHorizontal:10, 
-    borderRadius: 5,
-    marginTop: 6,
-    alignSelf: "flex-start"
-  },
-  cancelDeleteButton: {
-    backgroundColor: "#888", 
-    padding: 10, 
-    marginHorizontal: 10, 
-    borderRadius: 5, 
-    marginTop: 6
-  },
   dropdownContainer: {
     flex: 1, 
     flexDirection: "row", 
@@ -588,62 +456,6 @@ const styles = StyleSheet.create({
     borderColor: "#ccc", 
     borderRadius: 6, 
     zIndex: 1000
-  },
-  deleteModalContainer: {
-    flex: 1, 
-    justifyContent: "center", 
-    alignItems: "center", 
-    backgroundColor: "white", 
-    padding: 35, 
-    margin: 20, 
-    marginTop: "75%",
-    marginBottom: "75%",
-    borderColor: "#888", 
-    borderWidth: 1, 
-    borderRadius: 10,
-  },
-  deleteModalText: {
-    fontSize: 18, 
-    fontWeight: "600", 
-    marginBottom: 10, 
-    textAlign: "center"
-  },
-  modalBox: { 
-    flex: 1, 
-    justifyContent: "center", 
-    alignItems: "center", 
-    backgroundColor: "white", 
-    margin: 20, 
-    borderRadius: 10, 
-    padding: 20 
-  },
-  modalTitle: { 
-    fontSize: 18, 
-    fontWeight: "600", 
-    marginBottom: 10 
-  },
-  input: { 
-    borderWidth: 1, 
-    borderColor: "#ccc", 
-    borderRadius: 5, 
-    padding: 8, 
-    width: "100%", 
-    marginBottom: 8 
-  },
-  modalButtonRow: { 
-    flexDirection: "row", 
-    justifyContent: "space-between", 
-    width: "100%", 
-    marginTop: 10 
-  },
-  cancelButton: { 
-    backgroundColor: "#888", 
-    padding: 10, 
-    borderRadius: 5 
-  },
-  saveButton: { backgroundColor: "#0077B6", 
-    padding: 10, 
-    borderRadius: 5 
   },
   pointsPopup: {
   position: "absolute",
