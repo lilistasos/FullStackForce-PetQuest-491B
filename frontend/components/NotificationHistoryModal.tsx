@@ -11,7 +11,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import NotificationService, {
   NotificationHistoryItem,
-} from "@/services/NotificationService";
+} from "../services/NotificationService";
 import { useTheme } from "@/contexts/ThemeContext";
 
 interface NotificationHistoryModalProps {

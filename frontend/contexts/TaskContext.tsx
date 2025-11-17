@@ -6,7 +6,7 @@ import {
   useEffect,
 } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import NotificationService from "@/services/NotificationService";
+import NotificationService from "../services/NotificationService";
 
 export type Task = {
   id: string;
