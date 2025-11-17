@@ -285,6 +285,13 @@ app.post('/api/auth/send-code', async (req, res) => {
   const code = Math.floor(100000 + Math.random() * 900000).toString();
   verificationCodes[email] = code;
 
+  console.log(`Generated verification code for ${email}: ${code}`);
+
+  if (!process.env.SENDGRID_API_KEY) {
+    console.error('SENDGRID_API_KEY is missing');
+    return res.status(500).json({ error: 'Email service not configured' });
+  }
+
   const msg = {
     to: email,
     from: process.env.SENDGRID_FROM_EMAIL || 'lolerpops1@gmail.com',

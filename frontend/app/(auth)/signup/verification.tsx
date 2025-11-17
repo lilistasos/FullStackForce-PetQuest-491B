@@ -27,7 +27,7 @@ export default function VerificationScreen() {
     
     const handleSendCode = async () => {
         try {
-            const response = await fetch(`${API_URL}/send-code`, {
+            const response = await fetch(`${API_URL}/api/auth/send-code`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email }),
@@ -49,7 +49,7 @@ export default function VerificationScreen() {
 
     const handleVerification = async () => {
         try {
-            const verifyResponse = await fetch(`${API_URL}/verify-code`, {
+            const verifyResponse = await fetch(`${API_URL}/api/auth/verify-code`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email, code }),
@@ -85,7 +85,7 @@ export default function VerificationScreen() {
             }
 
             // Register the user
-            const registerResponse = await fetch(`${API_URL}/register`, {
+            const registerResponse = await fetch(`${API_URL}/api/auth/register`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(registerBody),
