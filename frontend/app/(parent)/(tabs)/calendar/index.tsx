@@ -1,5 +1,15 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated } from 'react-native';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  ScrollView, 
+  TouchableOpacity, 
+  Animated, 
+  Alert,
+  Platform,
+  RefreshControl 
+} from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -7,9 +17,20 @@ import { useAuth } from '@/hooks/useAuth';
 import { useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// CHANGED: Added API URL helper function directly in the file
+const getApiUrl = () => {
+  if (Platform.OS === 'android') {
+    return __DEV__ ? "http://10.0.2.2:4000" : "http://10.0.2.2:4000";
+  } else if (Platform.OS === 'ios') {
+    return __DEV__ ? "http://localhost:4000" : "http://localhost:4000";
+  } else {
+    return "http://localhost:4000";
+  }
+};
+
 const WEEK_START_KEY = '@petquest:weekStart';
 
-// Function to calculate luminance and determine text color
+// Helper functions
 const getContrastColor = (backgroundColor: string): string => {
   const hex = backgroundColor.replace('#', '');
   const r = parseInt(hex.substring(0, 2), 16);
@@ -19,7 +40,6 @@ const getContrastColor = (backgroundColor: string): string => {
   return luminance > 0.4 ? '#000000' : '#FFFFFF';
 };
 
-// Helper function to get ordinal suffix (st, nd, rd, th)
 const getOrdinalSuffix = (day: number): string => {
   if (day > 3 && day < 21) return 'th';
   switch (day % 10) {
@@ -30,6 +50,7 @@ const getOrdinalSuffix = (day: number): string => {
   }
 };
 
+// Interfaces
 interface ChildTask {
   id: string;
   childName: string;
@@ -40,14 +61,39 @@ interface ChildTask {
   points: number;
   completed: boolean;
   category: string;
+  date: string;
 }
 
 type SortOption = 'time' | 'child' | 'type';
 
+// Added API service function directly in the file
+const fetchChildrenTasks = async (token: string): Promise<ChildTask[]> => {
+  const API_URL = getApiUrl();
+  
+  try {
+    const response = await fetch(`${API_URL}/api/parent/children-tasks`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch tasks: ${response.statusText}`);
+    }
+
+    const tasks = await response.json();
+    return tasks;
+  } catch (error) {
+    console.error('Error fetching children tasks:', error);
+    throw error;
+  }
+};
+
 export default function ParentCalendarScreen() {
   const { colors, isDarkMode } = useTheme();
-  
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const buttonTextColor = getContrastColor(colors.primary);
   
   const [selectedDate, setSelectedDate] = useState(() => {
@@ -61,59 +107,84 @@ export default function ParentCalendarScreen() {
   });
   
   const [sortBy, setSortBy] = useState<SortOption>('time');
-  const [firstDay, setFirstDay] = useState<0 | 1>(1); // 0 = Sunday, 1 = Monday
+  const [firstDay, setFirstDay] = useState<0 | 1>(1);
+  
+  // Replaced mock data with empty state for real data
+  const [childrenTasks, setChildrenTasks] = useState<{ [date: string]: ChildTask[] }>({});
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   
   // Animation values for month transitions
   const slideAnim = useRef(new Animated.Value(0)).current;
   const [isAnimating, setIsAnimating] = useState(false);
   
-  // Format month and year for display
-  const formatMonthYear = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-  };
-  
-  // Navigate to previous/next month
-  const navigateMonth = (direction: 'prev' | 'next') => {
-    if (isAnimating) return;
+  // Helper function to convert time string to minutes since midnight for proper sorting
+  const timeToMinutes = (timeStr: string): number => {
+    const [time, period] = timeStr.split(' ');
+    const [hours, minutes] = time.split(':').map(Number);
+    let totalMinutes = hours * 60 + minutes;
     
-    const current = new Date(currentMonth);
-    const newDate = new Date(current);
-    if (direction === 'prev') {
-      newDate.setMonth(current.getMonth() - 1);
-    } else {
-      newDate.setMonth(current.getMonth() + 1);
+    // Convert to 24-hour format
+    if (period === 'PM' && hours !== 12) {
+      totalMinutes += 12 * 60;
+    } else if (period === 'AM' && hours === 12) {
+      totalMinutes -= 12 * 60;
     }
     
-    const newMonthString = newDate.toISOString().split('T')[0];
-    const directionNum = direction === 'next' ? 1 : -1;
-    
-    // Check if it's actually a different month
-    if (newMonthString === currentMonth) return;
-    
-    setIsAnimating(true);
-    
-    // Animate out
-    Animated.timing(slideAnim, {
-      toValue: directionNum * -400,
-      duration: 250,
-      useNativeDriver: true,
-    }).start(() => {
-      // Update month immediately before animating in
-      setCurrentMonth(newMonthString);
-      
-      // Reset position and animate in
-      slideAnim.setValue(directionNum * 400);
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 250,
-        useNativeDriver: true,
-      }).start(() => {
-        setIsAnimating(false);
-      });
-    });
+    return totalMinutes;
   };
-  
+
+  // Function to load tasks from database API
+  const loadChildrenTasks = async (isRefresh = false) => {
+    if (!token || user?.role !== 'parent') {
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
+    try {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      
+      // Fetch real data from database instead of using mock data
+      const tasks = await fetchChildrenTasks(token);
+      
+      // Group tasks by date
+      const tasksByDate: { [date: string]: ChildTask[] } = {};
+      
+      tasks.forEach(task => {
+        if (task.date) {
+          if (!tasksByDate[task.date]) {
+            tasksByDate[task.date] = [];
+          }
+          tasksByDate[task.date].push(task);
+        }
+      });
+      
+      setChildrenTasks(tasksByDate);
+    } catch (error) {
+      console.error('Error loading children tasks:', error);
+      Alert.alert('Error', 'Failed to load tasks. Please try again.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  // Load real data on mount and when screen comes into focus
+  useEffect(() => {
+    loadChildrenTasks();
+  }, [token, user]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      loadChildrenTasks();
+    }, [token, user])
+  );
+
   // Load week start preference from AsyncStorage
   const loadWeekStartPreference = async () => {
     try {
@@ -126,7 +197,6 @@ export default function ParentCalendarScreen() {
     }
   };
 
-  // Load on mount and when screen comes into focus (after returning from preferences)
   useEffect(() => {
     loadWeekStartPreference();
   }, []);
@@ -144,477 +214,8 @@ export default function ParentCalendarScreen() {
     setSelectedDate(todayStr);
     setCurrentMonth(todayStr);
     setSortBy('time');
-    slideAnim.setValue(0); // Reset animation
-  }, [user]); // Reset when user changes (login/logout)
-  
-  // Mock children data - In real app, this would come from API based on familyCode
-  const mockChildren = [
-    { id: 'child1', name: 'Emma', color: '#52AFDD' },
-    { id: 'child2', name: 'Liam', color: '#00C851' },
-    { id: 'child3', name: 'Sophia', color: '#FFBB33' },
-  ];
-
-  // Mock tasks data for children - In real app, this would come from API
-  const [childrenTasks, setChildrenTasks] = useState<{ [date: string]: ChildTask[] }>({
-    [selectedDate]: [
-      {
-        id: '1',
-        childName: 'Emma',
-        childId: 'child1',
-        taskName: 'Math Homework',
-        description: 'Complete pages 45-50',
-        time: '09:00 AM',
-        points: 15,
-        completed: false,
-        category: 'School',
-      },
-      {
-        id: '2',
-        childName: 'Liam',
-        childId: 'child2',
-        taskName: 'Soccer Practice',
-        description: 'Team practice at field',
-        time: '02:00 PM',
-        points: 10,
-        completed: false,
-        category: 'Practice',
-      },
-      {
-        id: '3',
-        childName: 'Emma',
-        childId: 'child1',
-        taskName: 'Reading',
-        description: 'Read chapter 3',
-        time: '04:00 PM',
-        points: 12,
-        completed: true,
-        category: 'School',
-      },
-      {
-        id: '4',
-        childName: 'Sophia',
-        childId: 'child3',
-        taskName: 'Practice Piano',
-        description: 'Practice for 30 minutes',
-        time: '03:30 PM',
-        points: 20,
-        completed: false,
-        category: 'Practice',
-      },
-      {
-        id: '5',
-        childName: 'Liam',
-        childId: 'child2',
-        taskName: 'Science Project',
-        description: 'Work on volcano project',
-        time: '10:00 AM',
-        points: 25,
-        completed: false,
-        category: 'School',
-      },
-    ],
-    '2025-10-21': [
-      {
-        id: '6',
-        childName: 'Emma',
-        childId: 'child1',
-        taskName: 'Art Class',
-        description: 'Attend art class',
-        time: '01:00 PM',
-        points: 15,
-        completed: false,
-        category: 'School',
-      },
-      {
-        id: '7',
-        childName: 'Sophia',
-        childId: 'child3',
-        taskName: 'Soccer Game',
-        description: 'Championship game',
-        time: '05:00 PM',
-        points: 20,
-        completed: false,
-        category: 'Game',
-      },
-    ],
-    '2025-10-22': [
-      {
-        id: '8',
-        childName: 'Liam',
-        childId: 'child2',
-        taskName: 'Math Tutoring',
-        description: 'Tutoring session with Ms. Johnson',
-        time: '06:00 PM',
-        points: 5,
-        completed: false,
-        category: 'Tutoring',
-      },
-    ],
-    '2025-11-01': [
-      {
-        id: '9',
-        childName: 'Emma',
-        childId: 'child1',
-        taskName: 'Soccer Practice',
-        description: 'Team practice at Riverside Field',
-        time: '04:00 PM',
-        points: 15,
-        completed: false,
-        category: 'Practice',
-      },
-      {
-        id: '10',
-        childName: 'Sophia',
-        childId: 'child3',
-        taskName: 'Piano Recital',
-        description: 'Spring recital performance',
-        time: '06:30 PM',
-        points: 30,
-        completed: false,
-        category: 'School',
-      },
-    ],
-    '2025-11-02': [
-      {
-        id: '11',
-        childName: 'Liam',
-        childId: 'child2',
-        taskName: 'Basketball Game',
-        description: 'Home game vs. Eagles',
-        time: '05:00 PM',
-        points: 25,
-        completed: false,
-        category: 'Game',
-      },
-      {
-        id: '12',
-        childName: 'Emma',
-        childId: 'child1',
-        taskName: 'Science Fair',
-        description: 'School science fair presentation',
-        time: '02:00 PM',
-        points: 40,
-        completed: false,
-        category: 'School',
-      },
-      {
-        id: '13',
-        childName: 'Sophia',
-        childId: 'child3',
-        taskName: 'Dance Practice',
-        description: 'Ballet practice at studio',
-        time: '03:30 PM',
-        points: 20,
-        completed: false,
-        category: 'Practice',
-      },
-    ],
-    '2025-11-03': [
-      {
-        id: '14',
-        childName: 'Emma',
-        childId: 'child1',
-        taskName: 'Swimming Practice',
-        description: 'Evening swim practice',
-        time: '05:30 PM',
-        points: 15,
-        completed: false,
-        category: 'Practice',
-      },
-      {
-        id: '15',
-        childName: 'Liam',
-        childId: 'child2',
-        taskName: 'Math Tutoring',
-        description: 'Algebra tutoring session',
-        time: '04:00 PM',
-        points: 10,
-        completed: false,
-        category: 'Tutoring',
-      },
-    ],
-    '2025-11-04': [
-      {
-        id: '16',
-        childName: 'Sophia',
-        childId: 'child3',
-        taskName: 'Soccer Game',
-        description: 'Away game at Central Park',
-        time: '04:30 PM',
-        points: 30,
-        completed: false,
-        category: 'Game',
-      },
-      {
-        id: '17',
-        childName: 'Emma',
-        childId: 'child1',
-        taskName: 'School Assembly',
-        description: 'Monthly school assembly',
-        time: '09:00 AM',
-        points: 5,
-        completed: false,
-        category: 'School',
-      },
-      {
-        id: '18',
-        childName: 'Liam',
-        childId: 'child2',
-        taskName: 'Chess Club',
-        description: 'Weekly chess club meeting',
-        time: '03:00 PM',
-        points: 15,
-        completed: false,
-        category: 'School',
-      },
-    ],
-    '2025-11-05': [
-      {
-        id: '19',
-        childName: 'Liam',
-        childId: 'child2',
-        taskName: 'Basketball Practice',
-        description: 'Morning practice session',
-        time: '10:00 AM',
-        points: 20,
-        completed: true,
-        category: 'Practice',
-      },
-      {
-        id: '20',
-        childName: 'Emma',
-        childId: 'child1',
-        taskName: 'Tennis Match',
-        description: 'Tournament match',
-        time: '02:00 PM',
-        points: 35,
-        completed: true,
-        category: 'Game',
-      },
-      {
-        id: '21',
-        childName: 'Sophia',
-        childId: 'child3',
-        taskName: 'Piano Practice',
-        description: 'Practice for upcoming recital',
-        time: '03:00 PM',
-        points: 20,
-        completed: false,
-        category: 'Practice',
-      },
-      {
-        id: '21a',
-        childName: 'Emma',
-        childId: 'child1',
-        taskName: 'Swimming Practice',
-        description: 'Afternoon swim session',
-        time: '04:30 PM',
-        points: 15,
-        completed: false,
-        category: 'Practice',
-      },
-      {
-        id: '21b',
-        childName: 'Liam',
-        childId: 'child2',
-        taskName: 'Math Tutoring',
-        description: 'Algebra tutoring session',
-        time: '05:00 PM',
-        points: 10,
-        completed: false,
-        category: 'Tutoring',
-      },
-      {
-        id: '21c',
-        childName: 'Sophia',
-        childId: 'child3',
-        taskName: 'Soccer Game',
-        description: 'Away game vs. Panthers',
-        time: '06:00 PM',
-        points: 30,
-        completed: false,
-        category: 'Game',
-      },
-      {
-        id: '21d',
-        childName: 'Emma',
-        childId: 'child1',
-        taskName: 'Science Fair',
-        description: 'Project presentation',
-        time: '07:30 PM',
-        points: 40,
-        completed: false,
-        category: 'School',
-      },
-    ],
-    '2025-11-06': [
-      {
-        id: '22',
-        childName: 'Emma',
-        childId: 'child1',
-        taskName: 'Soccer Practice',
-        description: 'Team practice session',
-        time: '05:00 PM',
-        points: 15,
-        completed: false,
-        category: 'Practice',
-      },
-      {
-        id: '23',
-        childName: 'Liam',
-        childId: 'child2',
-        taskName: 'Basketball Practice',
-        description: 'Team practice at gym',
-        time: '04:30 PM',
-        points: 20,
-        completed: false,
-        category: 'Practice',
-      },
-      {
-        id: '24',
-        childName: 'Sophia',
-        childId: 'child3',
-        taskName: 'Art Class',
-        description: 'After school art program',
-        time: '03:00 PM',
-        points: 15,
-        completed: false,
-        category: 'School',
-      },
-    ],
-    '2025-11-07': [
-      {
-        id: '25',
-        childName: 'Sophia',
-        childId: 'child3',
-        taskName: 'Dance Recital',
-        description: 'Annual dance recital',
-        time: '06:00 PM',
-        points: 40,
-        completed: false,
-        category: 'School',
-      },
-      {
-        id: '26',
-        childName: 'Emma',
-        childId: 'child1',
-        taskName: 'Science Tutoring',
-        description: 'Chemistry tutoring with Mr. Smith',
-        time: '05:00 PM',
-        points: 10,
-        completed: false,
-        category: 'Tutoring',
-      },
-      {
-        id: '27',
-        childName: 'Liam',
-        childId: 'child2',
-        taskName: 'Baseball Game',
-        description: 'Home game vs. Tigers',
-        time: '04:00 PM',
-        points: 30,
-        completed: false,
-        category: 'Game',
-      },
-    ],
-    '2025-11-08': [
-      {
-        id: '28',
-        childName: 'Emma',
-        childId: 'child1',
-        taskName: 'Swimming Meet',
-        description: 'Regional swimming competition',
-        time: '09:00 AM',
-        points: 50,
-        completed: false,
-        category: 'Game',
-      },
-      {
-        id: '29',
-        childName: 'Sophia',
-        childId: 'child3',
-        taskName: 'Piano Practice',
-        description: 'Weekly practice session',
-        time: '04:30 PM',
-        points: 20,
-        completed: false,
-        category: 'Practice',
-      },
-      {
-        id: '30',
-        childName: 'Liam',
-        childId: 'child2',
-        taskName: 'History Tutoring',
-        description: 'World history tutoring',
-        time: '03:00 PM',
-        points: 10,
-        completed: false,
-        category: 'Tutoring',
-      },
-      {
-        id: '31',
-        childName: 'Emma',
-        childId: 'child1',
-        taskName: 'Field Trip',
-        description: 'Museum field trip',
-        time: '10:00 AM',
-        points: 25,
-        completed: false,
-        category: 'School',
-      },
-    ],
-    '2025-11-09': [
-      {
-        id: '32',
-        childName: 'Sophia',
-        childId: 'child3',
-        taskName: 'Soccer Game',
-        description: 'Championship game',
-        time: '05:30 PM',
-        points: 45,
-        completed: false,
-        category: 'Game',
-      },
-      {
-        id: '33',
-        childName: 'Liam',
-        childId: 'child2',
-        taskName: 'Basketball Game',
-        description: 'Playoff game',
-        time: '06:00 PM',
-        points: 40,
-        completed: false,
-        category: 'Game',
-      },
-      {
-        id: '34',
-        childName: 'Emma',
-        childId: 'child1',
-        taskName: 'Music Concert',
-        description: 'School band concert',
-        time: '07:00 PM',
-        points: 30,
-        completed: false,
-        category: 'School',
-      },
-    ],
-  });
-
-  // Helper function to convert time string to minutes since midnight for proper sorting
-  const timeToMinutes = (timeStr: string): number => {
-    const [time, period] = timeStr.split(' ');
-    const [hours, minutes] = time.split(':').map(Number);
-    let totalMinutes = hours * 60 + minutes;
-    
-    // Convert to 24-hour format
-    if (period === 'PM' && hours !== 12) {
-      totalMinutes += 12 * 60; // Add 12 hours for PM
-    } else if (period === 'AM' && hours === 12) {
-      totalMinutes -= 12 * 60; // Subtract 12 hours for 12 AM
-    }
-    
-    return totalMinutes;
-  };
+    slideAnim.setValue(0);
+  }, [user]);
 
   // Get tasks for selected date
   const selectedDateTasks = childrenTasks[selectedDate] || [];
@@ -628,20 +229,16 @@ export default function ParentCalendarScreen() {
         if (a.childName !== b.childName) {
           return a.childName.localeCompare(b.childName);
         }
-        // If same child, sort by time
         return timeToMinutes(a.time) - timeToMinutes(b.time);
       });
     } else if (sortBy === 'type') {
       return tasks.sort((a, b) => {
-        // First sort by category
         if (a.category !== b.category) {
           return a.category.localeCompare(b.category);
         }
-        // If same category, sort by time
         return timeToMinutes(a.time) - timeToMinutes(b.time);
       });
     } else {
-      // Sort by time (default)
       return tasks.sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
     }
   }, [selectedDateTasks, sortBy]);
@@ -650,10 +247,10 @@ export default function ParentCalendarScreen() {
   const markedDates = useMemo(() => {
     const marked: { [key: string]: any } = {};
     
-    // Get today's date string
     const today = new Date();
     const todayString = today.toISOString().split('T')[0];
     
+    // Use real task dates from database
     Object.keys(childrenTasks).forEach(date => {
       marked[date] = {
         marked: true,
@@ -661,7 +258,6 @@ export default function ParentCalendarScreen() {
       };
     });
     
-    // Style today's date with theme color (if not selected)
     if (todayString !== selectedDate) {
       marked[todayString] = {
         ...marked[todayString],
@@ -677,7 +273,6 @@ export default function ParentCalendarScreen() {
       };
     }
     
-    // Style selected date
     marked[selectedDate] = {
       ...marked[selectedDate],
       selected: true,
@@ -700,14 +295,53 @@ export default function ParentCalendarScreen() {
     return marked;
   }, [childrenTasks, selectedDate, colors.primary, buttonTextColor]);
 
-  const formatTime = (timeString: string) => {
-    // Convert "09:00 AM" or "14:00" format to display format
-    return timeString;
+  // Calendar navigation functions
+  const navigateMonth = (direction: 'prev' | 'next') => {
+    if (isAnimating) return;
+    
+    const current = new Date(currentMonth);
+    const newDate = new Date(current);
+    if (direction === 'prev') {
+      newDate.setMonth(current.getMonth() - 1);
+    } else {
+      newDate.setMonth(current.getMonth() + 1);
+    }
+    
+    const newMonthString = newDate.toISOString().split('T')[0];
+    const directionNum = direction === 'next' ? 1 : -1;
+    
+    if (newMonthString === currentMonth) return;
+    
+    setIsAnimating(true);
+    
+    Animated.timing(slideAnim, {
+      toValue: directionNum * -400,
+      duration: 250,
+      useNativeDriver: true,
+    }).start(() => {
+      setCurrentMonth(newMonthString);
+      slideAnim.setValue(directionNum * 400);
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true,
+      }).start(() => {
+        setIsAnimating(false);
+      });
+    });
   };
 
+  const formatMonthYear = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  };
+
+  // Simplified child color function since we don't have mock children data with thier colors
   const getChildColor = (childId: string) => {
-    const child = mockChildren.find(c => c.id === childId);
-    return child?.color || colors.primary;
+    // Generate consistent color based on childId
+    const colors = ['#52AFDD', '#00C851', '#FFBB33', '#FF4444', '#AA66CC', '#FF8800'];
+    const index = childId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
+    return colors[index];
   };
 
   const renderTaskItem = ({ item }: { item: ChildTask }) => {
@@ -719,7 +353,7 @@ export default function ParentCalendarScreen() {
           <View style={[styles.childBadge, { backgroundColor: childColor }]}>
             <Text style={[styles.childBadgeText, { color: 'white' }]}>{item.childName}</Text>
           </View>
-          <Text style={[styles.taskTime, { color: colors.textSecondary }]}>{formatTime(item.time)}</Text>
+          <Text style={[styles.taskTime, { color: colors.textSecondary }]}>{item.time}</Text>
         </View>
         <View style={styles.taskNameRow}>
           <Text style={[styles.taskName, { color: colors.text }]}>
@@ -738,9 +372,8 @@ export default function ParentCalendarScreen() {
     );
   };
 
-  // Calendar theme that adapts to dark/light mode
+  // Calendar theme configuration
   const disabledDayColor = isDarkMode ? '#666666' : '#CCCCCC';
-  // Use colors.background for calendar to match the app theme
   const calendarBg = colors.background;
   const calendarTheme = {
     backgroundColor: calendarBg,
@@ -764,7 +397,6 @@ export default function ParentCalendarScreen() {
     textDayFontSize: 14,
     textMonthFontSize: 18,
     textDayHeaderFontSize: 12,
-    // Make selected day circular
     'stylesheet.day.basic': {
       base: {
         width: 32,
@@ -876,8 +508,17 @@ export default function ParentCalendarScreen() {
         style={styles.scrollContainer}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        // Added refresh control for pulling to refresh data
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => loadChildrenTasks(true)}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
+          />
+        }
       >
-        {/* Calendar */}
+        {/* Calendar Section */}
         <View style={[styles.calendarContainer, { backgroundColor: colors.background }]}>
           {/* Static Header */}
           <View style={[styles.calendarHeader, { backgroundColor: colors.background }]}>
@@ -915,7 +556,6 @@ export default function ParentCalendarScreen() {
                 current={currentMonth}
                 onDayPress={(day) => setSelectedDate(day.dateString)}
                 onMonthChange={(month) => {
-                  // Only process if not animating and month is actually different
                   if (isAnimating) return;
                   
                   const monthDate = new Date(month.dateString);
@@ -928,16 +568,12 @@ export default function ParentCalendarScreen() {
                   const direction = monthDate > currentDate ? 1 : -1;
                   setIsAnimating(true);
                   
-                  // Animate out
                   Animated.timing(slideAnim, {
                     toValue: direction * -400,
                     duration: 250,
                     useNativeDriver: true,
                   }).start(() => {
-                    // Update month immediately before animating in
                     setCurrentMonth(month.dateString);
-                    
-                    // Reset position and animate in
                     slideAnim.setValue(direction * 400);
                     Animated.timing(slideAnim, {
                       toValue: 0,
@@ -967,111 +603,117 @@ export default function ParentCalendarScreen() {
         <View style={[styles.tasksSection, { backgroundColor: colors.background }]}>
           {/* Sort Buttons */}
           <View style={styles.sortContainer}>
-          <Text style={[styles.sortLabel, { color: colors.text }]}>Sort by:</Text>
-          <TouchableOpacity
-            style={[
-              styles.sortButton,
-              {
-                backgroundColor: sortBy === 'time' ? colors.primary : colors.surface,
-                borderColor: colors.border,
-              },
-            ]}
-            onPress={() => setSortBy('time')}
-          >
-            <Ionicons
-              name="time-outline"
-              size={18}
-              color={sortBy === 'time' ? buttonTextColor : colors.text}
-            />
-            <Text
+            <Text style={[styles.sortLabel, { color: colors.text }]}>Sort by:</Text>
+            <TouchableOpacity
               style={[
-                styles.sortButtonText,
-                { color: sortBy === 'time' ? buttonTextColor : colors.text },
+                styles.sortButton,
+                {
+                  backgroundColor: sortBy === 'time' ? colors.primary : colors.surface,
+                  borderColor: colors.border,
+                },
               ]}
+              onPress={() => setSortBy('time')}
             >
-              Time
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.sortButton,
-              {
-                backgroundColor: sortBy === 'child' ? colors.primary : colors.surface,
-                borderColor: colors.border,
-              },
-            ]}
-            onPress={() => setSortBy('child')}
-          >
-            <Ionicons
-              name="people-outline"
-              size={18}
-              color={sortBy === 'child' ? buttonTextColor : colors.text}
-            />
-            <Text
+              <Ionicons
+                name="time-outline"
+                size={18}
+                color={sortBy === 'time' ? buttonTextColor : colors.text}
+              />
+              <Text
+                style={[
+                  styles.sortButtonText,
+                  { color: sortBy === 'time' ? buttonTextColor : colors.text },
+                ]}
+              >
+                Time
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
               style={[
-                styles.sortButtonText,
-                { color: sortBy === 'child' ? buttonTextColor : colors.text },
+                styles.sortButton,
+                {
+                  backgroundColor: sortBy === 'child' ? colors.primary : colors.surface,
+                  borderColor: colors.border,
+                },
               ]}
+              onPress={() => setSortBy('child')}
             >
-              Child
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.sortButton,
-              {
-                backgroundColor: sortBy === 'type' ? colors.primary : colors.surface,
-                borderColor: colors.border,
-              },
-            ]}
-            onPress={() => setSortBy('type')}
-          >
-            <Ionicons
-              name="list-outline"
-              size={18}
-              color={sortBy === 'type' ? buttonTextColor : colors.text}
-            />
-            <Text
+              <Ionicons
+                name="people-outline"
+                size={18}
+                color={sortBy === 'child' ? buttonTextColor : colors.text}
+              />
+              <Text
+                style={[
+                  styles.sortButtonText,
+                  { color: sortBy === 'child' ? buttonTextColor : colors.text },
+                ]}
+              >
+                Child
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
               style={[
-                styles.sortButtonText,
-                { color: sortBy === 'type' ? buttonTextColor : colors.text },
+                styles.sortButton,
+                {
+                  backgroundColor: sortBy === 'type' ? colors.primary : colors.surface,
+                  borderColor: colors.border,
+                },
               ]}
+              onPress={() => setSortBy('type')}
             >
-              Type
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Selected Date */}
-        <Text style={[styles.selectedDateText, { color: colors.text }]}>
-          {(() => {
-            // Parse date string properly to avoid timezone issues
-            const [year, month, day] = selectedDate.split('-').map(Number);
-            const date = new Date(year, month - 1, day);
-            const weekday = date.toLocaleDateString('en-US', { weekday: 'long' });
-            const monthName = date.toLocaleDateString('en-US', { month: 'long' });
-            const ordinalSuffix = getOrdinalSuffix(day);
-            return `${weekday}, ${monthName} ${day}${ordinalSuffix}:`;
-          })()}
-        </Text>
-
-        {/* Tasks List */}
-        {sortedTasks.length > 0 ? (
-          <View style={styles.tasksList}>
-            {sortedTasks.map((item) => (
-              <View key={item.id}>
-                {renderTaskItem({ item })}
-              </View>
-            ))}
+              <Ionicons
+                name="list-outline"
+                size={18}
+                color={sortBy === 'type' ? buttonTextColor : colors.text}
+              />
+              <Text
+                style={[
+                  styles.sortButtonText,
+                  { color: sortBy === 'type' ? buttonTextColor : colors.text },
+                ]}
+              >
+                Type
+              </Text>
+            </TouchableOpacity>
           </View>
-        ) : (
-          <View style={styles.emptyContainer}>
-            <Ionicons name="calendar-outline" size={48} color={colors.textSecondary} />
-            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-              No tasks for this date
-            </Text>
-          </View>
-        )}
+
+          {/* Selected Date */}
+          <Text style={[styles.selectedDateText, { color: colors.text }]}>
+            {(() => {
+              const [year, month, day] = selectedDate.split('-').map(Number);
+              const date = new Date(year, month - 1, day);
+              const weekday = date.toLocaleDateString('en-US', { weekday: 'long' });
+              const monthName = date.toLocaleDateString('en-US', { month: 'long' });
+              const ordinalSuffix = getOrdinalSuffix(day);
+              return `${weekday}, ${monthName} ${day}${ordinalSuffix}:`;
+            })()}
+          </Text>
+
+          {/* CHANGED: Tasks List with real data loading states */}
+          {loading ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="refresh-outline" size={48} color={colors.textSecondary} />
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                Loading tasks...
+              </Text>
+            </View>
+          ) : sortedTasks.length > 0 ? (
+            <View style={styles.tasksList}>
+              {sortedTasks.map((item) => (
+                <View key={item.id}>
+                  {renderTaskItem({ item })}
+                </View>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="calendar-outline" size={48} color={colors.textSecondary} />
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                No tasks for this date
+              </Text>
+            </View>
+          )}
         </View>
       </ScrollView>
     </View>
