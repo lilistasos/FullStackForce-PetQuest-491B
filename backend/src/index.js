@@ -621,6 +621,94 @@ app.patch('/api/pet-accessories/:id/visibility', authMiddleware, async (req, res
   }
 });
 
+// Create a new pet for the logged-in user
+app.post("/api/pets", authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.sub; // comes from your JWT middleware
+    const {
+      name,
+      imageUrl = null,
+      isUnlocked = false,
+      isVisible = false,
+      cost = 0,
+    } = req.body;
+
+    if (!name) {
+      return res.status(400).json({ error: "Pet name is required." });
+    }
+
+    // If this pet is set visible, you may want to hide others for this user
+    if (isVisible) {
+      await pool.query(
+        "UPDATE pets SET is_visible = FALSE WHERE user_id = $1",
+        [userId]
+      );
+    }
+
+    const result = await pool.query(
+      `INSERT INTO pets (user_id, name, image_url, is_unlocked, is_visible, cost)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING *`,
+      [userId, name, imageUrl, isUnlocked, isVisible, cost]
+    );
+
+    return res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error("Error creating pet:", err);
+    return res.status(500).json({ error: "Failed to create pet." });
+  }
+});
+
+// Create a new accessory for one of the user's pets
+app.post("/api/pet-accessories", authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.sub;
+    const {
+      petId,
+      name,
+      imageUrl = null,
+      isUnlocked = false,
+      isVisible = false,
+      cost = 0,
+    } = req.body;
+
+    if (!petId || !name) {
+      return res.status(400).json({ error: "petId and name are required." });
+    }
+
+    // Verify that this pet belongs to the logged-in user
+    const petCheck = await pool.query(
+      "SELECT id FROM pets WHERE id = $1 AND user_id = $2",
+      [petId, userId]
+    );
+    if (petCheck.rowCount === 0) {
+      return res.status(403).json({ error: "You do not own this pet." });
+    }
+
+    if (isVisible) {
+      await pool.query(
+        `UPDATE pet_accessories
+         SET is_visible = FALSE
+         WHERE pet_id = $1`,
+        [petId]
+      );
+    }
+
+    const result = await pool.query(
+      `INSERT INTO pet_accessories (pet_id, name, image_url, is_unlocked, is_visible, cost)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING *`,
+      [petId, name, imageUrl, isUnlocked, isVisible, cost]
+    );
+
+    return res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error("Error creating pet accessory:", err);
+    return res.status(500).json({ error: "Failed to create pet accessory." });
+  }
+});
+
+
 // Grabs children in family for task creation
 app.get('/api/parent/children', authMiddleware, async (req, res) => {
   const parentId = req.user.sub;
