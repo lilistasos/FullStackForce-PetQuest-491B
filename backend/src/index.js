@@ -686,6 +686,135 @@ app.post('/api/tasks', authMiddleware, async (req, res) => {
   }
 });
 
+// Get all tasks created by parent
+app.get('/api/parent/my-tasks', authMiddleware, async (req, res) => {
+  const parentId = req.user.sub;
+
+  try {
+    const { rows: tasks } = await pool.query(
+      `SELECT 
+         t.id,
+         t.title,
+         t.description,
+         t.due_date AS "dueDate",
+         t.completed,
+         t.point_value AS "points",
+         t.category,
+         t.assigned_to AS "assignedTo",
+         u.first_name AS "childName",
+         u.email AS "childEmail"
+       FROM tasks t
+       LEFT JOIN users u ON t.assigned_to = u.id
+       WHERE t.user_id = $1
+       ORDER BY t.due_date DESC`,
+      [parentId]
+    );
+
+    // Format tasks for frontend
+    const formattedTasks = tasks.map(task => {
+      let dateString = '';
+      let timeDisplay = 'All Day';
+      
+      if (task.dueDate) {
+        try {
+          const dueDate = new Date(task.dueDate);
+          if (!isNaN(dueDate.getTime())) {
+            dateString = dueDate.getFullYear() + '-' + 
+                        String(dueDate.getMonth() + 1).padStart(2, '0') + '-' + 
+                        String(dueDate.getDate()).padStart(2, '0');
+            
+            timeDisplay = dueDate.toLocaleTimeString('en-US', {
+              hour: 'numeric',
+              minute: '2-digit',
+              hour12: true
+            });
+          }
+        } catch (err) {
+          console.error('Error parsing dueDate:', err);
+        }
+      }
+      
+      return {
+        id: task.id.toString(),
+        text: task.title,
+        description: task.description || '',
+        completed: task.completed || false,
+        category: task.category || 'Other',
+        points: task.points || 0,
+        assignedTo: task.assignedTo,
+        childName: task.childName || 'Unassigned',
+        childEmail: task.childEmail,
+        date: dateString,
+        time: timeDisplay
+      };
+    });
+
+    res.json(formattedTasks);
+  } catch (err) {
+    console.error('GET /api/parent/my-tasks error:', err);
+    res.status(500).json({ error: 'Failed to load parent tasks' });
+  }
+});
+
+// Update task
+app.put('/api/parent/tasks/:id', authMiddleware, async (req, res) => {
+  const parentId = req.user.sub;
+  const taskId = req.params.id;
+  const { title, description, points, category, dueDate } = req.body;
+
+  try {
+    // Verify the task belongs to this parent
+    const { rows: existingTasks } = await pool.query(
+      `SELECT id FROM tasks WHERE id = $1 AND user_id = $2`,
+      [taskId, parentId]
+    );
+
+    if (existingTasks.length === 0) {
+      return res.status(404).json({ error: 'Task not found or access denied' });
+    }
+
+    const { rows: updatedTask } = await pool.query(
+      `UPDATE tasks 
+       SET title = $1, description = $2, point_value = $3, category = $4, due_date = $5
+       WHERE id = $6 AND user_id = $7
+       RETURNING *`,
+      [title, description, points, category, dueDate, taskId, parentId]
+    );
+
+    res.json(updatedTask[0]);
+  } catch (err) {
+    console.error('PUT /api/parent/tasks/:id error:', err);
+    res.status(500).json({ error: 'Failed to update task' });
+  }
+});
+
+// Delete task
+app.delete('/api/parent/tasks/:id', authMiddleware, async (req, res) => {
+  const parentId = req.user.sub;
+  const taskId = req.params.id;
+
+  try {
+    // Verify the task belongs to this parent
+    const { rows: existingTasks } = await pool.query(
+      `SELECT id FROM tasks WHERE id = $1 AND user_id = $2`,
+      [taskId, parentId]
+    );
+
+    if (existingTasks.length === 0) {
+      return res.status(404).json({ error: 'Task not found or access denied' });
+    }
+
+    await pool.query(
+      `DELETE FROM tasks WHERE id = $1 AND user_id = $2`,
+      [taskId, parentId]
+    );
+
+    res.json({ message: 'Task deleted successfully' });
+  } catch (err) {
+    console.error('DELETE /api/parent/tasks/:id error:', err);
+    res.status(500).json({ error: 'Failed to delete task' });
+  }
+});
 
 
 // Starts Server
