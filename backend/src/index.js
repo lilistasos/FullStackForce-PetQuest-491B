@@ -816,6 +816,91 @@ app.delete('/api/parent/tasks/:id', authMiddleware, async (req, res) => {
   }
 });
 
+// Get tasks for parent's children (for calendar)
+app.get('/api/parent/children-tasks', authMiddleware, async (req, res) => {
+  const parentId = req.user.sub;
+
+  try {
+    // Get parent's family code
+    const { rows: parentRows } = await pool.query(
+      `SELECT family_code FROM users WHERE id = $1 AND role = 'parent'`,
+      [parentId]
+    );
+
+    if (parentRows.length === 0) {
+      return res.status(400).json({ error: 'Parent account not found.' });
+    }
+
+    const familyCode = parentRows[0].family_code;
+
+    // Get all tasks for children in this family
+    const { rows: tasks } = await pool.query(
+      `SELECT 
+         t.id,
+         t.title AS "taskName",
+         t.description,
+         t.due_date AS "dueDate",
+         t.completed,
+         t.point_value AS "points",
+         t.category,
+         t.assigned_to AS "assignedTo",
+         u.id AS "childId",
+         u.first_name AS "childName",
+         u.email AS "childEmail"
+       FROM tasks t
+       JOIN users u ON t.assigned_to = u.id
+       WHERE u.family_code = $1 
+         AND u.role = 'child'
+         AND t.due_date IS NOT NULL
+       ORDER BY t.due_date`,
+      [familyCode]
+    );
+
+    // Format tasks for frontend
+    const formattedTasks = tasks.map(task => {
+      let timeString = 'All Day';
+      let dateString = '';
+      
+      if (task.dueDate) {
+        try {
+          const dueDate = new Date(task.dueDate);
+          if (!isNaN(dueDate.getTime())) {
+            dateString = dueDate.getFullYear() + '-' + 
+                        String(dueDate.getMonth() + 1).padStart(2, '0') + '-' + 
+                        String(dueDate.getDate()).padStart(2, '0');
+            
+            timeString = dueDate.toLocaleTimeString('en-US', {
+              hour: 'numeric',
+              minute: '2-digit',
+              hour12: true
+            });
+          }
+        } catch (err) {
+          console.error('Error parsing dueDate:', err);
+        }
+      }
+      
+      return {
+        id: task.id.toString(),
+        childName: task.childName,
+        childId: task.childId,
+        taskName: task.taskName,
+        description: task.description || '',
+        time: timeString,
+        points: task.points || 0,
+        completed: task.completed || false,
+        category: task.category || 'Other',
+        date: dateString
+      };
+    });
+
+    res.json(formattedTasks);
+  } catch (err) {
+    console.error('GET /api/parent/children-tasks error:', err);
+    res.status(500).json({ error: 'Failed to load children tasks' });
+  }
+});
+
 
 // Starts Server
 const PORT = process.env.PORT || 4000;
