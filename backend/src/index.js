@@ -708,6 +708,62 @@ app.post("/api/pet-accessories", authMiddleware, async (req, res) => {
   }
 });
 
+// SEED DEFAULT PETS + ACCESSORIES FOR THE LOGGED-IN USER
+app.post('/api/pets/seed-defaults', authMiddleware, async (req, res) => {
+  const userId = req.user.sub;
+
+  try {
+    const client = await pool.connect();
+    await client.query('BEGIN');
+
+    // 1. Insert default pets
+    const defaultPets = [
+      { name: "Dragon", imageUrl: null, isUnlocked: true,  isVisible: true,  cost: 0 },
+      { name: "Cat",    imageUrl: null, isUnlocked: true,  isVisible: false, cost: 0 },
+      { name: "Dog",    imageUrl: null, isUnlocked: true,  isVisible: false, cost: 0 },
+      { name: "Lion",   imageUrl: null, isUnlocked: false, isVisible: false, cost: 200 },
+      { name: "Unicorn",imageUrl: null, isUnlocked: false, isVisible: false, cost: 300 }
+    ];
+
+    const petIds = {};
+
+    for (const pet of defaultPets) {
+      const result = await client.query(
+        `INSERT INTO pets (user_id, name, image_url, is_unlocked, is_visible, cost)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         RETURNING id`,
+        [userId, pet.name, pet.imageUrl, pet.isUnlocked, pet.isVisible, pet.cost]
+      );
+      petIds[pet.name] = result.rows[0].id;
+    }
+
+    // 2. Default accessories
+    const accessories = [
+      { petName: "Dragon", name: "Baseball Cap", imageUrl: null, isUnlocked: true, isVisible: false, cost: 0 },
+      { petName: "Dragon", name: "Top Hat",      imageUrl: null, isUnlocked: true, isVisible: false, cost: 50 },
+      { petName: "Dragon", name: "Sunglasses",   imageUrl: null, isUnlocked: false, isVisible: false, cost: 30 },
+      { petName: "Dragon", name: "Football",     imageUrl: null, isUnlocked: false, isVisible: false, cost: 40 }
+    ];
+
+    for (const a of accessories) {
+      const petId = petIds[a.petName];
+      await client.query(
+        `INSERT INTO pet_accessories (pet_id, name, image_url, is_unlocked, is_visible, cost)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [petId, a.name, a.imageUrl, a.isUnlocked, a.isVisible, a.cost]
+      );
+    }
+
+    await client.query('COMMIT');
+    client.release();
+
+    res.json({ message: "Default pets + accessories seeded!", pets: defaultPets.length, accessories: accessories.length });
+  } catch (err) {
+    console.error("❌ Seeding error:", err);
+    res.status(500).json({ error: "Failed to seed defaults." });
+  }
+});
+
 
 // Grabs children in family for task creation
 app.get('/api/parent/children', authMiddleware, async (req, res) => {
