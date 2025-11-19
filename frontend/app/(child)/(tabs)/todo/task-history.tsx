@@ -3,7 +3,7 @@ import { useTasks, Task as TaskType } from "@/contexts/TaskContext";
 import React, { useMemo } from "react";
 import { View, Text, FlatList, StyleSheet, TouchableOpacity } from "react-native";
 
-export default function TaskHistory() {
+export default function TaskHistoryScreen() {
     const {tasks} = useTasks();
     const completed = tasks.filter((t: TaskType) => t.completed);
     const renderItem = ({item}: {item: TaskType}) => {
@@ -27,7 +27,7 @@ export default function TaskHistory() {
 
     return (
         <FlatList
-        data={completed}
+        data={tasks}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         />

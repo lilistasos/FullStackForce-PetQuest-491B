@@ -463,7 +463,8 @@ const toggleComplete = (taskId: string) => {
           </Animated.View>
         )}      
         {/* <View style={{flex:1, flexDirection: 'row', alignItems: 'center'}}> */}
-        <TouchableOpacity style={{alignItems: 'center', backgroundColor: 'gray'}} onPress={() => router.push("/(child)/(tabs)/todo/task-history")}>
+        <TouchableOpacity style={{alignItems: 'center', backgroundColor: 'gray'}} 
+        onPress={() => router.push("./task-history")}>
           <Text style={{fontSize: 20}}>Task History</Text>
         </TouchableOpacity>
         {/* </View> */}

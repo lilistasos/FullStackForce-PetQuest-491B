@@ -164,11 +164,10 @@ export default function CollectionScreen() {
     }
   };
 
-
   const handleShowPet = (item : CollectionItem) => {
     setShowPet(item);
     setPetModal(true);
-  }
+  };
 
   const renderCollectionItem = (item: CollectionItem) => (
     //<View>
@@ -212,7 +211,6 @@ export default function CollectionScreen() {
         )}
       </View>
     </TouchableOpacity>
-
   );
 
   return (
