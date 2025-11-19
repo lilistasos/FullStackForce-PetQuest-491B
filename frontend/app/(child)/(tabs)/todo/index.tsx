@@ -238,7 +238,7 @@ const ToDoScreen = () => {
     }
   }, [user, token, currentDate]);
 
-  // Complete task function
+// Complete task function
   const completeTask = async (taskId: string) => {
     if (!token) return;
 
@@ -258,7 +258,7 @@ const ToDoScreen = () => {
 
       const result = await response.json();
       
-      // Update local state
+      // Update local state immediately
       setTasksByDate((prev) => {
         const updatedDayTasks = (prev[formattedKey] || []).map((task) => {
           if (task.id === taskId) {
@@ -272,6 +272,11 @@ const ToDoScreen = () => {
         });
         return { ...prev, [formattedKey]: updatedDayTasks };
       });
+
+      // Record achievement
+      if (result.pointsEarned && result.pointsEarned > 0) {
+        recordTaskCompletion(result.pointsEarned);
+      }
 
       // Show points popup
       showPopup(result.message || `You earned ${result.pointsEarned} points!`);

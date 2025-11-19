@@ -1173,6 +1173,189 @@ app.get('/api/parent/children-tasks', authMiddleware, async (req, res) => {
   }
 });
 
+// Get tasks assigned to the current child user
+app.get('/api/tasks/my-assigned-tasks', authMiddleware, async (req, res) => {
+  const userId = req.user.sub;
+
+  try {
+    const { rows: tasks } = await pool.query(
+      `SELECT 
+         t.id,
+         t.title AS text,
+         t.description,
+         t.due_date AS date,
+         t.completed,
+         t.point_value AS points,
+         t.category,
+         t.assigned_to AS "assignedTo",
+         u.first_name AS "childName"
+       FROM tasks t
+       LEFT JOIN users u ON t.assigned_to = u.id
+       WHERE t.assigned_to = $1
+       ORDER BY t.due_date ASC`,
+      [userId]
+    );
+
+    // Format tasks for frontend
+    const formattedTasks = tasks.map(task => {
+      let dateString = '';
+      let timeDisplay = 'All Day';
+      
+      if (task.date) {
+        try {
+          const dueDate = new Date(task.date);
+          if (!isNaN(dueDate.getTime())) {
+            dateString = dueDate.getFullYear() + '-' + 
+                        String(dueDate.getMonth() + 1).padStart(2, '0') + '-' + 
+                        String(dueDate.getDate()).padStart(2, '0');
+            
+            timeDisplay = dueDate.toLocaleTimeString('en-US', {
+              hour: 'numeric',
+              minute: '2-digit',
+              hour12: true
+            });
+          }
+        } catch (err) {
+          console.error('Error parsing dueDate:', err);
+        }
+      }
+      
+      return {
+        id: task.id.toString(),
+        text: task.text,
+        description: task.description || '',
+        completed: task.completed || false,
+        category: task.category || 'Other',
+        points: task.points || 0,
+        assignedTo: task.assignedTo,
+        childName: task.childName,
+        date: dateString,
+        time: timeDisplay
+      };
+    });
+
+    res.json(formattedTasks);
+  } catch (err) {
+    console.error('GET /api/tasks/my-assigned-tasks error:', err);
+    res.status(500).json({ error: 'Failed to load assigned tasks' });
+  }
+});
+
+// Complete a task and award points
+app.post('/api/tasks/:id/complete', authMiddleware, async (req, res) => {
+  const userId = req.user.sub;
+  const taskId = req.params.id;
+
+  try {
+    const client = await pool.connect();
+    await client.query('BEGIN');
+
+    // Get the task and verify it belongs to the user
+    const { rows: tasks } = await client.query(
+      `SELECT id, point_value, completed, assigned_to
+       FROM tasks 
+       WHERE id = $1 AND assigned_to = $2
+       FOR UPDATE`,
+      [taskId, userId]
+    );
+
+    if (tasks.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Task not found or access denied' });
+    }
+
+    const task = tasks[0];
+
+    if (task.completed) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Task already completed' });
+    }
+
+    // Mark task as completed
+    await client.query(
+      `UPDATE tasks SET completed = TRUE WHERE id = $1`,
+      [taskId]
+    );
+
+    // Award points to user
+    await client.query(
+      `UPDATE users SET points = points + $1 WHERE id = $2`,
+      [task.point_value, userId]
+    );
+
+    await client.query('COMMIT');
+    client.release();
+
+    res.json({
+      success: true,
+      pointsEarned: task.point_value,
+      message: `Task completed! You earned ${task.point_value} points!`
+    });
+
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('POST /api/tasks/:id/complete error:', err);
+    res.status(500).json({ error: 'Failed to complete task' });
+  }
+});
+
+// Complete a task and award points
+app.post('/api/tasks/:id/complete', authMiddleware, async (req, res) => {
+  const userId = req.user.sub;
+  const taskId = req.params.id;
+
+  try {
+    const client = await pool.connect();
+    await client.query('BEGIN');
+
+    // Get the task and verify it belongs to the user
+    const { rows: tasks } = await client.query(
+      `SELECT id, point_value, completed, assigned_to
+       FROM tasks 
+       WHERE id = $1 AND assigned_to = $2
+       FOR UPDATE`,
+      [taskId, userId]
+    );
+
+    if (tasks.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Task not found or access denied' });
+    }
+
+    const task = tasks[0];
+
+    if (task.completed) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Task already completed' });
+    }
+
+    // Mark task as completed
+    await client.query(
+      `UPDATE tasks SET completed = TRUE WHERE id = $1`,
+      [taskId]
+    );
+
+    // Award points to user
+    await client.query(
+      `UPDATE users SET points = points + $1 WHERE id = $2`,
+      [task.point_value, userId]
+    );
+
+    await client.query('COMMIT');
+    client.release();
+
+    res.json({
+      success: true,
+      pointsEarned: task.point_value,
+      message: `Task completed! You earned ${task.point_value} points!`
+    });
+
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('POST /api/tasks/:id/complete error:', err);
+    res.status(500).json({ error: 'Failed to complete task' });
+  }
+});
 
 // Starts Server
 const PORT = process.env.PORT || 4000;
