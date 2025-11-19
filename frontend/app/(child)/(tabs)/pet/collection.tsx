@@ -70,8 +70,14 @@ export default function CollectionScreen() {
         return require("@/assets/images/pdragon.png");
       case "cat":
         return require("@/assets/images/cat.png");
+      case "dog":
+        return require("@/assets/images/fbdog.png");
+      case "lion":
+        return require("@/assets/images/lion.png");
+      case "unicorn":
+        return require("@/assets/images/unicorn.png");
       default:
-        return require("@/assets/images/green-dragon.png"); // Default image
+        return require("@/assets/images/green-dragon.png"); // fallback
     }
   };
 
@@ -161,46 +167,42 @@ export default function CollectionScreen() {
 
 
   const renderCollectionItem = (item: CollectionItem) => (
-    <TouchableOpacity 
-      key={item.id} 
-      style={styles.itemContainer}
-      onPress={() => handlePetSelect(item.id)}
-      disabled={!item.owned}
-      activeOpacity={item.owned ? 0.7 : 1}
-    >
-      <View style={[
+  <TouchableOpacity 
+    key={item.id} 
+    style={styles.itemContainer}
+    onPress={() => handlePetSelect(item.id)}
+    disabled={!item.owned}
+    activeOpacity={item.owned ? 0.7 : 1}
+  >
+    <View
+      style={[
         styles.itemBox,
-        { backgroundColor: item.owned ? colors.background : colors.surface, borderColor: colors.primary },
-        selectedPet.id === item.id && item.owned && { borderWidth: 4, borderColor: colors.primary },
-        !item.owned && { borderColor: colors.border }
-      ]}>
-        {item.id === "dragon" ? (
-          <Image 
-            source={require("@/assets/images/pdragon.png")} 
-            style={[
-              styles.itemImage,
-              !item.owned && styles.grayedOutImage
-            ]}
-            resizeMode="contain"
-          />
-        ) : item.id === "cat" ? (
-          <Image 
-            source={require("@/assets/images/cat.png")} 
-            style={[
-              styles.itemImage,
-              !item.owned && styles.grayedOutImage
-            ]}
-            resizeMode="contain"
-          />
-        ) : item.owned ? (
-          <Text style={[styles.itemTitle, { color: colors.text }]}>{item.name}</Text>
-        ) : (
-          // Empty box for unowned pets - no text
-          null
-        )}
-      </View>
-    </TouchableOpacity>
-  );
+        {
+          backgroundColor: item.owned ? colors.background : colors.surface,
+          borderColor: colors.primary,
+        },
+        selectedPet.id === item.id && item.owned && {
+          borderWidth: 4,
+          borderColor: colors.primary,
+        },
+        !item.owned && { borderColor: colors.border },
+      ]}
+    >
+      {["dragon", "cat", "dog", "lion", "unicorn"].includes(item.id) ? (
+        <Image
+          source={getPetImage(item.id)}
+          style={[styles.itemImage, !item.owned && styles.grayedOutImage]}
+          resizeMode="contain"
+        />
+      ) : item.owned ? (
+        <Text style={[styles.itemTitle, { color: colors.text }]}>
+          {item.name}
+        </Text>
+      ) : null}
+    </View>
+  </TouchableOpacity>
+);
+
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]} showsVerticalScrollIndicator={false}>
