@@ -6,6 +6,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/hooks/useAuth";
+import { useTheme } from '@/contexts/ThemeContext'; // Add this import
 
 const getApiUrl = () => {
   if (Platform.OS === 'android') {
@@ -19,16 +20,18 @@ const getApiUrl = () => {
 
 const ParentSelectChildScreen = () => {
   type ChildAccount = {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email?: string;
-};
+    id: string;
+    firstName: string;
+    lastName: string;
+    email?: string;
+  };
+  
   const [children, setChildren] = useState<ChildAccount[]>([]);
   const [selectedChild, setSelectedChild] = useState<string | null>(null);
   const selectedChildData = children.find(child => child.id === selectedChild);
 
   const { token } = useAuth();
+  const { colors, isDarkMode } = useTheme(); // Add this hook
   
   const router = useRouter();
   const screenWidth = Dimensions.get('window').width;
@@ -52,6 +55,9 @@ const ParentSelectChildScreen = () => {
     };
     loadChildren();
   }, []);
+
+  // Create styles using the theme
+  const styles = createStyles(colors, isDarkMode);
 
   return (
     <SafeAreaView style={styles.container}>
