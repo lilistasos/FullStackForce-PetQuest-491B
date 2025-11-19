@@ -8,6 +8,7 @@ import { PetProvider } from '@/contexts/PetContext';
 import { ThemeProvider as CustomThemeProvider } from '@/contexts/ThemeContext';
 import { AuthProvider } from '@/hooks/useAuth';
 import { TaskProvider } from '@/contexts/TaskContext';
+import { AchievementProvider } from '@/contexts/AchievementContext';
 
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
@@ -67,16 +68,18 @@ export default function RootLayout() {
       <CustomThemeProvider>
         <PetProvider>
           <TaskProvider>
-            <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-              <Stack screenOptions={{ headerShown: false }}>
-                <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-                <Stack.Screen name="(child)" options={{ headerShown: false }} />
-                <Stack.Screen name="(parent)" options={{ headerShown: false }} />
-                <Stack.Screen name="(indv)" options={{ headerShown: false }} />
-                <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-              </Stack>
-              <StatusBar style="auto" />
-            </ThemeProvider>
+            <AchievementProvider>
+              <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+                <Stack screenOptions={{ headerShown: false }}>
+                  <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                  <Stack.Screen name="(child)" options={{ headerShown: false }} />
+                  <Stack.Screen name="(parent)" options={{ headerShown: false }} />
+                  <Stack.Screen name="(indv)" options={{ headerShown: false }} />
+                  <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+                </Stack>
+                <StatusBar style="auto" />
+              </ThemeProvider>
+            </AchievementProvider>
           </TaskProvider>
         </PetProvider>
       </CustomThemeProvider>

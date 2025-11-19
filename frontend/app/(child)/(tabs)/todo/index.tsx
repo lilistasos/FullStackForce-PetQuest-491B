@@ -1,10 +1,35 @@
-import React, { useState, useRef } from "react";
-import { View, Text, TouchableOpacity, FlatList, StyleSheet,  Image, ScrollView, Pressable, Modal, TextInput, Animated } from "react-native";
+import React, { useState, useRef, useMemo, useEffect, useCallback } from "react";
+import { View, Text, TouchableOpacity, StyleSheet, Image, Pressable, Modal, TextInput, Animated, ScrollView, FlatList, Platform, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from 'expo-router';
 import { useTasks } from "@/contexts/TaskContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "expo-router";
+import { useTheme } from "@/contexts/ThemeContext";
+import { usePet } from "@/contexts/PetContext";
+import { useAchievements } from "@/contexts/AchievementContext";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { TodoCategoryPreferences } from '../account/preferences';
+
+const TODO_CATEGORIES_KEY = '@petquest:todoCategories';
+
+const defaultCategoryPreferences: TodoCategoryPreferences = {
+  Homework: true,
+  Chores: true,
+  Work: true,
+  Extra: true,
+};
+
+const getApiUrl = () => {
+  if (Platform.OS === 'android') {
+    return __DEV__ ? "http://10.0.2.2:4000" : "http://10.0.2.2:4000";
+  } else if (Platform.OS === 'ios') {
+    return __DEV__ ? "http://localhost:4000" : "http://localhost:4000";
+  } else {
+    return "http://localhost:4000";
+  }
+};
 
 // Defines what a task looks like
 type Task = {
@@ -15,34 +40,28 @@ type Task = {
   originalCategory?: string;
   description: string;
   points: number;
+  date?: string;
+  time?: string;
 };
 
-const ToDoScreen = ()=> {
+const ToDoScreen = () => {
   const { getTasksByChild, toggleComplete: contextToggleComplete } = useTasks();
-  const { user } = useAuth();
   const router = useRouter();
+  const { user, token } = useAuth();
+  const { colors, isDarkMode } = useTheme();
+  const { selectedPet } = usePet();
+  const { recordTaskCompletion } = useAchievements();
+  const styles = useMemo(() => createStyles(colors, isDarkMode), [colors, isDarkMode]);
 
   // Current Date State
   const [currentDate, setCurrentDate] = useState(new Date());
 
-  //const [showDetails, setShowDetails] = useState(false);
   const [showDetails, setShowDetails] = useState<string | null>(null);
   const dropdownOptions = ["Default", "Points: High to Low", "Points: Low to High"];
   
   //states for sort dropdown
   const [dropdown, setDropdown] = useState(false);
   const [sortType, setSortType] = useState(dropdownOptions[0]);
-
-  //states for delete task
-  const [deleteModal, setDeleteModal] = useState(false);
-  const [taskDelete, setTaskDelete] = useState<string | null>(null);
-
-  //states for edit task
-  const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
-  const [editModal, setEditModal] = useState(false);
-  const [editText, setEditText] = useState("");
-  const [editDescription, setEditDescription] = useState("");
-  const [editPoints, setEditPoints] = useState("");
 
   //states for confirm modal
   const [confirmModal, setConfirmModal] = useState(false);
@@ -51,6 +70,25 @@ const ToDoScreen = ()=> {
   //states for points popup
   const [pointsPopup, setPointsPopup] = useState({ visible: false, message: "" });
   const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  const closeDropdown = () => {
+    if (dropdown) {
+      setDropdown(false);
+    }
+  };
+
+  // Role check - only children can use this screen
+  if (user && user.role !== 'child') {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+          <Text style={{ fontSize: 18, textAlign: 'center' }}>
+            This screen is only available for child accounts
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   // Dropdown toggle function
   const toggleDropdown = () => {
@@ -63,145 +101,299 @@ const ToDoScreen = ()=> {
     setDropdown(false);
   };
 
-  // Delete task function
-  const deleteTask = (dateKey: string, taskId: string) => {
-    setTasksByDate((prev) => {
-      const updatedTasks = (prev[dateKey] || []).filter((task) => task.id !== taskId);
-      return { ...prev, [dateKey]: updatedTasks };
-    });
+  const handlePressTask = (taskId: string) => {
+    closeDropdown();
+    setShowDetails((prev) => (prev === taskId ? null : taskId));
   };
 
-  const handlePressTask = (taskId: string) => {
-  setShowDetails((prev) => (prev === taskId ? null : taskId)
-  );
-}
-
-// States for Categories
-// expanded state object to track which categories are currently expanded or collapsed
+  // States for Categories
   const [expanded, setExpanded] = useState<{ [key: string]: boolean }>({
-    Homework: false, // All categories are collaspsed at first
+    Homework: false,
     Chores: false,
+    Work: false,
+    Extra: false,
     Extracurriculars: false,
+    Practice: false,
+    Appointments: false,
+    Other: false,
     Completed: false,
-});
+  });
 
-const [tasksByDate, setTasksByDate] = useState<{
-  [key: string]: Task[];
-}>({
-  "2025-10-20": [
-    { id: "1", text: "Read ch.1", completed: false, category: "Homework", description: "Read chapter 1 of history textbook", points: 10 },
-    { id: "2", text: "Clean kitchen", completed: false, category: "Chores", description: "Wash dishes and wipe counters", points: 5 },
-    { id: "3", text: "Clean room", completed: false, category: "Chores", description: "Tidy up and vacuum", points: 5 },
-    { id: "4", text: "Wash dishes", completed: false, category: "Chores", description: "Clean dirty dishes", points: 5 },
-    { id: "5", text: "Laundry", completed: false, category: "Chores", description: "Wash and fold clothes", points: 5 },
-  ],
-  "2025-10-21": [
-    { id: "6", text: "Math worksheet", completed: false, category: "Homework", description: "Complete assigned math worksheet", points: 10 },
-    { id: "7", text: "Soccer practice", completed: false, category: "Extracurriculars", description: "Attend soccer practice", points: 15 },
-  ],
-  "2025-10-22": [
-    { id: "8", text: "Take out trash", completed: false, category: "Chores", description: "Take out household trash", points: 5 },
-  ],
-});
+  // Category preferences state
+  const [categoryPreferences, setCategoryPreferences] = useState<TodoCategoryPreferences>(defaultCategoryPreferences);
 
-// Converts current date to a string
-const formatDateKey = (date: Date) => date.toISOString().split("T")[0];
-const formattedKey = formatDateKey(currentDate);
-const tasks = tasksByDate[formattedKey] || [];
+  // Load category preferences function
+  const loadCategoryPreferences = useCallback(async () => {
+    try {
+      const savedCategories = await AsyncStorage.getItem(TODO_CATEGORIES_KEY);
+      if (savedCategories !== null) {
+        const parsed = JSON.parse(savedCategories);
+        setCategoryPreferences({ ...defaultCategoryPreferences, ...parsed });
+      }
+    } catch (error) {
+      console.error('Error loading category preferences:', error);
+    }
+  }, []);
+
+  // Load category preferences on mount and when screen comes into focus
+  useEffect(() => {
+    loadCategoryPreferences();
+  }, [loadCategoryPreferences]);
+
+  // Reload preferences when screen comes into focus (e.g., returning from preferences screen)
+  useFocusEffect(
+    useCallback(() => {
+      loadCategoryPreferences();
+    }, [loadCategoryPreferences])
+  );
+
+  const [tasksByDate, setTasksByDate] = useState<{
+    [key: string]: Task[];
+  }>({});
+
+  // Converts current date to a string
+  const formatDateKey = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  const formattedKey = formatDateKey(currentDate);
+  const tasks = tasksByDate[formattedKey] || [];
 
   // Helper functions for changing date
   // Able to move back and forth between days 
   const changeDate = (days: number) => {
+    closeDropdown();
     const newDate = new Date(currentDate);
     newDate.setDate(newDate.getDate() + days);
     setCurrentDate(newDate);
-}
-//Format date in a 3 line stagger
-const weekday = currentDate.toLocaleDateString("en-US", { weekday: "long" });
-const monthDay = currentDate.toLocaleDateString("en-US", {
-  month: "long",
-  day: "numeric",
-});
-const year = currentDate.getFullYear();
+  };
 
-// Handling Edit Save Logic
-  const handleEditSave = () => {
-    if (taskToEdit) {
-      setTasksByDate((prev) => {
-        const updatedTasks = prev[formattedKey].map((task) =>
-          task.id === taskToEdit.id
-            ? { ...task, text: editText, description: editDescription, points: parseInt(editPoints) || task.points }
-            : task
-        );
-        return { ...prev, [formattedKey]: updatedTasks };
-      });
-      setEditModal(false);
-      setTaskToEdit(null);
+  //Format date in a 3 line stagger
+  const getOrdinalSuffix = (day: number): string => {
+    if (day > 3 && day < 21) return "th";
+    switch (day % 10) {
+      case 1:
+        return "st";
+      case 2:
+        return "nd";
+      case 3:
+        return "rd";
+      default:
+        return "th";
     }
   };
 
-// Points PopUp Function
-const showPopup = (message: string) => {
-  setPointsPopup({ visible: true, message });
+  const weekday = currentDate.toLocaleDateString("en-US", { weekday: "long" });
+  const dayNumber = currentDate.getDate();
+  const ordinalSuffix = getOrdinalSuffix(dayNumber);
+  const monthName = currentDate.toLocaleDateString("en-US", { month: "long" });
+  const monthDay = `${monthName} ${dayNumber}${ordinalSuffix}`;
 
-  // Fading in
-  Animated.timing(fadeAnim, {
-    toValue: 1,
-    duration: 400,
-    useNativeDriver: true,
-  }).start(() => {
-    // hold for 1.5s, then fade out
-    setTimeout(() => {
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 400,
-        useNativeDriver: true,
-      }).start(() => setPointsPopup({ visible: false, message: "" }));
-    }, 1500);
-  });
-};
+  const fetchTasks = async () => {
+    if (!user || !token || user.role !== 'child') return;
+    
+    try {
+      const API_URL = getApiUrl();
+      const response = await fetch(`${API_URL}/api/tasks/my-assigned-tasks`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
 
-
-// Update toggleComplete
-const toggleComplete = (taskId: string) => {
-  setTasksByDate((prev) => {
-    const updatedDayTasks = (prev[formattedKey] || []).map((task) => {
-      if (task.id === taskId) {
-        if (task.completed && task.category === "Completed" && task.originalCategory) {
-          // unmark completed → move back to original
-          return {
-            ...task,
-            completed: false,
-            category: task.originalCategory,
-            originalCategory: undefined,
-          };
-        } else if (!task.completed && task.category !== "Completed") {
-          // mark as completed → move to Completed section
-          return {
-            ...task,
-            completed: true,
-            originalCategory: task.category,
-            category: "Completed",
-          };
-        }
+      if (!response.ok) {
+        throw new Error('Failed to fetch tasks');
       }
-      return task;
-    });
-    return { ...prev, [formattedKey]: updatedDayTasks };
-  });
-};
 
-// The four categories for tasks
-  const categories = [
+      const tasks = await response.json();
+      
+      // Transform tasks to the format expected by the to-do list
+      const tasksByDate: { [key: string]: Task[] } = {};
+
+      tasks.forEach((task: any) => {
+        // Handle date parsing with timezone consideration
+        let dateKey: string;
+        
+        if (task.date) {
+          // Parse the date string and convert to local timezone
+          const taskDate = new Date(task.date);
+          // Use the local date (not UTC) for grouping
+          dateKey = formatDateKey(taskDate);
+        } else {
+          // Use current local date if no date specified
+          dateKey = formatDateKey(new Date());
+        }
+        
+        if (!tasksByDate[dateKey]) {
+          tasksByDate[dateKey] = [];
+        }
+        
+        tasksByDate[dateKey].push({
+          id: task.id.toString(),
+          text: task.text,
+          completed: task.completed || false,
+          category: task.category || 'Other',
+          description: task.description || '',
+          points: task.points || 0,
+          date: task.date,
+          time: task.time || 'All Day',
+        });
+      });
+
+      setTasksByDate(tasksByDate);
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+      Alert.alert('Error', 'Failed to load tasks');
+    }
+  };
+
+  // Load tasks when component mounts or user changes
+  useEffect(() => {
+    if (user && token) {
+      fetchTasks();
+    }
+  }, [user, token, currentDate]);
+
+// Complete task function
+  const completeTask = async (taskId: string) => {
+    if (!token) return;
+
+    try {
+      const API_URL = getApiUrl();
+      const response = await fetch(`${API_URL}/api/tasks/${taskId}/complete`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to complete task');
+      }
+
+      const result = await response.json();
+      
+      // Update local state immediately
+      setTasksByDate((prev) => {
+        const updatedDayTasks = (prev[formattedKey] || []).map((task) => {
+          if (task.id === taskId) {
+            return {
+              ...task,
+              completed: true,
+              category: "Completed",
+            };
+          }
+          return task;
+        });
+        return { ...prev, [formattedKey]: updatedDayTasks };
+      });
+
+      // Record achievement
+      if (result.pointsEarned && result.pointsEarned > 0) {
+        recordTaskCompletion(result.pointsEarned);
+      }
+
+      // Show points popup
+      showPopup(result.message || `You earned ${result.pointsEarned} points!`);
+      return result.pointsEarned;
+    } catch (error) {
+      console.error('Error completing task:', error);
+      Alert.alert('Error', 'Failed to complete task');
+      return 0;
+    }
+  };
+
+  // Points PopUp Function
+  const showPopup = (message: string) => {
+    setPointsPopup({ visible: true, message });
+
+    // Fading in
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 400,
+      useNativeDriver: true,
+    }).start(() => {
+      // hold for 1.5s, then fade out
+      setTimeout(() => {
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: true,
+        }).start(() => setPointsPopup({ visible: false, message: "" }));
+      }, 1500);
+    });
+  };
+
+  // Toggle task completion
+  const toggleComplete = (taskId: string) => {
+    setTasksByDate((prev) => {
+      const updatedDayTasks = (prev[formattedKey] || []).map((task) => {
+        if (task.id === taskId) {
+          if (task.completed && task.category === "Completed" && task.originalCategory) {
+            // unmark completed → move back to original
+            return {
+              ...task,
+              completed: false,
+              category: task.originalCategory,
+              originalCategory: undefined,
+            };
+          } else if (!task.completed && task.category !== "Completed") {
+            // mark as completed → move to Completed section
+            return {
+              ...task,
+              completed: true,
+              originalCategory: task.category,
+              category: "Completed",
+            };
+          }
+        }
+        return task;
+      });
+      return { ...prev, [formattedKey]: updatedDayTasks };
+    });
+  };
+
+  // Categories for tasks - filter based on preferences
+  // Map category IDs to preference keys (for backward compatibility, map Extracurriculars to Work)
+  const categoryMapping: { [key: string]: keyof TodoCategoryPreferences } = {
+    "Homework": "Homework",
+    "Chores": "Chores",
+    "Work": "Work",
+    "Extra": "Extra",
+    "Extracurriculars": "Work", // Map old category to Work preference
+  };
+
+  const allCategories = [
     { id: "Homework", title: "Homework" },
     { id: "Chores", title: "Chores" },
+    { id: "Work", title: "Work" },
+    { id: "Extra", title: "Extra" },
     { id: "Extracurriculars", title: "Extracurriculars" },
+    { id: "Practice", title: "Practice" },
+    { id: "Appointments", title: "Appointments" },
+    { id: "Other", title: "Other" },
     { id: "Completed", title: "Completed" },
   ];
+
+  // Filter categories based on preferences (Completed is always shown)
+  const categories = useMemo(() => {
+    return allCategories.filter((category) => {
+      if (category.id === "Completed") return true; // Always show Completed
+      const preferenceKey = categoryMapping[category.id];
+      if (!preferenceKey) return true; // Show if no mapping found (safety)
+      return categoryPreferences[preferenceKey] !== false;
+    });
+  }, [categoryPreferences]);
+
   const renderCategory = (category: { id: string; title: string }) => {
     const isExpanded = expanded[category.id];
     const tasks = tasksByDate[formattedKey] || [];
     const categoryTasks = tasks.filter((t) => t.category === category.id);
+    
+    
     //sort tasks based on selected sort
     switch(sortType) {
       case (dropdownOptions[1]):
@@ -215,6 +407,8 @@ const toggleComplete = (taskId: string) => {
         categoryTasks.sort((a, b) => a.text.localeCompare(b.text));
         break;
     }
+    
+    
     const visibleTasks = isExpanded ? categoryTasks : categoryTasks.slice(0, 3);
     const hiddenCount = categoryTasks.length - visibleTasks.length;
     
@@ -224,14 +418,16 @@ const toggleComplete = (taskId: string) => {
         {/* Header Row (Category Title + Arrow) */}
         <TouchableOpacity
           style={styles.cardHeader}
-          onPress={() =>
-            setExpanded((prev) => ({ ...prev, [category.id]: !prev[category.id] }))
-          }
+          onPress={() => {
+            closeDropdown();
+            setExpanded((prev) => ({ ...prev, [category.id]: !prev[category.id] }));
+          }}
         >
           <Ionicons
             name={isExpanded ? "chevron-down" : "chevron-forward"}
             size={20}
-            color="black"
+            color={colors.primary}
+            style={styles.cardHeaderIcon}
           />
           <Text style={styles.cardTitle}>{category.title}</Text>
         </TouchableOpacity>
@@ -243,11 +439,12 @@ const toggleComplete = (taskId: string) => {
             visibleTasks.map((task) => (
               <View key={task.id} style={styles.taskItem}>
                 <TouchableOpacity onPress={() => {
+                  closeDropdown();
                   if (!task.completed) {
                     setTaskToConfirm(task);
                     setConfirmModal(true);
                   } else {
-                    toggleComplete(task.id);
+                    completeTask(task.id);
                   }
                 }}
                 >
@@ -256,80 +453,39 @@ const toggleComplete = (taskId: string) => {
                       task.completed ? "checkmark-circle" : "ellipse-outline"
                     }
                     size={20}
-                    color={task.completed ? "#0077B6" : "gray"}
+                    color={task.completed ? colors.primary : colors.textSecondary}
                   />
                 </TouchableOpacity>
-                <View style={{flex: 1, flexDirection: "column", marginLeft: 8}}>
-                <Pressable onPress={() => handlePressTask(task.id)}>
-                <Text
-                  style={[
-                    styles.taskText,
-                    task.completed && { textDecorationLine: "line-through" },
-                  ]}
-                >
-                  <Ionicons
-                    name={showDetails === task.id ? "chevron-down" : "chevron-forward"}
-                    size={16}
-                    color="gray"
-                    style={{marginRight: 6}}
-                  />
-                  {task.text}
-                  
-                </Text>
-                </Pressable>
+                <View style={styles.taskDetailsColumn}>
+                  <Pressable onPress={() => handlePressTask(task.id)} style={styles.taskTitleRow}>
+                    <Ionicons
+                      name={showDetails === task.id ? "chevron-down" : "chevron-forward"}
+                      size={16}
+                      color={colors.primary}
+                      style={styles.taskChevronIcon}
+                    />
+                    <Text
+                      style={[
+                        styles.taskText,
+                        task.completed && styles.completedTaskText,
+                      ]}
+                    >
+                      {task.text}
+                    </Text>
+                  </Pressable>
                 
-                {/* Task Details (description, points, delete button) */}
+                {/* Task Details (description, points) */}
                 {showDetails === task.id && (
                   <View style={{marginTop: 4}}>
-                    <Text style={{color: "#555"}}>Description: {task.description}</Text>
-                    <Text style={{color: "#555"}}>Points: {task.points}</Text>
-                    <TouchableOpacity onPress={() => {setDeleteModal(true); setTaskDelete(task.id)}} style={styles.deleteButton}>
-                      <Text>Delete</Text>
-                    </TouchableOpacity>
-                    {/* Edit Button */}
-                    {!task.completed && (
-                      <TouchableOpacity
-                        onPress={() => {
-                          setTaskToEdit(task);
-                          setEditText(task.text);
-                          setEditDescription(task.description);
-                          setEditPoints(task.points.toString());
-                          setEditModal(true);
-                        }}
-                        style={{ backgroundColor: "#0077B6", padding: 10, borderRadius: 5, marginTop: 6 }}
-                      >
-                        <Text style={{ color: "white" }}>Edit</Text>
-                      </TouchableOpacity>
+                    <Text style={styles.detailText}>Description: {task.description}</Text>
+                    <View style={styles.pointsBadge}>
+                      <Text style={[styles.pointsText, { color: colors.primary }]}>{task.points} pts</Text>
+                    </View>
+                    {task.time && task.time !== 'All Day' && (
+                      <Text style={styles.detailText}>Time: {task.time}</Text>
                     )}
                   </View>
                 )}
-
-                {/* Delete Confirmation Modal */}
-                
-                <Modal
-                  animationType="slide"
-                  transparent={true}
-                  visible={deleteModal}
-                  onRequestClose={() => {
-                  setDeleteModal(!deleteModal);
-                }}
-                >
-                  <View style={styles.deleteModalContainer}>
-                    <Text style={styles.deleteModalText}>Are you sure you want to delete? You won't get the points for this task if you do.</Text>
-                    <View style={{flexDirection: "row", justifyContent: "space-between", width: "100%", marginTop: 10}}>
-                      <TouchableOpacity onPress={() => setDeleteModal(false)} style={styles.cancelDeleteButton}>
-                        <Text style={{color: 'white'}}>Cancel</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={styles.deleteButton} onPress={() => {
-                        if (taskDelete)
-                        deleteTask(formattedKey, taskDelete);
-                        setDeleteModal(false);
-                        setTaskDelete(null);}}>
-                        <Text style={{color: 'white'}}>Delete</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </Modal>
                 </View>
               </View>
             ))
@@ -346,116 +502,98 @@ const toggleComplete = (taskId: string) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Top bar */}
-      <View style={styles.topBar}>
-      </View>
-
+    <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
       {/* Header Section */}
       <View style={styles.header}>
-        <View style={styles.topRow}>
-          {/* Avatar */}
-          <Image
-            source={{
-              uri: "https://cdn-icons-png.flaticon.com/512/1067/1067840.png",
-            }}
-            style={styles.avatar}
-          />
+        {/* Avatar */}
+        <Image
+          source={selectedPet?.image || { uri: "https://cdn-icons-png.flaticon.com/512/1067/1067840.png" }}
+          style={styles.petImage}
+          resizeMode="contain"
+        />
 
-          {/* Date (centered + stacked) */}
-          <View style={styles.dateSection}>
-            <Text style={styles.weekday}>{weekday}</Text>
-            <Text style={styles.monthDay}>{monthDay},</Text>
-            <Text style={styles.year}>{year}</Text>
-          </View>
+        {/* Date (centered + stacked) */}
+        <View style={styles.dateSection}>
+          <Text style={styles.weekday}>{weekday}</Text>
+          <Text style={styles.monthDay}>{`${monthDay}`}</Text>
+        </View>
 
-          {/* Date navigation arrows */}
-          <View style={styles.arrowContainer}>
-            <TouchableOpacity onPress={() => changeDate(-1)}>
-              <Ionicons name="chevron-back" size={26} color="#0077B6" />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => changeDate(1)}>
-              <Ionicons name="chevron-forward" size={26} color="#0077B6" />
-            </TouchableOpacity>
-          </View>
+        {/* Date navigation arrows */}
+        <View style={styles.chevronRow}>
+          <TouchableOpacity onPress={() => changeDate(-1)} style={styles.navButton}>
+            <Ionicons name="chevron-back" size={28} color={colors.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => changeDate(1)} style={styles.navButton}>
+            <Ionicons name="chevron-forward" size={28} color={colors.primary} />
+          </TouchableOpacity>
         </View>
       </View>
 
-      {/*Dropdown for sorting tasks */}
-
-      <View style={styles.dropdownContainer}>
-        <TouchableOpacity onPress={toggleDropdown}>
-          <Ionicons name="funnel-outline" size = {20} color="gray"/>
-        </TouchableOpacity>
-        {dropdown && (
-          <View style={styles.dropdown}>
-            <TouchableOpacity onPress={() => handleSort(dropdownOptions[0])} style={styles.dropdownOption}>
-              <Text>Default</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => handleSort(dropdownOptions[1])} style={styles.dropdownOption}>
-              <Text>Points: High to Low</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => handleSort(dropdownOptions[2])} style={styles.dropdownOption}>
-              <Text>Points: Low to High</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
-
-      {/* Task Categories; renders all categories vertically,flatlist for efficient scrolling */}
-      <FlatList
-        data={categories}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => renderCategory(item)}
-        contentContainerStyle={{ paddingBottom: 100 }}
-      />
-
-      {/* Edit Task Modal */}
-      <Modal visible={editModal} animationType="slide" transparent={true}>
-        <View style={styles.modalBox}>
-          <Text style={styles.modalTitle}>Edit Task</Text>
-          <TextInput placeholder="Task name" value={editText} onChangeText={setEditText} style={styles.input} />
-          <TextInput placeholder="Description" value={editDescription} onChangeText={setEditDescription} style={styles.input} />
-          <TextInput placeholder="Points" keyboardType="numeric" value={editPoints} onChangeText={setEditPoints} style={styles.input} />
-          <View style={styles.modalButtonRow}>
-            <TouchableOpacity onPress={() => setEditModal(false)} style={styles.cancelButton}>
-              <Text style={{ color: "white" }}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={handleEditSave} style={styles.saveButton}>
-              <Text style={{ color: "white" }}>Save</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Completion Confirmation Modal */}
-      <Modal visible={confirmModal} animationType="slide" transparent={true}>
-        <View style={styles.modalBox}>
-          {taskToConfirm && (
+      {/* Task Categories */}
+      <ScrollView
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+        onTouchStart={() => {
+          if (dropdown) {
+            setDropdown(false);
+          }
+        }}
+      >
+        <View style={styles.filterWrapper}>
+          <TouchableOpacity onPress={toggleDropdown} style={styles.filterButton}>
+            <Ionicons name="funnel-outline" size={20} color={colors.primary} />
+          </TouchableOpacity>
+          {dropdown && (
             <>
-              <Text style={styles.modalTitle}>Complete this task?</Text>
-              <Text>Task: {taskToConfirm.text}</Text>
-              <Text>Description: {taskToConfirm.description}</Text>
-              <Text>Points: {taskToConfirm.points}</Text>
-              <View style={styles.modalButtonRow}>
-                <TouchableOpacity onPress={() => setConfirmModal(false)} style={styles.cancelButton}>
-                  <Text style={{ color: "white" }}>Cancel</Text>
+              <TouchableOpacity style={styles.dropdownBackdrop} onPress={() => setDropdown(false)} />
+              <View style={styles.dropdown}>
+                <TouchableOpacity onPress={() => handleSort(dropdownOptions[0])} style={styles.dropdownOption}>
+                  <Text style={styles.dropdownOptionText}>Default</Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => {
-                    toggleComplete(taskToConfirm.id);
-                    setConfirmModal(false);
-                    setTaskToConfirm(null);
-                  }}
-                  style={styles.saveButton}
-                >
-                  <Text style={{ color: "white" }}>Confirm</Text>
+                <TouchableOpacity onPress={() => handleSort(dropdownOptions[1])} style={styles.dropdownOption}>
+                  <Text style={styles.dropdownOptionText}>Points: High to Low</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => handleSort(dropdownOptions[2])} style={styles.dropdownOption}>
+                  <Text style={styles.dropdownOptionText}>Points: Low to High</Text>
                 </TouchableOpacity>
               </View>
             </>
           )}
         </View>
+        {categories.map((category) => (
+          <View key={category.id}>{renderCategory(category)}</View>
+        ))}
+      </ScrollView>
+
+      {/* Completion Confirmation Modal */}
+      <Modal visible={confirmModal} animationType="fade" transparent={true}>
+        <View style={styles.modalOverlay}>
+          {taskToConfirm && (
+            <View style={styles.modalBox}>
+              <Text style={styles.modalTitle}>Complete this task?</Text>
+              <Text style={styles.modalBodyText}>Task: {taskToConfirm.text}</Text>
+              <Text style={styles.modalBodyText}>Description: {taskToConfirm.description}</Text>
+              <Text style={styles.modalBodyText}>Points: {taskToConfirm.points}</Text>
+              <View style={styles.modalButtonRow}>
+                <TouchableOpacity onPress={() => setConfirmModal(false)} style={styles.cancelButton}>
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={async () => {
+                    await completeTask(taskToConfirm.id);
+                    setConfirmModal(false);
+                    setTaskToConfirm(null);
+                  }}
+                  style={styles.saveButton}
+                >
+                  <Text style={styles.saveButtonText}>Confirm</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+        </View>
       </Modal>
+
       {/* Animated points gained popup */}
         {pointsPopup.visible && (
           <Animated.View style={[styles.pointsPopup, { opacity: fadeAnim }]}>
@@ -474,211 +612,243 @@ const toggleComplete = (taskId: string) => {
 
 export default ToDoScreen;
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-    paddingHorizontal: 20,
-  },
-  topBar: {
-    alignItems: "center",
-    marginTop: 15,
-  },
-  topTitle: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: "#000",
-  },
-  header: {
-    marginTop: 10,
-  },
-  topRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-  },
-  dateSection: {
-    alignItems: "center",
-    flex: 1,
-  },
-  weekday: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#000",
-  },
-  monthDay: {
-    fontSize: 18,
-    color: "#333",
-  },
-  year: {
-    fontSize: 18,
-    color: "#333",
-  },
-  arrowContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 12,
-    marginVertical: 8,
-    borderWidth: 1,
-    borderColor: "#ccc",
-  },
-  cardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  cardTitle: {
-    marginLeft: 8,
-    fontSize: 18,
-    fontWeight: "600",
-  },
-  taskList: {
-    marginTop: 10,
-    paddingLeft: 24,
-  },
-  taskItem: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginVertical: 6,
-  },
-  taskText: {
-    marginLeft: 8,
-    fontSize: 16,
-    color: "#333",
-  },
-  emptyText: {
-    fontStyle: "italic",
-    color: "#aaa",
-    marginLeft: 30,
-    marginTop: 6,
-  },
-  moreText: {
-    marginTop: 4,
-    fontSize: 12,
-    color: "#888",
-    fontStyle: "italic",
-  },
-  deleteButton: {
-    backgroundColor:"#FF0000", 
-    padding: 10, 
-    marginHorizontal:10, 
-    borderRadius: 5,
-    marginTop: 6,
-    alignSelf: "flex-start"
-  },
-  cancelDeleteButton: {
-    backgroundColor: "#888", 
-    padding: 10, 
-    marginHorizontal: 10, 
-    borderRadius: 5, 
-    marginTop: 6
-  },
-  dropdownContainer: {
-    flex: 1, 
-    flexDirection: "row", 
-    justifyContent: "flex-end", 
-    padding: 10, 
-    marginBottom: 10, 
-    position: "relative", 
-    zIndex: 999,
-  },
-  dropdownOption: {
-    padding: 10, 
-    borderBottomWidth: 1, 
-    borderBottomColor: "#eee"
-  },
-  dropdown: {
-    position: "absolute", 
-    top: 40, 
-    right: 10, 
-    backgroundColor: "#fff", 
-    borderWidth: 1, 
-    borderColor: "#ccc", 
-    borderRadius: 6, 
-    zIndex: 1000
-  },
-  deleteModalContainer: {
-    flex: 1, 
-    justifyContent: "center", 
-    alignItems: "center", 
-    backgroundColor: "white", 
-    padding: 35, 
-    margin: 20, 
-    marginTop: "75%",
-    marginBottom: "75%",
-    borderColor: "#888", 
-    borderWidth: 1, 
-    borderRadius: 10,
-  },
-  deleteModalText: {
-    fontSize: 18, 
-    fontWeight: "600", 
-    marginBottom: 10, 
-    textAlign: "center"
-  },
-  modalBox: { 
-    flex: 1, 
-    justifyContent: "center", 
-    alignItems: "center", 
-    backgroundColor: "white", 
-    margin: 20, 
-    borderRadius: 10, 
-    padding: 20 
-  },
-  modalTitle: { 
-    fontSize: 18, 
-    fontWeight: "600", 
-    marginBottom: 10 
-  },
-  input: { 
-    borderWidth: 1, 
-    borderColor: "#ccc", 
-    borderRadius: 5, 
-    padding: 8, 
-    width: "100%", 
-    marginBottom: 8 
-  },
-  modalButtonRow: { 
-    flexDirection: "row", 
-    justifyContent: "space-between", 
-    width: "100%", 
-    marginTop: 10 
-  },
-  cancelButton: { 
-    backgroundColor: "#888", 
-    padding: 10, 
-    borderRadius: 5 
-  },
-  saveButton: { backgroundColor: "#0077B6", 
-    padding: 10, 
-    borderRadius: 5 
-  },
-  pointsPopup: {
-  position: "absolute",
-  bottom: 100,
-  alignSelf: "center",
-  backgroundColor: "#0077B6",
-  paddingVertical: 10,
-  paddingHorizontal: 20,
-  borderRadius: 20,
-  shadowColor: "#000",
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.25,
-  shadowRadius: 4,
-  elevation: 5,
-  },
-  pointsPopupText: {
-    color: "white",
-    fontWeight: "600",
-    fontSize: 16,
-  },
-});
+const createStyles = (colors: any, isDarkMode: boolean) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+      paddingHorizontal: 16,
+      paddingTop: 0,
+    },
+    header: {
+      marginTop: 0,
+      paddingVertical: 12,
+      marginBottom: 0,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    petImage: {
+      width: 70,
+      height: 70,
+      marginRight: 16,
+    },
+    dateSection: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: 16,
+    },
+    weekday: {
+      fontSize: 22,
+      fontWeight: "700",
+      color: colors.text,
+    },
+    monthDay: {
+      fontSize: 20,
+      color: colors.textSecondary,
+    },
+    chevronRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+    },
+    navButton: {
+      padding: 4,
+    },
+    filterWrapper: {
+      position: "relative",
+      alignSelf: "flex-start",
+      marginBottom: 8,
+    },
+    filterButton: {
+      padding: 4,
+    },
+    dropdownBackdrop: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: "transparent",
+    },
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      padding: 12,
+      marginTop: 6,
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    contentContainer: {
+      paddingBottom: 100,
+    },
+    cardHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    cardHeaderIcon: {
+      marginRight: 8,
+    },
+    cardTitle: {
+      fontSize: 18,
+      fontWeight: "600",
+      color: colors.text,
+    },
+    taskList: {
+      marginTop: 10,
+      paddingLeft: 8,
+    },
+    taskItem: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      marginVertical: 6,
+    },
+    taskDetailsColumn: {
+      flex: 1,
+      flexDirection: "column",
+      marginLeft: 12,
+    },
+    taskTitleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    taskChevronIcon: {
+      marginRight: 8,
+    },
+    taskText: {
+      fontSize: 16,
+      color: colors.text,
+    },
+    completedTaskText: {
+      textDecorationLine: "line-through",
+      color: colors.textSecondary,
+    },
+    detailText: {
+      color: colors.textSecondary,
+      marginTop: 4,
+    },
+    pointsBadge: {
+      alignSelf: "flex-start",
+      marginTop: 8,
+    },
+    pointsText: {
+      fontSize: 14,
+      fontWeight: "bold",
+      fontFamily: "monospace",
+    },
+    emptyText: {
+      fontStyle: "italic",
+      color: colors.textSecondary,
+      marginLeft: 30,
+      marginTop: 6,
+    },
+    moreText: {
+      marginTop: 4,
+      fontSize: 12,
+      color: colors.textSecondary,
+      fontStyle: "italic",
+    },
+    dropdownOption: {
+      padding: 10,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    dropdownOptionText: {
+      color: colors.text,
+    },
+    dropdown: {
+      position: "absolute",
+      top: 34,
+      left: 0,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 6,
+      zIndex: 1000,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: isDarkMode ? 0.4 : 0.2,
+      shadowRadius: 4,
+      elevation: 5,
+    },
+    modalOverlay: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: isDarkMode ? "rgba(0,0,0,0.7)" : "rgba(0,0,0,0.4)",
+      padding: 20,
+    },
+    modalBox: {
+      width: "100%",
+      maxWidth: 360,
+      backgroundColor: colors.surface,
+      borderRadius: 10,
+      padding: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    modalTitle: {
+      fontSize: 18,
+      fontWeight: "700",
+      marginBottom: 10,
+      color: colors.text,
+      textAlign: "center",
+    },
+    modalBodyText: {
+      color: colors.textSecondary,
+      marginTop: 6,
+      textAlign: "center",
+    },
+    modalButtonRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      width: "100%",
+      marginTop: 10,
+      gap: 12,
+    },
+    cancelButton: {
+      backgroundColor: colors.secondary,
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      borderRadius: 5,
+      flex: 1,
+      alignItems: "center",
+    },
+    cancelButtonText: {
+      color: colors.text,
+      fontWeight: "600",
+    },
+    saveButton: {
+      backgroundColor: colors.primary,
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      borderRadius: 5,
+      flex: 1,
+      alignItems: "center",
+    },
+    saveButtonText: {
+      color: "#FFFFFF",
+      fontWeight: "600",
+    },
+    pointsPopup: {
+      position: "absolute",
+      bottom: 100,
+      alignSelf: "center",
+      backgroundColor: colors.primary,
+      paddingVertical: 10,
+      paddingHorizontal: 20,
+      borderRadius: 20,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 5,
+    },
+    pointsPopupText: {
+      color: "#FFFFFF",
+      fontWeight: "600",
+      fontSize: 16,
+    },
+  });

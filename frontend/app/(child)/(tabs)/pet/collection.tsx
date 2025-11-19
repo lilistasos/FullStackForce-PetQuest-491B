@@ -1,8 +1,18 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Modal } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Modal, Platform } from "react-native";
 import { usePet } from "@/contexts/PetContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/hooks/useAuth";
+
+const getApiUrl = () => {
+  if (Platform.OS === 'android') {
+    return __DEV__ ? "http://10.0.2.2:4000" : "http://10.0.2.2:4000";
+  } else if (Platform.OS === 'ios') {
+    return __DEV__ ? "http://localhost:4000" : "http://localhost:4000";
+  } else {
+    return "http://localhost:4000";
+  }
+};
 
 interface CollectionItem {
   id: string;
@@ -75,8 +85,14 @@ export default function CollectionScreen() {
         return require("@/assets/images/pdragon.png");
       case "cat":
         return require("@/assets/images/cat.png");
+      case "dog":
+        return require("@/assets/images/fbdog.png");
+      case "lion":
+        return require("@/assets/images/lion.png");
+      case "unicorn":
+        return require("@/assets/images/unicorn.png");
       default:
-        return require("@/assets/images/green-dragon.png"); // Default image
+        return require("@/assets/images/green-dragon.png"); // fallback
     }
   };
 
@@ -87,7 +103,8 @@ export default function CollectionScreen() {
     const loadPets = async () => {
       try {
         setLoading(true);
-        const res = await fetch("http://10.0.2.2:4000/api/pets", {
+        const API_URL = getApiUrl();
+        const res = await fetch(`${API_URL}/api/pets`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -147,8 +164,9 @@ export default function CollectionScreen() {
       if (!backendPet) return;
 
       try {
+        const API_URL = getApiUrl();
         await fetch(
-          `http://10.0.2.2:4000/api/pets/${backendPet.id}/visibility`,
+          `${API_URL}/api/pets/${backendPet.id}/visibility`,
           {
             method: "PATCH",
             headers: {
@@ -181,37 +199,32 @@ export default function CollectionScreen() {
     >
       <View style={[
         styles.itemBox,
-        { backgroundColor: item.owned ? colors.background : colors.surface, borderColor: colors.primary },
-        selectedPet.id === item.id && item.owned && { borderWidth: 4, borderColor: colors.primary },
-        !item.owned && { borderColor: colors.border }
-      ]}>
-        {item.id === "dragon" ? (
-          <Image 
-            source={require("@/assets/images/pdragon.png")} 
-            style={[
-              styles.itemImage,
-              !item.owned && styles.grayedOutImage
-            ]}
-            resizeMode="contain"
-          />
-        ) : item.id === "cat" ? (
-          <Image 
-            source={require("@/assets/images/cat.png")} 
-            style={[
-              styles.itemImage,
-              !item.owned && styles.grayedOutImage
-            ]}
-            resizeMode="contain"
-          />
-        ) : item.owned ? (
-          <Text style={[styles.itemTitle, { color: colors.text }]}>{item.name}</Text>
-        ) : (
-          // Empty box for unowned pets - no text
-          null
-        )}
-      </View>
-    </TouchableOpacity>
-  );
+        {
+          backgroundColor: item.owned ? colors.background : colors.surface,
+          borderColor: colors.primary,
+        },
+        selectedPet.id === item.id && item.owned && {
+          borderWidth: 4,
+          borderColor: colors.primary,
+        },
+        !item.owned && { borderColor: colors.border },
+      ]}
+    >
+      {["dragon", "cat", "dog", "lion", "unicorn"].includes(item.id) ? (
+        <Image
+          source={getPetImage(item.id)}
+          style={[styles.itemImage, !item.owned && styles.grayedOutImage]}
+          resizeMode="contain"
+        />
+      ) : item.owned ? (
+        <Text style={[styles.itemTitle, { color: colors.text }]}>
+          {item.name}
+        </Text>
+      ) : null}
+    </View>
+  </TouchableOpacity>
+);
+
 
   return (
     <>

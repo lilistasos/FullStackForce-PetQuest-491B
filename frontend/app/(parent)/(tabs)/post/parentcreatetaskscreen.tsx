@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTasks } from '@/contexts/TaskContext';
 import { useAuth } from '@/hooks/useAuth';
+import { useTheme } from '@/contexts/ThemeContext';
 
 const getApiUrl = () => {
   if (Platform.OS === "android") {
@@ -49,6 +50,7 @@ const ParentCreateTaskScreen = () => {
     const { childId } = useLocalSearchParams();
     // API Authorization
     const { token } = useAuth();
+    const { colors, isDarkMode } = useTheme();
 
     const [taskName, setTaskName] = useState("");
     const [category, setCategory] = useState("");
@@ -118,6 +120,9 @@ const ParentCreateTaskScreen = () => {
         console.log(err);
       }
     };
+
+    // Create styles using the theme
+    const styles = createStyles(colors, isDarkMode);
 
     return (
       <SafeAreaView style={styles.container}>
@@ -301,137 +306,142 @@ const ParentCreateTaskScreen = () => {
     );
   };
     
-    export default ParentCreateTaskScreen;
-    
-    const styles = StyleSheet.create({
-      container: {
-        flex: 1,
-        backgroundColor: "#fff",
-        padding: 20,
-      },
-      header: {
-        fontSize: 26,
-        fontWeight: "700",
-        color: "#0077B6",
-        textAlign: "center",
-        marginBottom: 30,
-      },
-      label: {
-        fontSize: 16,
-        fontWeight: "600",
-        color: "#333",
-        marginBottom: 6,
-      },
-      input: {
-        borderWidth: 1,
-        borderColor: "#ccc",
-        borderRadius: 10,
-        padding: 12,
-        marginBottom: 20,
-        fontSize: 16,
-      },
-      categoryInputContainer: {
-        flexDirection: "row",
-        alignItems: "center",
-        borderWidth: 1,
-        borderColor: "#ccc",
-        borderRadius: 10,
-        marginBottom: 20,
-      },
-      categoryInput: {
-        flex: 1,
-        padding: 12,
-        fontSize: 16,
-        color: "#333",
-      },
-      dropdownIconButton: {
-        padding: 12,
-        justifyContent: "center",
-        alignItems: "center",
-      },
-      dateInputContainer: {
-        flexDirection: "row",
-        alignItems: "center",
-        borderWidth: 1,
-        borderColor: "#ccc",
-        borderRadius: 10,
-        marginBottom: 20,
-      },
-      dateInput: {
-        flex: 1,
-        padding: 12,
-        fontSize: 16,
-        color: "#333",
-      },
-      calendarIconButton: {
-        padding: 12,
-        justifyContent: "center",
-        alignItems: "center",
-      },
-      buttonRow: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        marginTop: 20,
-      },
-      cancelButton: {
-        flex: 1,
-        backgroundColor: "#ccc",
-        padding: 15,
-        borderRadius: 10,
-        alignItems: "center",
-        marginRight: 10,
-      },
-      assignButton: {
-        flex: 1,
-        backgroundColor: "#52AFDD",
-        padding: 15,
-        borderRadius: 10,
-        alignItems: "center",
-        marginLeft: 10,
-      },
-      buttonText: {
-        color: "#fff",
-        fontSize: 18,
-        fontWeight: "700",
-      },
-      modalOverlay: {
-        flex: 1,
-        backgroundColor: "rgba(0, 0, 0, 0.5)",
-        justifyContent: "center",
-        alignItems: "center",
-      },
-      dropdownContainer: {
-        backgroundColor: "#fff",
-        borderRadius: 12,
-        width: "80%",
-        maxHeight: 300,
-        shadowColor: "#000",
-        shadowOffset: {
-          width: 0,
-          height: 2,
-        },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-        elevation: 5,
-      },
-      categoryItem: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: "#f0f0f0",
-      },
-      categoryItemSelected: {
-        backgroundColor: "#E1F5FE",
-      },
-      categoryItemText: {
-        fontSize: 16,
-        color: "#333",
-      },
-      categoryItemTextSelected: {
-        color: "#0077B6",
-        fontWeight: "600",
-      },
-    });
+export default ParentCreateTaskScreen;
 
+const createStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+    padding: 20,
+  },
+  header: {
+    fontSize: 26,
+    fontWeight: "700",
+    color: colors.primary,
+    textAlign: "center",
+    marginBottom: 30,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: colors.text,
+    marginBottom: 6,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 20,
+    fontSize: 16,
+    color: colors.text,
+    backgroundColor: colors.surface,
+  },
+  categoryInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    marginBottom: 20,
+    backgroundColor: colors.surface,
+  },
+  categoryInput: {
+    flex: 1,
+    padding: 12,
+    fontSize: 16,
+    color: colors.text,
+  },
+  dropdownIconButton: {
+    padding: 12,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  dateInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    marginBottom: 20,
+    backgroundColor: colors.surface,
+  },
+  dateInput: {
+    flex: 1,
+    padding: 12,
+    fontSize: 16,
+    color: colors.text,
+  },
+  calendarIconButton: {
+    padding: 12,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  buttonRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 20,
+  },
+  cancelButton: {
+    flex: 1,
+    backgroundColor: colors.secondary,
+    padding: 15,
+    borderRadius: 10,
+    alignItems: "center",
+    marginRight: 10,
+  },
+  assignButton: {
+    flex: 1,
+    backgroundColor: colors.primary,
+    padding: 15,
+    borderRadius: 10,
+    alignItems: "center",
+    marginLeft: 10,
+  },
+  buttonText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: isDarkMode ? "rgba(0, 0, 0, 0.7)" : "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  dropdownContainer: {
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    width: "80%",
+    maxHeight: 300,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: isDarkMode ? 0.4 : 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  categoryItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  categoryItemSelected: {
+    backgroundColor: isDarkMode ? colors.primary + "40" : colors.primary + "20",
+  },
+  categoryItemText: {
+    fontSize: 16,
+    color: colors.text,
+  },
+  categoryItemTextSelected: {
+    color: colors.primary,
+    fontWeight: "600",
+  },
+});
