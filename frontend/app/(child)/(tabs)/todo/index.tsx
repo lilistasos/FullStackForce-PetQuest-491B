@@ -666,24 +666,23 @@ const createStyles = (colors: any, isDarkMode: boolean) =>
     deleteButton: {
       backgroundColor: "#FF4D4D",
       padding: 10,
-      marginHorizontal: 0,
       borderRadius: 5,
-      marginTop: 6,
-      alignSelf: "flex-start",
+      flex: 1,
     },
     deleteButtonText: {
       color: "#FFFFFF",
       fontWeight: "600",
+      textAlign: "center",
     },
     editButton: {
       padding: 10,
       borderRadius: 5,
-      marginTop: 6,
-      alignSelf: "flex-start",
+      flex: 1,
     },
     editButtonText: {
       color: "#FFFFFF",
       fontWeight: "600",
+      textAlign: "center",
     },
     dropdownOption: {
       padding: 10,
