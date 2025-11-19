@@ -1,218 +1,175 @@
-import React from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
+import React, { useState, useEffect } from 'react';
+import { Tabs } from 'expo-router';
+import { TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '@/hooks/useAuth';
+import { useNavigationState } from '@react-navigation/native';
+
+
+import { HapticTab } from '@/components/haptic-tab';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import HamburgerMenu from '@/components/HamburgerMenu';
 import { useTheme } from '@/contexts/ThemeContext';
+import NotificationCenter from '@/components/NotificationCenter'; // ✅ added
 
-export default function AccountScreen() {
-  const router = useRouter();
-  const { user, logout } = useAuth();
-  const { colors, isDarkMode } = useTheme();
 
-  const handleEditProfile = () => {
-    router.push('/(indv)/(tabs)/account/edit-profile');
-  };
+const getContrastColor = (backgroundColor: string): string => {
+  const hex = backgroundColor.replace('#', '');
+  
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  
+  // Calculate relative luminance
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  
+  return luminance > 0.4 ? '#000000' : '#FFFFFF';
+};
 
-  const handleNotifications = () => {
-    router.push('/(indv)/(tabs)/account/notifications');
-  };
 
-  const handleSettings = () => {
-    router.push('/(indv)/(tabs)/account/settings');
-  };
+export default function IndvLayout() {
+  const [headerTitle, setHeaderTitle] = useState('Calendar');
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false); // ✅ added
+  const { colors } = useTheme();
+  
+  // Get appropriate text color for header based on primary color
+  const headerTextColor = getContrastColor(colors.primary);
 
-  const handleSubscription = () => {
-    router.push('/(indv)/(tabs)/account/subscription');
-  };
 
-  const handleLogout = () => {
-    Alert.alert(
-      "Sign Out",
-      "Are you sure you want to sign out? You'll need to log in again to access your account.",
-      [
-        {
-          text: "Cancel",
-          style: "cancel"
-        },
-        {
-          text: "Sign Out",
-          style: "destructive",
-          onPress: async () => {
-            await logout();
-            router.replace('/(auth)/login');
-          }
+  const navigationState = useNavigationState(state => state);
+
+
+  useEffect(() => {
+    if (navigationState && navigationState.index !== undefined) {
+      const currentRoute = navigationState.routes[navigationState.index];
+      
+      if (!currentRoute || !currentRoute.state || !currentRoute.state.routes) return;
+      
+      const tabState = currentRoute.state;
+      const tabIndex = tabState.index;
+      if (tabIndex === undefined) return;
+      
+      const activeTabRoute = tabState.routes[tabIndex];
+      
+      if (!activeTabRoute) return;
+      
+      const tabName = activeTabRoute.name || '';
+      
+      if (tabName === '(tabs)/pet') {
+        if (activeTabRoute.state && activeTabRoute.state.routes && activeTabRoute.state.index !== undefined) {
+          const petRoute = activeTabRoute.state.routes[activeTabRoute.state.index];
+          const petPageName = petRoute?.name || 'index';
+          
+          if (petPageName === 'customize') setHeaderTitle('Customize');
+          else if (petPageName === 'shop') setHeaderTitle('Shop');
+          else if (petPageName === 'collection') setHeaderTitle('Collection');
+          else setHeaderTitle('Pet');
+        } else {
+          setHeaderTitle('Pet');
         }
-      ]
-    );
-  };
+      } else if (tabName === '(tabs)/calendar') {
+        setHeaderTitle('Calendar');
+      } else if (tabName === '(tabs)/todo') {
+        setHeaderTitle('To-Do');
+      } else if (tabName === '(tabs)/post') {
+        setHeaderTitle('Post');
+      } else if (tabName === '(tabs)/account') {
+        if (activeTabRoute.state && activeTabRoute.state.routes && activeTabRoute.state.index !== undefined) {
+          const accountRoute = activeTabRoute.state.routes[activeTabRoute.state.index];
+          const accountPageName = accountRoute?.name || 'index';
+          
+          if (accountPageName === 'edit-profile') setHeaderTitle('Edit Profile');
+          else if (accountPageName === 'notifications') setHeaderTitle('Notification Preferences');
+          else if (accountPageName === 'settings') setHeaderTitle('Settings');
+          else if (accountPageName === 'account-details') setHeaderTitle('Account Details');
+          else if (accountPageName === 'theme') setHeaderTitle('Theme');
+          else if (accountPageName === 'help-center') setHeaderTitle('Help Center');
+          else if (accountPageName === 'contact') setHeaderTitle('Contact');
+          else if (accountPageName === 'feedback') setHeaderTitle('Feedback');
+          else if (accountPageName === 'subscription') setHeaderTitle('Subscription');
+          else if (accountPageName === 'achievements') setHeaderTitle('Achievements');
+          else setHeaderTitle('Account');
+        } else {
+          setHeaderTitle('Account');
+        }
+      }
+    }
+  }, [navigationState]);
 
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Profile Section */}
-      <View style={styles.profileSection}>
-        <View style={styles.profileHeaderContainer}>
-          <View style={styles.profileImageContainer}>
-            <Image 
-              key={user?.profileImageUri || 'default'}
-              source={
-                user?.profileImageUri 
-                  ? { uri: user.profileImageUri } 
-                  : require('@/assets/images/defaultpp.jpg')
-              }
-              style={styles.profileImage}
-              defaultSource={require('@/assets/images/defaultpp.jpg')}
-            />
-          </View>
-          <Text style={[styles.profileName, { color: colors.text }]}>
-            {user?.firstName || 'User'}
-          </Text>
-        </View>
+    <HamburgerMenu 
+      visible={menuVisible} 
+      onClose={() => setMenuVisible(false)}
+      backgroundColor={colors.primary}
+    >
+      <Tabs
+        initialRouteName="(tabs)/calendar"
+        screenOptions={{
+          tabBarActiveTintColor: headerTextColor,
+          tabBarInactiveTintColor: "#555555",
+          tabBarStyle: { backgroundColor: colors.primary },
+          headerStyle: { backgroundColor: colors.primary },
+          headerTintColor: headerTextColor,
+          headerTitleStyle: { fontWeight: "bold", color: headerTextColor },
+          tabBarButton: HapticTab,
+          headerTitleAlign: 'center',
+          tabBarShowLabel: false,
+          headerTitle: headerTitle,
+          headerLeft: () => (
+            <TouchableOpacity style={{ marginLeft: 15 }} onPress={() => setMenuVisible(true)}>
+              <Ionicons name="menu" size={24} color={headerTextColor} />
+            </TouchableOpacity>
+          ),
+          headerRight: () => (
+            <TouchableOpacity style={{ marginRight: 15 }} onPress={() => setNotifOpen(true)}>
+              <Ionicons name="notifications-outline" size={24} color={headerTextColor} />
+            </TouchableOpacity>
+          ),
+        }}
+      >
+        <Tabs.Screen
+          name="(tabs)/calendar"
+          options={{
+            title: 'Calendar',
+            tabBarIcon: ({ color }) => <IconSymbol size={28} name="calendar" color={color} />,
+          }}
+        />
+        <Tabs.Screen
+          name="(tabs)/todo"
+          options={{
+            title: 'To-Do',
+            tabBarIcon: ({ color }) => <IconSymbol size={28} name="list.bullet" color={color} />,
+          }}
+        />
+        <Tabs.Screen
+          name="(tabs)/post"
+          options={{
+            title: 'Post',
+            tabBarIcon: ({ color }) => <IconSymbol size={28} name="plus.circle.fill" color={color} />,
+          }}
+        />
+        <Tabs.Screen
+          name="(tabs)/pet"
+          options={{
+            title: 'Pet',
+            tabBarIcon: ({ color }) => <IconSymbol size={28} name="pawprint.fill" color={color} />,
+          }}
+        />
+        <Tabs.Screen
+          name="(tabs)/account"
+          options={{
+            title: 'Account',
+            tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.fill" color={color} />,
+          }}
+        />
+      </Tabs>
 
-        <TouchableOpacity 
-          style={[styles.button, { backgroundColor: colors.surface, borderColor: colors.border }]}
-          onPress={handleEditProfile}
-        >
-          <Ionicons name="pencil-outline" size={24} color={colors.primary} style={styles.buttonIcon} />
-          <Text style={[styles.buttonText, { color: colors.text }]}>Edit Profile</Text>
-          <Ionicons name="chevron-forward-outline" size={20} color={colors.text} />
-        </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={[styles.button, { backgroundColor: colors.surface, borderColor: colors.border }]}
-          onPress={handleNotifications}
-        >
-          <Ionicons name="notifications-outline" size={24} color={colors.primary} style={styles.buttonIcon} />
-          <Text style={[styles.buttonText, { color: colors.text }]}>Notifications</Text>
-          <Ionicons name="chevron-forward-outline" size={20} color={colors.text} />
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={[styles.settingsButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
-          onPress={handleSettings}
-        >
-          <Ionicons name="settings-outline" size={24} color={colors.primary} style={styles.settingsIcon} />
-          <Text style={[styles.settingsText, { color: colors.text }]}>Settings</Text>
-          <Ionicons name="chevron-forward-outline" size={20} color={colors.text} />
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={[styles.button, { backgroundColor: colors.surface, borderColor: colors.border }]}
-          onPress={handleSubscription}
-        >
-          <Ionicons name="card-outline" size={24} color={colors.primary} style={styles.buttonIcon} />
-          <Text style={[styles.buttonText, { color: colors.text }]}>Subscription</Text>
-          <Ionicons name="chevron-forward-outline" size={20} color={colors.text} />
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={[styles.logoutButton, { backgroundColor: isDarkMode ? '#2a1a1a' : '#fff5f5', borderColor: '#ff4444' }]}
-          onPress={handleLogout}
-        >
-          <Ionicons name="log-out-outline" size={20} color="#ff4444" style={styles.logoutIcon} />
-          <Text style={[styles.logoutText, { color: '#ff4444' }]}>Sign Out</Text>
-        </TouchableOpacity>
-
-      </View>
-    </View>
+      {/* ✅ Layout-level Notification Center modal */}
+      <NotificationCenter visible={notifOpen} onClose={() => setNotifOpen(false)} />
+    </HamburgerMenu>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  profileSection: {
-    paddingTop: 40,
-    paddingHorizontal: 20,
-    alignItems: 'center', // Keep for centering buttons
-  },
-  profileHeaderContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '100%', // Take full width to align to start
-    justifyContent: 'flex-start', // Align content to the left
-    marginBottom: 20,
-  },
-  profileImageContainer: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    overflow: 'hidden',
-    backgroundColor: '#f0f0f0', // Keep for image placeholder background
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 20,
-  },
-  profileImage: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-  },
-  profileName: {
-    fontSize: 32,
-    fontWeight: 'bold',
-  },
-  button: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    width: '90%',
-    marginVertical: 16,
-  },
-  buttonIcon: {
-    marginRight: 8,
-  },
-  buttonText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    flex: 1,
-    marginLeft: 12,
-    textAlign: 'center',
-  },
-  settingsButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    width: '90%',
-    marginVertical: 16,
-  },
-  settingsIcon: {
-    marginRight: 8,
-  },
-  settingsText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    flex: 1,
-    marginLeft: 12,
-    textAlign: 'center',
-  },
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    width: '90%',
-    marginVertical: 16,
-    marginBottom: 100,
-  },
-  logoutIcon: {
-    marginRight: 8,
-  },
-  logoutText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    flex: 1,
-    marginLeft: 12,
-    textAlign: 'center',
-  },
-});
+

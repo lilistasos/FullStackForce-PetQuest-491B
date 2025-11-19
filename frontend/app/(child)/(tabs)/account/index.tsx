@@ -4,25 +4,40 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/contexts/ThemeContext';
+import NotificationCenter from '@/components/NotificationCenter'; // ✅ open center as a modal
+
 
 export default function AccountScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const { colors, isDarkMode } = useTheme();
+
+
   const [showFamilyCodeModal, setShowFamilyCodeModal] = useState(false);
   const [familyCode, setFamilyCode] = useState('');
+
+
+  // ✅ state to control the notifications modal
+  const [notifOpen, setNotifOpen] = useState(false);
+
 
   const handleEditProfile = () => {
     router.push('/(child)/(tabs)/account/edit-profile');
   };
 
+
   const handleNotifications = () => {
-    router.push('/(child)/(tabs)/account/notifications');
+    // ❌ was pushing a route that didn’t open anything on web
+    // router.push('/(child)/(tabs)/account/notifications');
+    // ✅ open the Notification Center modal instead
+    setNotifOpen(true);
   };
+
 
   const handleSettings = () => {
     setShowFamilyCodeModal(true);
   };
+
 
   const handleFamilyCodeSubmit = () => {
     if (familyCode.length === 8) {
@@ -34,28 +49,27 @@ export default function AccountScreen() {
     }
   };
 
+
   const handleFamilyCodeCancel = () => {
     setShowFamilyCodeModal(false);
     setFamilyCode('');
   };
 
+
   const handleLogout = () => {
     Alert.alert(
-      "Sign Out",
+      'Sign Out',
       "Are you sure you want to sign out? You'll need to log in again to access your account.",
       [
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: "Cancel",
-          style: "cancel"
-        },
-        {
-          text: "Sign Out",
-          style: "destructive",
+          text: 'Sign Out',
+          style: 'destructive',
           onPress: async () => {
             await logout();
             router.replace('/(auth)/login');
-          }
-        }
+          },
+        },
       ]
     );
   };
@@ -67,11 +81,11 @@ export default function AccountScreen() {
       <View style={styles.profileSection}>
         <View style={styles.profileHeaderContainer}>
           <View style={styles.profileImageContainer}>
-            <Image 
+            <Image
               key={user?.profileImageUri || 'default'}
               source={
-                user?.profileImageUri 
-                  ? { uri: user.profileImageUri } 
+                user?.profileImageUri
+                  ? { uri: user.profileImageUri }
                   : require('@/assets/images/defaultpp.jpg')
               }
               style={styles.profileImage}
@@ -83,7 +97,8 @@ export default function AccountScreen() {
           </Text>
         </View>
 
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={[styles.button, { backgroundColor: colors.surface, borderColor: colors.border }]}
           onPress={handleEditProfile}
         >
@@ -92,7 +107,8 @@ export default function AccountScreen() {
           <Ionicons name="chevron-forward-outline" size={20} color={colors.text} />
         </TouchableOpacity>
 
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={[styles.button, { backgroundColor: colors.surface, borderColor: colors.border }]}
           onPress={handleNotifications}
         >
@@ -101,7 +117,8 @@ export default function AccountScreen() {
           <Ionicons name="chevron-forward-outline" size={20} color={colors.text} />
         </TouchableOpacity>
 
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={[styles.settingsButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
           onPress={handleSettings}
         >
@@ -110,20 +127,21 @@ export default function AccountScreen() {
           <Ionicons name="chevron-forward-outline" size={20} color={colors.text} />
         </TouchableOpacity>
 
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={[styles.logoutButton, { backgroundColor: isDarkMode ? '#2a1a1a' : '#fff5f5', borderColor: '#ff4444' }]}
           onPress={handleLogout}
         >
           <Ionicons name="log-out-outline" size={20} color="#ff4444" style={styles.logoutIcon} />
           <Text style={[styles.logoutText, { color: '#ff4444' }]}>Sign Out</Text>
         </TouchableOpacity>
-
       </View>
+
 
       {/* Family Code Modal */}
       <Modal
         visible={showFamilyCodeModal}
-        transparent={true}
+        transparent
         animationType="fade"
         onRequestClose={handleFamilyCodeCancel}
       >
@@ -134,27 +152,26 @@ export default function AccountScreen() {
               Please enter your 8-digit family code to access settings.
             </Text>
             <TextInput
-              style={[styles.familyCodeInput, { 
-                borderColor: colors.border, 
-                color: colors.text,
-                backgroundColor: colors.surface 
-              }]}
+              style={[
+                styles.familyCodeInput,
+                { borderColor: colors.border, color: colors.text, backgroundColor: colors.surface },
+              ]}
               value={familyCode}
               onChangeText={setFamilyCode}
               keyboardType="numeric"
               maxLength={8}
-              autoFocus={true}
+              autoFocus
               placeholder="12345678"
               placeholderTextColor={colors.textSecondary}
             />
             <View style={styles.modalButtons}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.modalButton, { backgroundColor: '#f0f0f0' }]}
                 onPress={handleFamilyCodeCancel}
               >
                 <Text style={[styles.modalButtonText, { color: '#000000' }]}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.modalButton, { backgroundColor: colors.primary }]}
                 onPress={handleFamilyCodeSubmit}
               >
@@ -164,24 +181,23 @@ export default function AccountScreen() {
           </View>
         </View>
       </Modal>
+
+
+      {/* ✅ Notification Center Modal */}
+      <NotificationCenter visible={notifOpen} onClose={() => setNotifOpen(false)} />
     </View>
   );
 }
 
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  profileSection: {
-    paddingTop: 40,
-    paddingHorizontal: 20,
-    alignItems: 'center', // Keep for centering buttons
-  },
+  container: { flex: 1 },
+  profileSection: { paddingTop: 40, paddingHorizontal: 20, alignItems: 'center' },
   profileHeaderContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    width: '100%', // Take full width to align to start
-    justifyContent: 'flex-start', // Align content to the left
+    width: '100%',
+    justifyContent: 'flex-start',
     marginBottom: 20,
   },
   profileImageContainer: {
@@ -194,15 +210,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 20,
   },
-  profileImage: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-  },
-  profileName: {
-    fontSize: 32,
-    fontWeight: 'bold',
-  },
+  profileImage: { width: 140, height: 140, borderRadius: 70 },
+  profileName: { fontSize: 32, fontWeight: 'bold' },
   button: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -213,16 +222,8 @@ const styles = StyleSheet.create({
     width: '90%',
     marginVertical: 24,
   },
-  buttonIcon: {
-    marginRight: 8,
-  },
-  buttonText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    flex: 1,
-    marginLeft: 12,
-    textAlign: 'center',
-  },
+  buttonIcon: { marginRight: 8 },
+  buttonText: { fontSize: 20, fontWeight: 'bold', flex: 1, marginLeft: 12, textAlign: 'center' },
   settingsButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -233,16 +234,8 @@ const styles = StyleSheet.create({
     width: '90%',
     marginVertical: 24,
   },
-  settingsIcon: {
-    marginRight: 8,
-  },
-  settingsText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    flex: 1,
-    marginLeft: 12,
-    textAlign: 'center',
-  },
+  settingsIcon: { marginRight: 8 },
+  settingsText: { fontSize: 20, fontWeight: 'bold', flex: 1, marginLeft: 12, textAlign: 'center' },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -253,39 +246,12 @@ const styles = StyleSheet.create({
     width: '90%',
     marginVertical: 24,
   },
-  logoutIcon: {
-    marginRight: 8,
-  },
-  logoutText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    flex: 1,
-    marginLeft: 12,
-    textAlign: 'center',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    borderRadius: 12,
-    padding: 24,
-    width: '80%',
-    maxWidth: 400,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  modalDescription: {
-    fontSize: 16,
-    marginBottom: 20,
-    textAlign: 'center',
-  },
+  logoutIcon: { marginRight: 8 },
+  logoutText: { fontSize: 20, fontWeight: 'bold', flex: 1, marginLeft: 12, textAlign: 'center' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'center', alignItems: 'center' },
+  modalContent: { borderRadius: 12, padding: 24, width: '80%', maxWidth: 400 },
+  modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 8, textAlign: 'center' },
+  modalDescription: { fontSize: 16, marginBottom: 20, textAlign: 'center' },
   familyCodeInput: {
     borderWidth: 1,
     borderRadius: 8,
@@ -295,19 +261,9 @@ const styles = StyleSheet.create({
     letterSpacing: 4,
     marginBottom: 20,
   },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  modalButtonText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
+  modalButtons: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
+  modalButton: { flex: 1, paddingVertical: 12, borderRadius: 8, alignItems: 'center' },
+  modalButtonText: { fontSize: 16, fontWeight: 'bold' },
 });
+
+
