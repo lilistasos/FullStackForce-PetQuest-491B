@@ -8,7 +8,7 @@
 export const API_CONFIG = {
   // Your computer's IP address for physical device testing
   // Leave empty to use defaults (localhost for simulators, 10.0.2.2 for Android emulator)
-  COMPUTER_IP: '',
+  COMPUTER_IP: '', // e.g., 'IP Address of your computer'
   
   // Backend server port
   PORT: '4000',
@@ -17,6 +17,8 @@ export const API_CONFIG = {
   // If not specified, will use COMPUTER_IP or defaults
   ANDROID_URL: '', // e.g., 'http://10.0.2.2:4000' for emulator or 'http://192.168.4.27:4000' for device
   IOS_URL: '',     // e.g., 'http://localhost:4000' for simulator or 'http://192.168.4.27:4000' for device
+  ANDROID_URL: '', // e.g., 'http://10.0.2.2:4000' for emulator or 'http://IPADDRESS:4000' for device.
+  IOS_URL: '',     // e.g., 'http://localhost:4000' for simulator or 'http://IPADDRESS:4000' for device.
   WEB_URL: 'http://localhost:4000',
 };
 
