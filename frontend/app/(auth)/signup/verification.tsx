@@ -1,6 +1,20 @@
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Platform } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
+
+// Get API URL based on platform
+const getApiUrl = () => {
+  if (Platform.OS === 'android') {
+    // Android emulator uses 10.0.2.2, physical device needs your computer's IP
+    return __DEV__ ? "http://10.0.2.2:4000" : "http://10.0.2.2:4000";
+  } else if (Platform.OS === 'ios') {
+    // iOS simulator uses localhost
+    return __DEV__ ? "http://localhost:4000" : "http://localhost:4000";
+  } else {
+    // Web
+    return "http://localhost:4000";
+  }
+};
 
 export default function VerificationScreen() {
     const router = useRouter();
@@ -9,11 +23,11 @@ export default function VerificationScreen() {
     const [code, setCode] = useState("");
     const [isCodeSent, setIsCodeSent] = useState(false);
     const [generatedCode, setGeneratedCode] = useState("");
-    const API_URL = "http://10.0.2.2:4000/api/auth"; // Change this to http://localhost:4000/api/auth if your are in web preview mode
-
+    const API_URL = getApiUrl();
+    
     const handleSendCode = async () => {
         try {
-            const response = await fetch(`${API_URL}/send-code`, {
+            const response = await fetch(`${API_URL}/api/auth/send-code`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email }),
@@ -35,7 +49,7 @@ export default function VerificationScreen() {
 
     const handleVerification = async () => {
         try {
-            const verifyResponse = await fetch(`${API_URL}/verify-code`, {
+            const verifyResponse = await fetch(`${API_URL}/api/auth/verify-code`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email, code }),
@@ -71,7 +85,7 @@ export default function VerificationScreen() {
             }
 
             // Register the user
-            const registerResponse = await fetch(`${API_URL}/register`, {
+            const registerResponse = await fetch(`${API_URL}/api/auth/register`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(registerBody),
