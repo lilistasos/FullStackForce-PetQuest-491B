@@ -1,13 +1,24 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, Modal, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, Modal, Dimensions, Platform } from 'react-native';
 import { WeekCalendar, CalendarProvider } from 'react-native-calendars';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { usePet } from '@/contexts/PetContext';
 import { useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '@/hooks/useAuth';
 
 const WEEK_START_KEY = '@petquest:weekStart';
+
+const getApiUrl = () => {
+  if (Platform.OS === 'android') {
+    return __DEV__ ? "http://10.0.2.2:4000" : "http://10.0.2.2:4000";
+  } else if (Platform.OS === 'ios') {
+    return __DEV__ ? "http://localhost:4000" : "http://localhost:4000";
+  } else {
+    return "http://localhost:4000";
+  }
+};
 
 // Function to calculate luminance and determine text color
 const getContrastColor = (backgroundColor: string): string => {
@@ -27,6 +38,7 @@ interface TaskItem {
   points: number;
   complete: boolean;
   category?: string;
+  dueDate?: string;
 }
 
 interface AgendaSection {
@@ -113,6 +125,7 @@ const getOrdinalSuffix = (day: number): string => {
 export default function CalendarScreen() {
   const { colors, isDarkMode } = useTheme();
   const { selectedPet } = usePet();
+  const { user, token } = useAuth();
   const buttonTextColor = getContrastColor(colors.primary);
 
   const now = new Date();
@@ -149,28 +162,120 @@ export default function CalendarScreen() {
   const previousVisibleWeekRef = useRef<string>(initialDate);
   
   const [sortBy, setSortBy] = useState<SortOption>('time');
-
-  const [items, setItems] = useState<AgendaSection[]>([
-    {
-      title: '2025-11-05',
-      data: [
-        { name: 'Soccer Practice', id: '1', description: 'Team practice at Riverside Field', time: '04:00 PM', points: 15, complete: false, category: 'Practice' },
-        { name: 'Art Class', id: '2', description: 'After school art program', time: '03:00 PM', points: 10, complete: true, category: 'School' },
-        { name: 'Piano Lesson', id: '3', description: 'Weekly piano lesson', time: '12:00 PM', points: 20, complete: false, category: 'Practice' },
-      ],
-    },
-    {
-      title: '2025-11-12',
-      data: [
-        { name: 'Soccer Game', id: '4', description: 'Home game vs. Eagles', time: '05:00 PM', points: 30, complete: false, category: 'Game' },
-        { name: 'Swimming Practice', id: '5', description: 'Evening swim practice', time: '05:30 PM', points: 15, complete: false, category: 'Practice' },
-        { name: 'Basketball Practice', id: '6', description: 'Morning practice session', time: '10:00 AM', points: 20, complete: false, category: 'Practice' },
-      ],
-    },
-  ]);
+  const [items, setItems] = useState<AgendaSection[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [modal, setModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<TaskItem | null>(null);
+
+  // Fetch tasks from API
+  const fetchTasks = async () => {
+    if (!user || !token || user.role !== 'child') return;
+    
+    try {
+      setLoading(true);
+      const API_URL = getApiUrl();
+      const response = await fetch(`${API_URL}/api/tasks/my-assigned-tasks`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch tasks');
+      }
+
+      const tasks = await response.json();
+      
+      // Transform tasks to the format expected by the calendar
+      const agendaSections: AgendaSection[] = [];
+      const tasksByDate: { [key: string]: TaskItem[] } = {};
+
+      tasks.forEach((task: any) => {
+        if (task.date) {
+          const dateKey = task.date;
+          if (!tasksByDate[dateKey]) {
+            tasksByDate[dateKey] = [];
+          }
+          
+          tasksByDate[dateKey].push({
+            id: task.id.toString(),
+            name: task.text || task.taskName,
+            description: task.description,
+            time: task.time || 'All Day',
+            points: task.points || 0,
+            complete: task.completed || false,
+            category: task.category || 'Other',
+            dueDate: task.date,
+          });
+        }
+      });
+
+      // Convert to AgendaSection format
+      Object.keys(tasksByDate).forEach(date => {
+        agendaSections.push({
+          title: date,
+          data: tasksByDate[date],
+        });
+      });
+
+      setItems(agendaSections);
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+      Alert.alert('Error', 'Failed to load tasks');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load tasks when component mounts or user changes
+  useEffect(() => {
+    if (user && token) {
+      fetchTasks();
+    }
+  }, [user, token]);
+
+  // Complete task function
+  const completeTask = async (taskId: string) => {
+    if (!token) return;
+
+    try {
+      const API_URL = getApiUrl();
+      const response = await fetch(`${API_URL}/api/tasks/${taskId}/complete`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to complete task');
+      }
+
+      const result = await response.json();
+      
+      // Update local state
+      setItems(prevItems =>
+        prevItems.map(section => ({
+          ...section,
+          data: section.data.map(item =>
+            item.id === taskId 
+              ? { ...item, complete: true }
+              : item
+          ),
+        }))
+      );
+
+      Alert.alert('Task Completed', `You have earned ${result.pointsEarned} points!`);
+      return result.pointsEarned;
+    } catch (error) {
+      console.error('Error completing task:', error);
+      Alert.alert('Error', 'Failed to complete task');
+      return 0;
+    }
+  };
 
   // Shared function to navigate weeks (used by buttons and swipe handlers)
   const navigateWeek = (direction: 'prev' | 'next') => {
@@ -194,20 +299,11 @@ export default function CalendarScreen() {
     }, 1000);
   };
 
-  const toggleComplete = (date: string, itemId: string) => {
-    setItems(prevItems =>
-      prevItems.map(section => {
-        if (section.title === date) {
-          return {
-            ...section,
-            data: section.data.map(item =>
-              item.id === itemId ? { ...item, complete: !item.complete } : item
-            ),
-          };
-        }
-        return section;
-      })
-    );
+  const toggleComplete = async (date: string, itemId: string) => {
+    const pointsEarned = await completeTask(itemId);
+    if (pointsEarned > 0) {
+      setModal(false);
+    }
   };
 
   const renderTaskItem = (item: TaskItem) => {
@@ -561,7 +657,13 @@ export default function CalendarScreen() {
             </Text>
 
             {/* Tasks List */}
-            {sortedTasks.length > 0 ? (
+            {loading ? (
+              <View style={styles.emptyContainer}>
+                <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                  Loading tasks...
+                </Text>
+              </View>
+            ) : sortedTasks.length > 0 ? (
               <View style={styles.tasksList}>
                 {sortedTasks.map((item) => renderTaskItem(item))}
               </View>
@@ -610,21 +712,16 @@ export default function CalendarScreen() {
                   >
                     <Text style={styles.buttonText}>Close</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.completeButton, { backgroundColor: colors.primary }]}
-                    onPress={() => {
-                      Alert.alert(
-                        'Task Completed',
-                        `You have earned ${selectedItem.points} points!`
-                      );
-                      toggleComplete(currentDate, selectedItem.id);
-                      setModal(!modal);
-                    }}
-                  >
-                    <Text style={[styles.buttonText, { color: buttonTextColor }]}>
-                      {selectedItem.complete ? 'Mark Incomplete' : 'Complete'}
-                    </Text>
-                  </TouchableOpacity>
+                  {!selectedItem.complete && (
+                    <TouchableOpacity
+                      style={[styles.completeButton, { backgroundColor: colors.primary }]}
+                      onPress={() => toggleComplete(currentDate, selectedItem.id)}
+                    >
+                      <Text style={[styles.buttonText, { color: buttonTextColor }]}>
+                        Complete
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               </View>
             </View>

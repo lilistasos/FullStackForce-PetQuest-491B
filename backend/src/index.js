@@ -130,7 +130,7 @@ function authMiddleware(req, res, next) {
 async function findUserByEmail(email) {
   const { rows } = await pool.query(
     `SELECT id, email, password_hash, first_name AS "firstName", last_name AS "lastName",
-            role, family_code AS "familyCode", date_of_birth AS "dateOfBirth", created_at AS "createdAt"
+            role, family_code AS "familyCode", date_of_birth AS "dateOfBirth", created_at AS "createdAt", points
      FROM users
      WHERE email = $1`,
     [email]
@@ -141,7 +141,7 @@ async function findUserByEmail(email) {
 async function findUserById(id) {
   const { rows } = await pool.query(
     `SELECT id, email, first_name AS "firstName", last_name AS "lastName",
-            role, family_code AS "familyCode", date_of_birth AS "dateOfBirth", created_at AS "createdAt"
+            role, family_code AS "familyCode", date_of_birth AS "dateOfBirth", created_at AS "createdAt", points
      FROM users
      WHERE id = $1`,
     [id]
@@ -621,6 +621,278 @@ app.patch('/api/pet-accessories/:id/visibility', authMiddleware, async (req, res
   }
 });
 
+// Create a new pet for the logged-in user
+app.post("/api/pets", authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.sub; // comes from your JWT middleware
+    const {
+      name,
+      imageUrl = null,
+      isUnlocked = false,
+      isVisible = false,
+      cost = 0,
+    } = req.body;
+
+    if (!name) {
+      return res.status(400).json({ error: "Pet name is required." });
+    }
+
+    // If this pet is set visible, you may want to hide others for this user
+    if (isVisible) {
+      await pool.query(
+        "UPDATE pets SET is_visible = FALSE WHERE user_id = $1",
+        [userId]
+      );
+    }
+
+    const result = await pool.query(
+      `INSERT INTO pets (user_id, name, image_url, is_unlocked, is_visible, cost)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING *`,
+      [userId, name, imageUrl, isUnlocked, isVisible, cost]
+    );
+
+    return res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error("Error creating pet:", err);
+    return res.status(500).json({ error: "Failed to create pet." });
+  }
+});
+
+// Create a new accessory for one of the user's pets
+app.post("/api/pet-accessories", authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.sub;
+    const {
+      petId,
+      name,
+      imageUrl = null,
+      isUnlocked = false,
+      isVisible = false,
+      cost = 0,
+    } = req.body;
+
+    if (!petId || !name) {
+      return res.status(400).json({ error: "petId and name are required." });
+    }
+
+    // Verify that this pet belongs to the logged-in user
+    const petCheck = await pool.query(
+      "SELECT id FROM pets WHERE id = $1 AND user_id = $2",
+      [petId, userId]
+    );
+    if (petCheck.rowCount === 0) {
+      return res.status(403).json({ error: "You do not own this pet." });
+    }
+
+    if (isVisible) {
+      await pool.query(
+        `UPDATE pet_accessories
+         SET is_visible = FALSE
+         WHERE pet_id = $1`,
+        [petId]
+      );
+    }
+
+    const result = await pool.query(
+      `INSERT INTO pet_accessories (pet_id, name, image_url, is_unlocked, is_visible, cost)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING *`,
+      [petId, name, imageUrl, isUnlocked, isVisible, cost]
+    );
+
+    return res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error("Error creating pet accessory:", err);
+    return res.status(500).json({ error: "Failed to create pet accessory." });
+  }
+});
+
+// SEED DEFAULT PETS + ACCESSORIES FOR THE LOGGED-IN USER
+app.post('/api/pets/seed-defaults', authMiddleware, async (req, res) => {
+  const userId = req.user.sub;
+
+  try {
+    const client = await pool.connect();
+    await client.query('BEGIN');
+
+    // 1. Insert default pets
+    const defaultPets = [
+      { name: "Dragon", imageUrl: null, isUnlocked: true,  isVisible: true,  cost: 0 },
+      { name: "Cat",    imageUrl: null, isUnlocked: true,  isVisible: false, cost: 0 },
+      { name: "Dog",    imageUrl: null, isUnlocked: true,  isVisible: false, cost: 0 },
+      { name: "Lion",   imageUrl: null, isUnlocked: false, isVisible: false, cost: 200 },
+      { name: "Unicorn",imageUrl: null, isUnlocked: false, isVisible: false, cost: 300 }
+    ];
+
+    const petIds = {};
+
+    for (const pet of defaultPets) {
+      const result = await client.query(
+        `INSERT INTO pets (user_id, name, image_url, is_unlocked, is_visible, cost)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         RETURNING id`,
+        [userId, pet.name, pet.imageUrl, pet.isUnlocked, pet.isVisible, pet.cost]
+      );
+      petIds[pet.name] = result.rows[0].id;
+    }
+
+    // 2. Default accessories
+    const accessories = [
+      { petName: "Dragon", name: "Baseball Cap", imageUrl: null, isUnlocked: true, isVisible: false, cost: 0 },
+      { petName: "Dragon", name: "Top Hat",      imageUrl: null, isUnlocked: true, isVisible: false, cost: 50 },
+      { petName: "Dragon", name: "Sunglasses",   imageUrl: null, isUnlocked: false, isVisible: false, cost: 30 },
+      { petName: "Dragon", name: "Football",     imageUrl: null, isUnlocked: false, isVisible: false, cost: 40 }
+    ];
+
+    for (const a of accessories) {
+      const petId = petIds[a.petName];
+      await client.query(
+        `INSERT INTO pet_accessories (pet_id, name, image_url, is_unlocked, is_visible, cost)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [petId, a.name, a.imageUrl, a.isUnlocked, a.isVisible, a.cost]
+      );
+    }
+
+    await client.query('COMMIT');
+    client.release();
+
+    res.json({ message: "Default pets + accessories seeded!", pets: defaultPets.length, accessories: accessories.length });
+  } catch (err) {
+    console.error("❌ Seeding error:", err);
+    res.status(500).json({ error: "Failed to seed defaults." });
+  }
+});
+
+// Add or subtract points from the logged-in user
+app.post('/api/users/me/add-points', authMiddleware, async (req, res) => {
+  const userId = req.user.sub;
+  const { amount } = req.body;
+
+  if (typeof amount !== "number") {
+    return res.status(400).json({ error: "amount must be a number" });
+  }
+
+  try {
+    const { rows } = await pool.query(
+      `UPDATE users
+       SET points = points + $1
+       WHERE id = $2
+       RETURNING id, email, points`,
+      [amount, userId]
+    );
+
+    res.json(rows[0]);
+  } catch (err) {
+    console.error("Error updating points:", err);
+    res.status(500).json({ error: "Failed to update points" });
+  }
+});
+
+// Purchase pet or accessory and update points + unlock status
+app.post("/api/shop/purchase", authMiddleware, async (req, res) => {
+  const userId = req.user.sub;
+  const { type, id } = req.body; 
+
+  if (!type || !id || !["pet", "accessory"].includes(type)) {
+    return res.status(400).json({ error: "Invalid purchase payload." });
+  }
+
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const userRes = await client.query(
+      `SELECT points FROM users WHERE id = $1 FOR UPDATE`,
+      [userId]
+    );
+    if (userRes.rowCount === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "User not found." });
+    }
+    let points = userRes.rows[0].points;
+
+    if (type === "pet") {
+      const petRes = await client.query(
+        `SELECT id, user_id, cost, is_unlocked
+         FROM pets
+         WHERE id = $1 AND user_id = $2
+         FOR UPDATE`,
+        [id, userId]
+      );
+      if (petRes.rowCount === 0) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ error: "Pet not found for this user." });
+      }
+      const pet = petRes.rows[0];
+
+      if (pet.is_unlocked) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ error: "Pet already unlocked." });
+      }
+      if (points < pet.cost) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ error: "Not enough points." });
+      }
+
+      points -= pet.cost;
+
+      await client.query(
+        `UPDATE users SET points = $1 WHERE id = $2`,
+        [points, userId]
+      );
+      await client.query(
+        `UPDATE pets SET is_unlocked = TRUE WHERE id = $1`,
+        [id]
+      );
+    } else if (type === "accessory") {
+      const accRes = await client.query(
+        `SELECT a.id, a.cost, a.is_unlocked
+         FROM pet_accessories a
+         JOIN pets p ON p.id = a.pet_id
+         WHERE a.id = $1 AND p.user_id = $2
+         FOR UPDATE`,
+        [id, userId]
+      );
+      if (accRes.rowCount === 0) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ error: "Accessory not found for this user." });
+      }
+      const acc = accRes.rows[0];
+
+      if (acc.is_unlocked) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ error: "Accessory already unlocked." });
+      }
+      if (points < acc.cost) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ error: "Not enough points." });
+      }
+
+      points -= acc.cost;
+
+      await client.query(
+        `UPDATE users SET points = $1 WHERE id = $2`,
+        [points, userId]
+      );
+      await client.query(
+        `UPDATE pet_accessories SET is_unlocked = TRUE WHERE id = $1`,
+        [id]
+      );
+    }
+
+    await client.query("COMMIT");
+    res.json({ success: true, points });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("POST /api/shop/purchase error:", err);
+    res.status(500).json({ error: "Failed to complete purchase." });
+  } finally {
+    client.release();
+  }
+});
+
 // Grabs children in family for task creation
 app.get('/api/parent/children', authMiddleware, async (req, res) => {
   const parentId = req.user.sub;
@@ -901,6 +1173,189 @@ app.get('/api/parent/children-tasks', authMiddleware, async (req, res) => {
   }
 });
 
+// Get tasks assigned to the current child user
+app.get('/api/tasks/my-assigned-tasks', authMiddleware, async (req, res) => {
+  const userId = req.user.sub;
+
+  try {
+    const { rows: tasks } = await pool.query(
+      `SELECT 
+         t.id,
+         t.title AS text,
+         t.description,
+         t.due_date AS date,
+         t.completed,
+         t.point_value AS points,
+         t.category,
+         t.assigned_to AS "assignedTo",
+         u.first_name AS "childName"
+       FROM tasks t
+       LEFT JOIN users u ON t.assigned_to = u.id
+       WHERE t.assigned_to = $1
+       ORDER BY t.due_date ASC`,
+      [userId]
+    );
+
+    // Format tasks for frontend
+    const formattedTasks = tasks.map(task => {
+      let dateString = '';
+      let timeDisplay = 'All Day';
+      
+      if (task.date) {
+        try {
+          const dueDate = new Date(task.date);
+          if (!isNaN(dueDate.getTime())) {
+            dateString = dueDate.getFullYear() + '-' + 
+                        String(dueDate.getMonth() + 1).padStart(2, '0') + '-' + 
+                        String(dueDate.getDate()).padStart(2, '0');
+            
+            timeDisplay = dueDate.toLocaleTimeString('en-US', {
+              hour: 'numeric',
+              minute: '2-digit',
+              hour12: true
+            });
+          }
+        } catch (err) {
+          console.error('Error parsing dueDate:', err);
+        }
+      }
+      
+      return {
+        id: task.id.toString(),
+        text: task.text,
+        description: task.description || '',
+        completed: task.completed || false,
+        category: task.category || 'Other',
+        points: task.points || 0,
+        assignedTo: task.assignedTo,
+        childName: task.childName,
+        date: dateString,
+        time: timeDisplay
+      };
+    });
+
+    res.json(formattedTasks);
+  } catch (err) {
+    console.error('GET /api/tasks/my-assigned-tasks error:', err);
+    res.status(500).json({ error: 'Failed to load assigned tasks' });
+  }
+});
+
+// Complete a task and award points
+app.post('/api/tasks/:id/complete', authMiddleware, async (req, res) => {
+  const userId = req.user.sub;
+  const taskId = req.params.id;
+
+  try {
+    const client = await pool.connect();
+    await client.query('BEGIN');
+
+    // Get the task and verify it belongs to the user
+    const { rows: tasks } = await client.query(
+      `SELECT id, point_value, completed, assigned_to
+       FROM tasks 
+       WHERE id = $1 AND assigned_to = $2
+       FOR UPDATE`,
+      [taskId, userId]
+    );
+
+    if (tasks.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Task not found or access denied' });
+    }
+
+    const task = tasks[0];
+
+    if (task.completed) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Task already completed' });
+    }
+
+    // Mark task as completed
+    await client.query(
+      `UPDATE tasks SET completed = TRUE WHERE id = $1`,
+      [taskId]
+    );
+
+    // Award points to user
+    await client.query(
+      `UPDATE users SET points = points + $1 WHERE id = $2`,
+      [task.point_value, userId]
+    );
+
+    await client.query('COMMIT');
+    client.release();
+
+    res.json({
+      success: true,
+      pointsEarned: task.point_value,
+      message: `Task completed! You earned ${task.point_value} points!`
+    });
+
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('POST /api/tasks/:id/complete error:', err);
+    res.status(500).json({ error: 'Failed to complete task' });
+  }
+});
+
+// Complete a task and award points
+app.post('/api/tasks/:id/complete', authMiddleware, async (req, res) => {
+  const userId = req.user.sub;
+  const taskId = req.params.id;
+
+  try {
+    const client = await pool.connect();
+    await client.query('BEGIN');
+
+    // Get the task and verify it belongs to the user
+    const { rows: tasks } = await client.query(
+      `SELECT id, point_value, completed, assigned_to
+       FROM tasks 
+       WHERE id = $1 AND assigned_to = $2
+       FOR UPDATE`,
+      [taskId, userId]
+    );
+
+    if (tasks.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Task not found or access denied' });
+    }
+
+    const task = tasks[0];
+
+    if (task.completed) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Task already completed' });
+    }
+
+    // Mark task as completed
+    await client.query(
+      `UPDATE tasks SET completed = TRUE WHERE id = $1`,
+      [taskId]
+    );
+
+    // Award points to user
+    await client.query(
+      `UPDATE users SET points = points + $1 WHERE id = $2`,
+      [task.point_value, userId]
+    );
+
+    await client.query('COMMIT');
+    client.release();
+
+    res.json({
+      success: true,
+      pointsEarned: task.point_value,
+      message: `Task completed! You earned ${task.point_value} points!`
+    });
+
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('POST /api/tasks/:id/complete error:', err);
+    res.status(500).json({ error: 'Failed to complete task' });
+  }
+});
 
 // Starts Server
 const PORT = process.env.PORT || 4000;
