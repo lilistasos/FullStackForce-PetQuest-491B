@@ -238,106 +238,116 @@ export default function ShopScreen() {
     setItemToBuy(null);
   };
 
-  const renderShopItem = (item: ShopItem) => (
+  const renderShopItem = (item: ShopItem) => {
+  const isPet =
+    item.id === "dragon" ||
+    item.id === "cat" ||
+    item.id === "dog" ||
+    item.id === "lion" ||
+    item.id === "unicorn";
+
+  let content;
+
+  if (item.id === "top-hat") {
+    content = (
+      <>
+        <Image
+          source={require("@/assets/images/tophat.png")}
+          style={styles.itemImage}
+          resizeMode="contain"
+        />
+        <Text style={[styles.itemPrice, { color: colors.text }]}>{item.price}</Text>
+      </>
+    );
+  } else if (item.id === "glasses") {
+    content = (
+      <>
+        <Image
+          source={require("@/assets/images/sunglasses.png")}
+          style={styles.itemImage}
+          resizeMode="contain"
+        />
+        <Text style={[styles.itemPrice, { color: colors.text }]}>{item.price}</Text>
+      </>
+    );
+  } else if (item.id === "cap") {
+    content = (
+      <>
+        <Image
+          source={require("@/assets/images/bbhat.png")}
+          style={styles.itemImage}
+          resizeMode="contain"
+        />
+        <Text style={[styles.itemPrice, { color: colors.text }]}>{item.price}</Text>
+      </>
+    );
+  } else if (item.id === "football") {
+    content = (
+      <>
+        <Image
+          source={require("@/assets/images/football.png")}
+          style={styles.itemImage}
+          resizeMode="contain"
+        />
+        <Text style={[styles.itemPrice, { color: colors.text }]}>{item.price}</Text>
+      </>
+    );
+  } else if (isPet) {
+    const imgSource = getPetImage(item.id);
+    content = (
+      <>
+        <Image
+          source={imgSource}
+          style={styles.itemImage}
+          resizeMode="contain"
+        />
+        <Text style={[styles.itemPrice, { color: colors.text }]}>{item.price}</Text>
+      </>
+    );
+  } else {
+    content = (
+      <>
+        <Text style={[styles.itemTitle, { color: colors.text }]}>{item.name}</Text>
+        <Text style={[styles.itemPrice, { color: colors.text }]}>{item.price}</Text>
+      </>
+    );
+  }
+
+  return (
     <View key={item.id} style={styles.itemContainer}>
-      <View style={[styles.itemBox, { borderColor: colors.primary, backgroundColor: colors.background }]}>
-        {item.id === "top-hat" ? (
-          <>
-            <Image 
-              source={require("@/assets/images/tophat.png")} 
-              style={styles.itemImage}
-              resizeMode="contain"
-            />
-            <Text style={[styles.itemPrice, { color: colors.text }]}>{item.price}</Text>
-          </>
-        ) : item.id === "glasses" ? (
-          <>
-            <Image 
-              source={require("@/assets/images/sunglasses.png")} 
-              style={styles.itemImage}
-              resizeMode="contain"
-            />
-            <Text style={[styles.itemPrice, { color: colors.text }]}>{item.price}</Text>
-          </>
-        ) : item.id === "cap" ? (
-          <>
-            <Image 
-              source={require("@/assets/images/bbhat.png")} 
-              style={styles.itemImage}
-              resizeMode="contain"
-            />
-            <Text style={[styles.itemPrice, { color: colors.text }]}>{item.price}</Text>
-          </>
-        ) : item.id === "football" ? (
-          <>
-            <Image 
-              source={require("@/assets/images/football.png")} 
-              style={styles.itemImage}
-              resizeMode="contain"
-            />
-            <Text style={[styles.itemPrice, { color: colors.text }]}>{item.price}</Text>
-          </>
-        ) : item.id === "cat" ? (
-          <>
-            <Image 
-              source={require("@/assets/images/cat.png")} 
-              style={styles.itemImage}
-              resizeMode="contain"
-            />
-            <Text style={[styles.itemPrice, { color: colors.text }]}>{item.price}</Text>
-          </>
-        ) : item.id === "dog" ? (
-          <>
-            <Image 
-              source={require("@/assets/images/fbdog.png")} 
-              style={styles.itemImage}
-              resizeMode="contain"
-            />
-            <Text style={[styles.itemPrice, { color: colors.text }]}>{item.price}</Text>
-          </>
-        ) : item.id === "lion" ? (
-          <>
-            <Image 
-              source={require("@/assets/images/lion.png")} 
-              style={styles.itemImage}
-              resizeMode="contain"
-            />
-            <Text style={[styles.itemPrice, { color: colors.text }]}>{item.price}</Text>
-          </>
-        ) : item.id === "unicorn" ? (
-          <>
-            <Image 
-              source={require("@/assets/images/unicorn.png")} 
-              style={styles.itemImage}
-              resizeMode="contain"
-            />
-            <Text style={[styles.itemPrice, { color: colors.text }]}>{item.price}</Text>
-          </>
-        ) : (
-          <>
-            <Text style={[styles.itemTitle, { color: colors.text }]}>{item.name}</Text>
-            <Text style={[styles.itemPrice, { color: colors.text }]}>{item.price}</Text>
-          </>
-        )}
-      </View>
-      <TouchableOpacity 
+      <View
         style={[
-          styles.actionButton, 
-          item.owned ? { backgroundColor: colors.surface } : { backgroundColor: '#90EE90' },
-          !item.owned && userCoins < item.price && { backgroundColor: '#FFCCCC' }
+          styles.itemBox,
+          { borderColor: colors.primary, backgroundColor: colors.background },
+        ]}
+      >
+        {content}
+      </View>
+      <TouchableOpacity
+        style={[
+          styles.actionButton,
+          item.owned
+            ? { backgroundColor: colors.surface }
+            : { backgroundColor: "#90EE90" },
+          !item.owned && userCoins < item.price && { backgroundColor: "#FFCCCC" },
         ]}
         onPress={() => handlePurchaseClick(item)}
-        disabled={item.owned || (!item.owned && userCoins < item.price)}>
-        <Text style={[
-          styles.buttonText,
-          item.owned ? { color: colors.textSecondary } : { color: '#000' },
-          !item.owned && userCoins < item.price && { color: '#999' }
-        ]}>
+        disabled={item.owned || (!item.owned && userCoins < item.price)}
+      >
+        <Text
+          style={[
+            styles.buttonText,
+            item.owned ? { color: colors.textSecondary } : { color: "#000" },
+            !item.owned && userCoins < item.price && { color: "#999" },
+          ]}
+        >
           {item.owned ? "OWN" : "BUY"}
         </Text>
       </TouchableOpacity>
     </View>
   );
+};
+
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]} showsVerticalScrollIndicator={false}>
