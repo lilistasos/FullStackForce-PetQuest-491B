@@ -130,7 +130,7 @@ function authMiddleware(req, res, next) {
 async function findUserByEmail(email) {
   const { rows } = await pool.query(
     `SELECT id, email, password_hash, first_name AS "firstName", last_name AS "lastName",
-            role, family_code AS "familyCode", date_of_birth AS "dateOfBirth", created_at AS "createdAt"
+            role, family_code AS "familyCode", date_of_birth AS "dateOfBirth", created_at AS "createdAt", points
      FROM users
      WHERE email = $1`,
     [email]
@@ -141,7 +141,7 @@ async function findUserByEmail(email) {
 async function findUserById(id) {
   const { rows } = await pool.query(
     `SELECT id, email, first_name AS "firstName", last_name AS "lastName",
-            role, family_code AS "familyCode", date_of_birth AS "dateOfBirth", created_at AS "createdAt"
+            role, family_code AS "familyCode", date_of_birth AS "dateOfBirth", created_at AS "createdAt", points
      FROM users
      WHERE id = $1`,
     [id]
@@ -764,6 +764,30 @@ app.post('/api/pets/seed-defaults', authMiddleware, async (req, res) => {
   }
 });
 
+// Add or subtract points from the logged-in user
+app.post('/api/users/me/add-points', authMiddleware, async (req, res) => {
+  const userId = req.user.sub;
+  const { amount } = req.body;
+
+  if (typeof amount !== "number") {
+    return res.status(400).json({ error: "amount must be a number" });
+  }
+
+  try {
+    const { rows } = await pool.query(
+      `UPDATE users
+       SET points = points + $1
+       WHERE id = $2
+       RETURNING id, email, points`,
+      [amount, userId]
+    );
+
+    res.json(rows[0]);
+  } catch (err) {
+    console.error("Error updating points:", err);
+    res.status(500).json({ error: "Failed to update points" });
+  }
+});
 
 // Grabs children in family for task creation
 app.get('/api/parent/children', authMiddleware, async (req, res) => {
