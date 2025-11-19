@@ -789,6 +789,110 @@ app.post('/api/users/me/add-points', authMiddleware, async (req, res) => {
   }
 });
 
+// Purchase pet or accessory and update points + unlock status
+app.post("/api/shop/purchase", authMiddleware, async (req, res) => {
+  const userId = req.user.sub;
+  const { type, id } = req.body; 
+
+  if (!type || !id || !["pet", "accessory"].includes(type)) {
+    return res.status(400).json({ error: "Invalid purchase payload." });
+  }
+
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const userRes = await client.query(
+      `SELECT points FROM users WHERE id = $1 FOR UPDATE`,
+      [userId]
+    );
+    if (userRes.rowCount === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "User not found." });
+    }
+    let points = userRes.rows[0].points;
+
+    if (type === "pet") {
+      const petRes = await client.query(
+        `SELECT id, user_id, cost, is_unlocked
+         FROM pets
+         WHERE id = $1 AND user_id = $2
+         FOR UPDATE`,
+        [id, userId]
+      );
+      if (petRes.rowCount === 0) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ error: "Pet not found for this user." });
+      }
+      const pet = petRes.rows[0];
+
+      if (pet.is_unlocked) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ error: "Pet already unlocked." });
+      }
+      if (points < pet.cost) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ error: "Not enough points." });
+      }
+
+      points -= pet.cost;
+
+      await client.query(
+        `UPDATE users SET points = $1 WHERE id = $2`,
+        [points, userId]
+      );
+      await client.query(
+        `UPDATE pets SET is_unlocked = TRUE WHERE id = $1`,
+        [id]
+      );
+    } else if (type === "accessory") {
+      const accRes = await client.query(
+        `SELECT a.id, a.cost, a.is_unlocked
+         FROM pet_accessories a
+         JOIN pets p ON p.id = a.pet_id
+         WHERE a.id = $1 AND p.user_id = $2
+         FOR UPDATE`,
+        [id, userId]
+      );
+      if (accRes.rowCount === 0) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ error: "Accessory not found for this user." });
+      }
+      const acc = accRes.rows[0];
+
+      if (acc.is_unlocked) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ error: "Accessory already unlocked." });
+      }
+      if (points < acc.cost) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ error: "Not enough points." });
+      }
+
+      points -= acc.cost;
+
+      await client.query(
+        `UPDATE users SET points = $1 WHERE id = $2`,
+        [points, userId]
+      );
+      await client.query(
+        `UPDATE pet_accessories SET is_unlocked = TRUE WHERE id = $1`,
+        [id]
+      );
+    }
+
+    await client.query("COMMIT");
+    res.json({ success: true, points });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("POST /api/shop/purchase error:", err);
+    res.status(500).json({ error: "Failed to complete purchase." });
+  } finally {
+    client.release();
+  }
+});
+
 // Grabs children in family for task creation
 app.get('/api/parent/children', authMiddleware, async (req, res) => {
   const parentId = req.user.sub;

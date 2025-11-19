@@ -11,6 +11,8 @@ interface ShopItem {
   icon: string;
   price: number;
   owned: boolean;
+  backendId?: number;
+  type: "pet" | "accessory"; 
 }
 
 interface ShopData {
@@ -129,6 +131,8 @@ export default function ShopScreen() {
               icon: key,
               price: p.cost ?? 0,
               owned: p.isUnlocked,
+              backendId: p.id,
+              type: "pet",
             };
           });
 
@@ -139,6 +143,8 @@ export default function ShopScreen() {
               icon: "",
               price: a.cost ?? 0,
               owned: a.isUnlocked,
+              backendId: a.id,
+              type: "accessory",
             }))
           );
 
@@ -160,41 +166,72 @@ export default function ShopScreen() {
     setShowConfirmModal(true);
   };
 
-  const confirmPurchase = () => {
-    if (itemToBuy) {
-      if (userCoins < itemToBuy.price) {
-        setShowConfirmModal(false);
-        setItemToBuy(null);
-        return;
-      }
+  const confirmPurchase = async () => {
+  if (!itemToBuy || !token || !itemToBuy.backendId) {
+    setShowConfirmModal(false);
+    setItemToBuy(null);
+    return;
+  }
 
-      setUserCoins((prevCoins) => prevCoins - itemToBuy.price);
+  // Double-check in case UI got out of sync
+  if (userCoins < itemToBuy.price || itemToBuy.owned) {
+    setShowConfirmModal(false);
+    setItemToBuy(null);
+    return;
+  }
 
-      setShopItems((prevItems) => {
-        const updatedItems: ShopData = {
-          pets: [...prevItems.pets],
-          customization: [...prevItems.customization],
-        };
+  try {
+    const res = await fetch("http://10.0.2.2:4000/api/shop/purchase", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        type: itemToBuy.type,       // "pet" | "accessory"
+        id: itemToBuy.backendId,    // DB ID
+      }),
+    });
 
-        const currentTab = selectedTab;
-        const idx = updatedItems[currentTab].findIndex(
-          (item) => item.id === itemToBuy.id
-        );
-
-        if (idx !== -1) {
-          updatedItems[currentTab][idx] = {
-            ...updatedItems[currentTab][idx],
-            owned: true,
-          };
-        }
-
-        return updatedItems;
-      });
-
+    if (!res.ok) {
+      console.log("Purchase failed:", await res.text());
       setShowConfirmModal(false);
       setItemToBuy(null);
+      return;
     }
-  };
+
+    const data = await res.json(); // { success: true, points }
+    setUserCoins(data.points);     // update coins from backend
+
+    // Now update local owned state like before
+    setShopItems((prevItems) => {
+      const updatedItems: ShopData = {
+        pets: [...prevItems.pets],
+        customization: [...prevItems.customization],
+      };
+
+      const currentTab = itemToBuy.type === "pet" ? "pets" : "customization";
+      const idx = updatedItems[currentTab].findIndex(
+        (i) => i.id === itemToBuy.id
+      );
+
+      if (idx !== -1) {
+        updatedItems[currentTab][idx] = {
+          ...updatedItems[currentTab][idx],
+          owned: true,
+        };
+      }
+
+      return updatedItems;
+    });
+  } catch (err) {
+    console.log("Error during purchase:", err);
+  } finally {
+    setShowConfirmModal(false);
+    setItemToBuy(null);
+  }
+};
+
 
   const cancelPurchase = () => {
     setShowConfirmModal(false);
