@@ -304,6 +304,35 @@ const ToDoScreen = () => {
     });
   };
 
+  // Toggle task completion
+  const toggleComplete = (taskId: string) => {
+    setTasksByDate((prev) => {
+      const updatedDayTasks = (prev[formattedKey] || []).map((task) => {
+        if (task.id === taskId) {
+          if (task.completed && task.category === "Completed" && task.originalCategory) {
+            // unmark completed → move back to original
+            return {
+              ...task,
+              completed: false,
+              category: task.originalCategory,
+              originalCategory: undefined,
+            };
+          } else if (!task.completed && task.category !== "Completed") {
+            // mark as completed → move to Completed section
+            return {
+              ...task,
+              completed: true,
+              originalCategory: task.category,
+              category: "Completed",
+            };
+          }
+        }
+        return task;
+      });
+      return { ...prev, [formattedKey]: updatedDayTasks };
+    });
+  };
+
   // Categories for tasks - filter based on preferences
   // Map category IDs to preference keys (for backward compatibility, map Extracurriculars to Work)
   const categoryMapping: { [key: string]: keyof TodoCategoryPreferences } = {
@@ -341,6 +370,7 @@ const ToDoScreen = () => {
     const tasks = tasksByDate[formattedKey] || [];
     const categoryTasks = tasks.filter((t) => t.category === category.id);
     
+    
     //sort tasks based on selected sort
     switch(sortType) {
       case (dropdownOptions[1]):
@@ -354,6 +384,7 @@ const ToDoScreen = () => {
         categoryTasks.sort((a, b) => a.text.localeCompare(b.text));
         break;
     }
+    
     
     const visibleTasks = isExpanded ? categoryTasks : categoryTasks.slice(0, 3);
     const hiddenCount = categoryTasks.length - visibleTasks.length;
