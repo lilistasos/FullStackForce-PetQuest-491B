@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useTasks } from "@/contexts/TaskContext";
 import { useAuth } from "@/hooks/useAuth";
+import { useRouter } from "expo-router";
 
 // Defines what a task looks like
 type Task = {
@@ -19,6 +20,7 @@ type Task = {
 const ToDoScreen = ()=> {
   const { getTasksByChild, toggleComplete: contextToggleComplete } = useTasks();
   const { user } = useAuth();
+  const router = useRouter();
 
   // Current Date State
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -460,6 +462,11 @@ const toggleComplete = (taskId: string) => {
             <Text style={styles.pointsPopupText}>{pointsPopup.message}</Text>
           </Animated.View>
         )}      
+        {/* <View style={{flex:1, flexDirection: 'row', alignItems: 'center'}}> */}
+        <TouchableOpacity style={{alignItems: 'center', backgroundColor: 'gray'}} onPress={() => router.push("/(child)/(tabs)/todo/task-history")}>
+          <Text style={{fontSize: 20}}>Task History</Text>
+        </TouchableOpacity>
+        {/* </View> */}
     </SafeAreaView>
   );
 };
@@ -581,7 +588,7 @@ const styles = StyleSheet.create({
     padding: 10, 
     marginBottom: 10, 
     position: "relative", 
-    zIndex: 1
+    zIndex: 999,
   },
   dropdownOption: {
     padding: 10, 
