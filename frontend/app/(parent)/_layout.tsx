@@ -1,27 +1,24 @@
-<<<<<<< Updated upstream
 import React, { useState, useEffect } from 'react';
 import { Tabs, useRouter } from 'expo-router';
 import { TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigationState } from '@react-navigation/native';
-=======
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
->>>>>>> Stashed changes
 
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { PetProvider } from '@/contexts/PetContext';
-import { ThemeProvider as CustomThemeProvider } from '@/contexts/ThemeContext';
-import { AuthProvider } from '@/hooks/useAuth';
+import { HapticTab } from '@/components/haptic-tab';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import HamburgerMenu from '@/components/HamburgerMenu';
+import { useTheme } from '@/contexts/ThemeContext';
 
-import { useEffect } from 'react';
-import { Platform } from 'react-native';
-import * as Notifications from 'expo-notifications';
-import * as Device from 'expo-device';
+// Function to calculate luminance and determine text color
+const getContrastColor = (backgroundColor: string): string => {
+  const hex = backgroundColor.replace('#', '');
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.4 ? '#000000' : '#FFFFFF';
+};
 
-<<<<<<< Updated upstream
 export default function ParentLayout() {
   const [headerTitle, setHeaderTitle] = useState('Calendar');
   const [menuVisible, setMenuVisible] = useState(false);
@@ -29,26 +26,10 @@ export default function ParentLayout() {
   const { colors } = useTheme();
   const headerTextColor = getContrastColor(colors.primary);
   const router = useRouter();
-=======
-// --- Register notification handler once (skip web) ---
-if (Platform.OS !== 'web') {
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: true,
-      shouldShowBanner: true,
-      shouldShowList: true,
-      shouldPlaySound: true,
-      shouldSetBadge: false,
-    }),
-  });
-}
->>>>>>> Stashed changes
 
-export default function RootLayout() {
-  const colorScheme = useColorScheme();
+  const navigationState = useNavigationState(state => state);
 
   useEffect(() => {
-<<<<<<< Updated upstream
     if (navigationState && navigationState.index !== undefined) {
       const currentRoute = navigationState.routes[navigationState.index];
       
@@ -96,57 +77,14 @@ export default function RootLayout() {
         } else {
           setHeaderTitle('Account');
           setIsSubPage(false);
-=======
-    let sub: Notifications.Subscription | undefined;
-
-    (async () => {
-      // If we're on web, don't attempt native notification setup
-      if (Platform.OS === 'web') return;
-
-      // Android channels
-      if (Platform.OS === 'android') {
-        await Notifications.setNotificationChannelAsync('tasks', {
-          name: 'Task Reminders',
-          importance: Notifications.AndroidImportance.DEFAULT,
-        });
-        await Notifications.setNotificationChannelAsync('default', {
-          name: 'default',
-          importance: Notifications.AndroidImportance.DEFAULT,
-        });
-      }
-
-      // Permissions (Android 13+ / iOS)
-      if (Device.isDevice) {
-        const { status } = await Notifications.getPermissionsAsync();
-        if (status !== 'granted') {
-          await Notifications.requestPermissionsAsync();
->>>>>>> Stashed changes
         }
       } else {
         setIsSubPage(false);
       }
-
-      // Dev-only log to confirm we receive notifs
-      sub = Notifications.addNotificationReceivedListener((n) => {
-        if (__DEV__) {
-          // eslint-disable-next-line no-console
-          console.log('[NotifLog]', {
-            id: n.request.identifier ?? String(Date.now()),
-            title: n.request.content.title ?? 'Notification',
-            body: n.request.content.body ?? '',
-            receivedAt: Date.now(),
-          });
-        }
-      });
-    })();
-
-    return () => {
-      if (sub) sub.remove();
-    };
-  }, []);
+    }
+  }, [navigationState]);
 
   return (
-<<<<<<< Updated upstream
     <HamburgerMenu 
       visible={menuVisible} 
       onClose={() => setMenuVisible(false)}
@@ -216,24 +154,5 @@ export default function RootLayout() {
       />
     </Tabs>
     </HamburgerMenu>
-=======
-    <AuthProvider>
-      <CustomThemeProvider>
-        <PetProvider>
-          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-              <Stack.Screen name="(child)" options={{ headerShown: false }} />
-              <Stack.Screen name="(parent)" options={{ headerShown: false }} />
-              <Stack.Screen name="(indv)" options={{ headerShown: false }} />
-              <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-            </Stack>
-            <StatusBar style="auto" />
-          </ThemeProvider>
-        </PetProvider>
-      </CustomThemeProvider>
-    </AuthProvider>
->>>>>>> Stashed changes
   );
 }
-

@@ -1,7 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
 
-
 // Configure how notifications are handled when the app is in the foreground
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -13,13 +12,11 @@ Notifications.setNotificationHandler({
   }),
 });
 
-
 export interface NotificationSettings {
   enabled: boolean;
   frequency: "none" | "1hour" | "5hours" | "1day";
   timeBeforeDue: number; // in minutes
 }
-
 
 export interface TaskNotification {
   id: string;
@@ -31,7 +28,6 @@ export interface TaskNotification {
   points: number;
 }
 
-<<<<<<< Updated upstream
 export interface NotificationHistoryItem {
   id: string;
   title: string;
@@ -42,8 +38,6 @@ export interface NotificationHistoryItem {
   points?: number;
   read: boolean;
 }
-=======
->>>>>>> Stashed changes
 
 class NotificationService {
   private static instance: NotificationService;
@@ -53,9 +47,7 @@ class NotificationService {
     timeBeforeDue: 60, // 1 hour before due
   };
 
-
   private constructor() {}
-
 
   public static getInstance(): NotificationService {
     if (!NotificationService.instance) {
@@ -64,55 +56,34 @@ class NotificationService {
     return NotificationService.instance;
   }
 
-
   // Request notification permissions
   async requestPermissions(): Promise<boolean> {
     try {
-<<<<<<< Updated upstream
       const { status: existingStatus } =
         await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
 
       if (existingStatus !== "granted") {
-=======
-      
-      if (Platform.OS === 'web') return true;
-
-
-      const { status: existingStatus } = await Notifications.getPermissionsAsync();
-      let finalStatus = existingStatus;
-
-
-      if (existingStatus !== 'granted') {
->>>>>>> Stashed changes
         const { status } = await Notifications.requestPermissionsAsync();
         finalStatus = status;
       }
 
-<<<<<<< Updated upstream
       return finalStatus === "granted";
-=======
-
-      return finalStatus === 'granted';
->>>>>>> Stashed changes
     } catch (error) {
       console.error("Error requesting notification permissions:", error);
       return false;
     }
   }
 
-
   // Get current notification settings
   getNotificationSettings(): NotificationSettings {
     return { ...this.notificationSettings };
   }
 
-
   // Update notification settings
   updateNotificationSettings(settings: Partial<NotificationSettings>): void {
     this.notificationSettings = { ...this.notificationSettings, ...settings };
   }
-
 
   // Schedule a notification for a task
   async scheduleTaskNotification(task: {
@@ -129,38 +100,26 @@ class NotificationService {
         return null;
       }
 
-
       const dueDate = new Date(task.dueDate);
       const now = new Date();
 
-<<<<<<< Updated upstream
-=======
-
->>>>>>> Stashed changes
       // Calculate notification time based on settings
       const notificationTime = new Date(
         dueDate.getTime() - this.notificationSettings.timeBeforeDue * 60 * 1000
       );
 
-<<<<<<< Updated upstream
-=======
-
->>>>>>> Stashed changes
       // Don't schedule if the notification time has already passed
       if (notificationTime <= now) {
         console.log("Notification time already passed, not scheduling");
         return null;
       }
 
-<<<<<<< Updated upstream
       // Calculate seconds until notification should fire
       const secondsUntilNotification = Math.floor(
         (notificationTime.getTime() - now.getTime()) / 1000
       );
 
       console.log("seconds until notification:", secondsUntilNotification);
-=======
->>>>>>> Stashed changes
 
       const notificationId = await Notifications.scheduleNotificationAsync({
         content: {
@@ -174,27 +133,18 @@ class NotificationService {
           },
           sound: true,
         },
-<<<<<<< Updated upstream
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
           seconds: secondsUntilNotification,
           repeats: false,
         },
       });
-=======
-        // Use a date trigger object 
-        trigger: { date: notificationTime } as unknown as Notifications.NotificationTriggerInput
-      });
-
-
->>>>>>> Stashed changes
       return notificationId;
     } catch (error) {
       console.error("Error scheduling notification:", error);
       return null;
     }
   }
-
 
   // Schedule recurring notifications for upcoming tasks
   async scheduleUpcomingTaskNotifications(
@@ -211,28 +161,15 @@ class NotificationService {
       // Cancel all existing task notifications
       await this.cancelAllTaskNotifications();
 
-<<<<<<< Updated upstream
       if (!this.notificationSettings.enabled) {
-=======
-
-      if (!this.notificationSettings.enabled || this.notificationSettings.frequency === 'none') {
->>>>>>> Stashed changes
         return;
       }
 
-
       const now = new Date();
-<<<<<<< Updated upstream
       const upcomingTasks = tasks.filter((task) => {
         const dueDate = new Date(task.dueDate);
         return dueDate > now && !task.completed;
-=======
-      const upcomingTasks = tasks.filter(task => {
-        const d = new Date(task.dueDate);
-        return d > now && !task.completed;
->>>>>>> Stashed changes
       });
-
 
       // Schedule notifications for each upcoming task
       for (const task of upcomingTasks) {
@@ -242,7 +179,6 @@ class NotificationService {
       console.error("Error scheduling upcoming task notifications:", error);
     }
   }
-
 
   // Cancel a specific notification
   async cancelNotification(notificationId: string): Promise<void> {
@@ -272,11 +208,9 @@ class NotificationService {
     }
   }
 
-
   // Cancel all task notifications
   async cancelAllTaskNotifications(): Promise<void> {
     try {
-<<<<<<< Updated upstream
       const scheduledNotifications =
         await Notifications.getAllScheduledNotificationsAsync();
       const taskNotifications = scheduledNotifications.filter(
@@ -287,22 +221,11 @@ class NotificationService {
         await Notifications.cancelScheduledNotificationAsync(
           notification.identifier
         );
-=======
-      const scheduledNotifications = await Notifications.getAllScheduledNotificationsAsync();
-      const taskNotifications = scheduledNotifications.filter(
-        n => n.content.data?.taskId
-      );
-
-
-      for (const n of taskNotifications) {
-        await Notifications.cancelScheduledNotificationAsync(n.identifier);
->>>>>>> Stashed changes
       }
     } catch (error) {
       console.error("Error canceling all task notifications:", error);
     }
   }
-
 
   // Get all scheduled notifications
   async getScheduledNotifications(): Promise<
@@ -311,16 +234,10 @@ class NotificationService {
     try {
       return await Notifications.getAllScheduledNotificationsAsync();
     } catch (error) {
-<<<<<<< Updated upstream
       console.error("Error getting scheduled notifications:", error);
       return [];
-=======
-      console.error('Error getting scheduled notifications:', error);
-      return []
->>>>>>> Stashed changes
     }
   }
-
 
   // Handle notification received while app is in foreground
   addNotificationReceivedListener(
@@ -329,14 +246,12 @@ class NotificationService {
     return Notifications.addNotificationReceivedListener(listener);
   }
 
-
   // Handle notification tapped
   addNotificationResponseReceivedListener(
     listener: (response: Notifications.NotificationResponse) => void
   ) {
     return Notifications.addNotificationResponseReceivedListener(listener);
   }
-
 
   // Get notification frequency options
   getFrequencyOptions(): Array<{ value: string; label: string }> {
@@ -348,7 +263,6 @@ class NotificationService {
     ];
   }
 
-<<<<<<< Updated upstream
   // Convert frequency to minuetes
   getFrequencyInMinutes(frequency: string): number {
     const frequencyMap: { [key: string]: number } = {
@@ -356,21 +270,8 @@ class NotificationService {
       "1hour": 60,
       "5hours": 300,
       "1day": 1440,
-=======
-
-  // Convert frequency to minutes
-  getFrequencyInMinutes(frequency: string): number {
-    const map: Record<string, number> = {
-      none: 0,
-      '1hour': 60,
-      '2hours': 120,
-      '4hours': 240,
-      '6hours': 360,
-      '12hours': 720,
-      '1day': 1440,
->>>>>>> Stashed changes
     };
-    return map[frequency] ?? 60;
+    return frequencyMap[frequency] || 60;
   }
 
   // Notif history methods
@@ -458,11 +359,4 @@ class NotificationService {
   }
 }
 
-
 export default NotificationService;
-
-
-
-
-
-
