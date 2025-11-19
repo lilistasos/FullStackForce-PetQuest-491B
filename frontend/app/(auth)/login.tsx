@@ -3,19 +3,7 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 
-// Get API URL based on platform
-const getApiUrl = () => {
-  if (Platform.OS === 'android') {
-    // Android emulator uses 10.0.2.2, physical device needs your computer's IP
-    return __DEV__ ? "http://10.0.2.2:4000" : "http://10.0.2.2:4000";
-  } else if (Platform.OS === 'ios') {
-    // iOS simulator uses localhost
-    return __DEV__ ? "http://localhost:4000" : "http://localhost:4000";
-  } else {
-    // Web
-    return "http://localhost:4000";
-  }
-};
+import { getApiUrl } from '@/utils/api';
 
 export default function LoginScreen() {
   const router = useRouter();

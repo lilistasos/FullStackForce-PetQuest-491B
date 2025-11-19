@@ -1,6 +1,7 @@
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Platform } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
+import { getApiUrl } from '@/utils/api';
 
 // Get API URL based on platform
 const getApiUrl = () => {
@@ -23,8 +24,8 @@ export default function VerificationScreen() {
     const [code, setCode] = useState("");
     const [isCodeSent, setIsCodeSent] = useState(false);
     const [generatedCode, setGeneratedCode] = useState("");
-    const API_URL = getApiUrl();
-    
+    const API_URL = `${getApiUrl()}/api/auth`;
+
     const handleSendCode = async () => {
         try {
             const response = await fetch(`${API_URL}/api/auth/send-code`, {

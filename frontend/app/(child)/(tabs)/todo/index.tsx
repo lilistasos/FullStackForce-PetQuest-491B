@@ -1,24 +1,9 @@
-import React, { useState, useRef, useMemo, useEffect, useCallback } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Image, Pressable, Modal, TextInput, Animated, ScrollView } from "react-native";
+import React, { useState, useRef, useMemo, useEffect } from "react";
+import { View, Text, TouchableOpacity, FlatList, StyleSheet,  Image, ScrollView, Pressable, Modal, TextInput, Animated } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect } from 'expo-router';
-import { useTasks } from "@/contexts/TaskContext";
+import { useTasks, Task as TaskContextTask } from "@/contexts/TaskContext";
 import { useAuth } from "@/hooks/useAuth";
-import { useTheme } from "@/contexts/ThemeContext";
-import { usePet } from "@/contexts/PetContext";
-import { useAchievements } from "@/contexts/AchievementContext";
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { TodoCategoryPreferences } from '../account/preferences';
-
-const TODO_CATEGORIES_KEY = '@petquest:todoCategories';
-
-const defaultCategoryPreferences: TodoCategoryPreferences = {
-  Homework: true,
-  Chores: true,
-  Work: true,
-  Extra: true,
-};
 
 // Defines what a task looks like
 type Task = {
@@ -32,12 +17,8 @@ type Task = {
 };
 
 const ToDoScreen = ()=> {
-  const { getTasksByChild, toggleComplete: contextToggleComplete } = useTasks();
+  const { getTasksByChild, toggleComplete: contextToggleComplete, tasks: allTasks } = useTasks();
   const { user } = useAuth();
-  const { colors, isDarkMode } = useTheme();
-  const { selectedPet } = usePet();
-  const { recordTaskCompletion } = useAchievements();
-  const styles = useMemo(() => createStyles(colors, isDarkMode), [colors, isDarkMode]);
 
   // Current Date State
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -50,30 +31,10 @@ const ToDoScreen = ()=> {
   const [dropdown, setDropdown] = useState(false);
   const [sortType, setSortType] = useState(dropdownOptions[0]);
 
-  //states for delete task
-  const [deleteModal, setDeleteModal] = useState(false);
-  const [taskDelete, setTaskDelete] = useState<string | null>(null);
-
-  //states for edit task
-  const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
-  const [editModal, setEditModal] = useState(false);
-  const [editText, setEditText] = useState("");
-  const [editDescription, setEditDescription] = useState("");
-  const [editPoints, setEditPoints] = useState("");
-
-  //states for confirm modal
-  const [confirmModal, setConfirmModal] = useState(false);
-  const [taskToConfirm, setTaskToConfirm] = useState<Task | null>(null);
 
   //states for points popup
   const [pointsPopup, setPointsPopup] = useState({ visible: false, message: "" });
   const fadeAnim = useRef(new Animated.Value(0)).current;
-
-  const closeDropdown = () => {
-    if (dropdown) {
-      setDropdown(false);
-    }
-  };
 
   // Dropdown toggle function
   const toggleDropdown = () => {
@@ -86,16 +47,8 @@ const ToDoScreen = ()=> {
     setDropdown(false);
   };
 
-  // Delete task function
-  const deleteTask = (dateKey: string, taskId: string) => {
-    setTasksByDate((prev) => {
-      const updatedTasks = (prev[dateKey] || []).filter((task) => task.id !== taskId);
-      return { ...prev, [dateKey]: updatedTasks };
-    });
-  };
 
   const handlePressTask = (taskId: string) => {
-  closeDropdown();
   setShowDetails((prev) => (prev === taskId ? null : taskId)
   );
 }
@@ -105,58 +58,46 @@ const ToDoScreen = ()=> {
   const [expanded, setExpanded] = useState<{ [key: string]: boolean }>({
     Homework: false, // All categories are collaspsed at first
     Chores: false,
-    Work: false,
-    Extra: false,
-    Extracurriculars: false, // Keep for backward compatibility
+    Extracurriculars: false,
     Completed: false,
-  });
-
-  // Category preferences state
-  const [categoryPreferences, setCategoryPreferences] = useState<TodoCategoryPreferences>(defaultCategoryPreferences);
-
-  // Load category preferences function
-  const loadCategoryPreferences = useCallback(async () => {
-    try {
-      const savedCategories = await AsyncStorage.getItem(TODO_CATEGORIES_KEY);
-      if (savedCategories !== null) {
-        const parsed = JSON.parse(savedCategories);
-        setCategoryPreferences({ ...defaultCategoryPreferences, ...parsed });
-      }
-    } catch (error) {
-      console.error('Error loading category preferences:', error);
-    }
-  }, []);
-
-  // Load category preferences on mount and when screen comes into focus
-  useEffect(() => {
-    loadCategoryPreferences();
-  }, [loadCategoryPreferences]);
-
-  // Reload preferences when screen comes into focus (e.g., returning from preferences screen)
-  useFocusEffect(
-    useCallback(() => {
-      loadCategoryPreferences();
-    }, [loadCategoryPreferences])
-  );
-
-const [tasksByDate, setTasksByDate] = useState<{
-  [key: string]: Task[];
-}>({
-  "2025-10-20": [
-    { id: "1", text: "Read ch.1", completed: false, category: "Homework", description: "Read chapter 1 of history textbook", points: 10 },
-    { id: "2", text: "Clean kitchen", completed: false, category: "Chores", description: "Wash dishes and wipe counters", points: 5 },
-    { id: "3", text: "Clean room", completed: false, category: "Chores", description: "Tidy up and vacuum", points: 5 },
-    { id: "4", text: "Wash dishes", completed: false, category: "Chores", description: "Clean dirty dishes", points: 5 },
-    { id: "5", text: "Laundry", completed: false, category: "Chores", description: "Wash and fold clothes", points: 5 },
-  ],
-  "2025-10-21": [
-    { id: "6", text: "Math worksheet", completed: false, category: "Homework", description: "Complete assigned math worksheet", points: 10 },
-    { id: "7", text: "Soccer practice", completed: false, category: "Extracurriculars", description: "Attend soccer practice", points: 15 },
-  ],
-  "2025-10-22": [
-    { id: "8", text: "Take out trash", completed: false, category: "Chores", description: "Take out household trash", points: 5 },
-  ],
 });
+
+// Convert TaskContext tasks to tasksByDate format
+// Get tasks assigned to this child
+const childName = user?.firstName || '';
+const childTasks = useMemo(() => {
+  if (!childName) return [];
+  return getTasksByChild(childName);
+}, [childName, allTasks, getTasksByChild]);
+
+// Group tasks by date (using dueDate)
+const tasksByDate = useMemo(() => {
+  const grouped: { [key: string]: Task[] } = {};
+  
+  childTasks.forEach((task: TaskContextTask) => {
+    // Extract date from dueDate (ISO string)
+    const taskDate = task.dueDate ? task.dueDate.split('T')[0] : new Date().toISOString().split('T')[0];
+    
+    if (!grouped[taskDate]) {
+      grouped[taskDate] = [];
+    }
+    
+    // Convert TaskContext task to local Task format
+    // Store original category if not already stored
+    const originalCategory = task.originalCategory || task.category;
+    grouped[taskDate].push({
+      id: task.id.toString(),
+      text: task.text,
+      completed: task.completed,
+      category: task.completed ? 'Completed' : task.category,
+      originalCategory: originalCategory,
+      description: task.description,
+      points: task.points,
+    });
+  });
+  
+  return grouped;
+}, [childTasks]);
 
 // Converts current date to a string
 const formatDateKey = (date: Date) => date.toISOString().split("T")[0];
@@ -166,47 +107,18 @@ const tasks = tasksByDate[formattedKey] || [];
   // Helper functions for changing date
   // Able to move back and forth between days 
   const changeDate = (days: number) => {
-    closeDropdown();
     const newDate = new Date(currentDate);
     newDate.setDate(newDate.getDate() + days);
     setCurrentDate(newDate);
 }
 //Format date in a 3 line stagger
-const getOrdinalSuffix = (day: number): string => {
-  if (day > 3 && day < 21) return "th";
-  switch (day % 10) {
-    case 1:
-      return "st";
-    case 2:
-      return "nd";
-    case 3:
-      return "rd";
-    default:
-      return "th";
-  }
-};
-
 const weekday = currentDate.toLocaleDateString("en-US", { weekday: "long" });
-const dayNumber = currentDate.getDate();
-const ordinalSuffix = getOrdinalSuffix(dayNumber);
-const monthName = currentDate.toLocaleDateString("en-US", { month: "long" });
-const monthDay = `${monthName} ${dayNumber}${ordinalSuffix}`;
+const monthDay = currentDate.toLocaleDateString("en-US", {
+  month: "long",
+  day: "numeric",
+});
+const year = currentDate.getFullYear();
 
-// Handling Edit Save Logic
-  const handleEditSave = () => {
-    if (taskToEdit) {
-      setTasksByDate((prev) => {
-        const updatedTasks = prev[formattedKey].map((task) =>
-          task.id === taskToEdit.id
-            ? { ...task, text: editText, description: editDescription, points: parseInt(editPoints) || task.points }
-            : task
-        );
-        return { ...prev, [formattedKey]: updatedTasks };
-      });
-      setEditModal(false);
-      setTaskToEdit(null);
-    }
-  };
 
 // Points PopUp Function
 const showPopup = (message: string) => {
@@ -230,69 +142,34 @@ const showPopup = (message: string) => {
 };
 
 
-// Update toggleComplete
-const toggleComplete = (taskId: string) => {
-  setTasksByDate((prev) => {
-    const updatedDayTasks = (prev[formattedKey] || []).map((task) => {
-      if (task.id === taskId) {
-        if (task.completed && task.category === "Completed" && task.originalCategory) {
-          // unmark completed → move back to original
-          return {
-            ...task,
-            completed: false,
-            category: task.originalCategory,
-            originalCategory: undefined,
-          };
-        } else if (!task.completed && task.category !== "Completed") {
-          // mark as completed → move to Completed section
-          // Track achievement when task is completed
-          recordTaskCompletion();
-          return {
-            ...task,
-            completed: true,
-            originalCategory: task.category,
-            category: "Completed",
-          };
-        }
-      }
-      return task;
-    });
-    return { ...prev, [formattedKey]: updatedDayTasks };
-  });
+// Update toggleComplete - use TaskContext
+const toggleComplete = async (taskId: string | number) => {
+  try {
+    // Use TaskContext's toggleComplete (now async)
+    await contextToggleComplete(taskId);
+    
+    // The tasksByDate will update via useMemo when allTasks changes
+  } catch (error: any) {
+    console.error('Error toggling task completion:', error);
+    // You could show an alert here if needed
+  }
 };
 
-// Categories for tasks - filter based on preferences
-  // Map category IDs to preference keys (for backward compatibility, map Extracurriculars to Work)
-  const categoryMapping: { [key: string]: keyof TodoCategoryPreferences } = {
-    "Homework": "Homework",
-    "Chores": "Chores",
-    "Work": "Work",
-    "Extra": "Extra",
-    "Extracurriculars": "Work", // Map old category to Work preference
-  };
-
-  const allCategories = [
+// The four categories for tasks
+  const categories = [
     { id: "Homework", title: "Homework" },
     { id: "Chores", title: "Chores" },
-    { id: "Work", title: "Work" },
-    { id: "Extra", title: "Extra" },
-    { id: "Extracurriculars", title: "Extracurriculars" }, // Keep for backward compatibility
-    { id: "Completed", title: "Completed" }, // Always visible
+    { id: "Extracurriculars", title: "Extracurriculars" },
+    { id: "Completed", title: "Completed" },
   ];
-
-  // Filter categories based on preferences (Completed is always shown)
-  const categories = useMemo(() => {
-    return allCategories.filter((category) => {
-      if (category.id === "Completed") return true; // Always show Completed
-      const preferenceKey = categoryMapping[category.id];
-      if (!preferenceKey) return true; // Show if no mapping found (safety)
-      return categoryPreferences[preferenceKey] !== false;
-    });
-  }, [categoryPreferences]);
   const renderCategory = (category: { id: string; title: string }) => {
     const isExpanded = expanded[category.id];
     const tasks = tasksByDate[formattedKey] || [];
-    const categoryTasks = tasks.filter((t) => t.category === category.id);
+    // For "Completed" section, show all completed tasks
+    // For other sections, show tasks that match category AND are not completed
+    const categoryTasks = category.id === "Completed" 
+      ? tasks.filter((t) => t.completed === true)
+      : tasks.filter((t) => (t.originalCategory || t.category) === category.id && t.completed === false);
     //sort tasks based on selected sort
     switch(sortType) {
       case (dropdownOptions[1]):
@@ -315,16 +192,14 @@ const toggleComplete = (taskId: string) => {
         {/* Header Row (Category Title + Arrow) */}
         <TouchableOpacity
           style={styles.cardHeader}
-          onPress={() => {
-            closeDropdown();
-            setExpanded((prev) => ({ ...prev, [category.id]: !prev[category.id] }));
-          }}
+          onPress={() =>
+            setExpanded((prev) => ({ ...prev, [category.id]: !prev[category.id] }))
+          }
         >
           <Ionicons
             name={isExpanded ? "chevron-down" : "chevron-forward"}
             size={20}
-            color={colors.primary}
-            style={styles.cardHeaderIcon}
+            color="black"
           />
           <Text style={styles.cardTitle}>{category.title}</Text>
         </TouchableOpacity>
@@ -335,14 +210,8 @@ const toggleComplete = (taskId: string) => {
           {visibleTasks.length > 0 ? (
             visibleTasks.map((task) => (
               <View key={task.id} style={styles.taskItem}>
-                <TouchableOpacity onPress={() => {
-                  closeDropdown();
-                  if (!task.completed) {
-                    setTaskToConfirm(task);
-                    setConfirmModal(true);
-                  } else {
-                    toggleComplete(task.id);
-                  }
+                <TouchableOpacity onPress={async () => {
+                  await toggleComplete(task.id);
                 }}
                 >
                   <Ionicons
@@ -350,42 +219,35 @@ const toggleComplete = (taskId: string) => {
                       task.completed ? "checkmark-circle" : "ellipse-outline"
                     }
                     size={20}
-                    color={task.completed ? colors.primary : colors.textSecondary}
+                    color={task.completed ? "#0077B6" : "gray"}
                   />
                 </TouchableOpacity>
-                <View style={styles.taskDetailsColumn}>
-                  <Pressable onPress={() => handlePressTask(task.id)} style={styles.taskTitleRow}>
-                    <Ionicons
-                      name={showDetails === task.id ? "chevron-down" : "chevron-forward"}
-                      size={16}
-                      color={colors.primary}
-                      style={styles.taskChevronIcon}
-                    />
-                    <Text
-                      style={[
-                        styles.taskText,
-                        task.completed && styles.completedTaskText,
-                      ]}
-                    >
-                      {task.text}
-                    </Text>
-                  </Pressable>
+                <View style={{flex: 1, flexDirection: "column", marginLeft: 8}}>
+                <Pressable onPress={() => handlePressTask(task.id)}>
+                <Text
+                  style={[
+                    styles.taskText,
+                    task.completed && { textDecorationLine: "line-through" },
+                  ]}
+                >
+                  <Ionicons
+                    name={showDetails === task.id ? "chevron-down" : "chevron-forward"}
+                    size={16}
+                    color="gray"
+                    style={{marginRight: 6}}
+                  />
+                  {task.text}
+                  
+                </Text>
+                </Pressable>
                 
-                {/* Task Details (description, points) */}
+                {/* Task Details (description and points only) */}
                 {showDetails === task.id && (
                   <View style={{marginTop: 4}}>
-                    <Text style={styles.detailText}>Description: {task.description}</Text>
-                    <View style={styles.pointsBadge}>
-                      <Text style={[styles.pointsText, { color: colors.primary }]}>{task.points} pts</Text>
-                    </View>
-                    {/* Delete option removed for child view */}
-                    {/* Edit option removed for child view */}
+                    <Text style={{color: "#555", marginBottom: 4}}>Description: {task.description || "No description"}</Text>
+                    <Text style={{color: "#555"}}>Points: {task.points}</Text>
                   </View>
                 )}
-
-                {/* Delete Confirmation Modal */}
-                
-                {/* Delete modal removed for child view */}
                 </View>
               </View>
             ))
@@ -402,117 +264,70 @@ const toggleComplete = (taskId: string) => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
+    <SafeAreaView style={styles.container}>
+      {/* Top bar */}
+      <View style={styles.topBar}>
+      </View>
+
       {/* Header Section */}
       <View style={styles.header}>
-        {/* Avatar */}
-        <Image
-          source={selectedPet?.image || { uri: "https://cdn-icons-png.flaticon.com/512/1067/1067840.png" }}
-          style={styles.petImage}
-          resizeMode="contain"
-        />
+        <View style={styles.topRow}>
+          {/* Avatar */}
+          <Image
+            source={{
+              uri: "https://cdn-icons-png.flaticon.com/512/1067/1067840.png",
+            }}
+            style={styles.avatar}
+          />
 
-        {/* Date (centered + stacked) */}
-        <View style={styles.dateSection}>
-          <Text style={styles.weekday}>{weekday}</Text>
-          <Text style={styles.monthDay}>{`${monthDay}`}</Text>
-        </View>
+          {/* Date (centered + stacked) */}
+          <View style={styles.dateSection}>
+            <Text style={styles.weekday}>{weekday}</Text>
+            <Text style={styles.monthDay}>{monthDay},</Text>
+            <Text style={styles.year}>{year}</Text>
+          </View>
 
-        {/* Date navigation arrows */}
-        <View style={styles.chevronRow}>
-          <TouchableOpacity onPress={() => changeDate(-1)} style={styles.navButton}>
-            <Ionicons name="chevron-back" size={28} color={colors.primary} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => changeDate(1)} style={styles.navButton}>
-            <Ionicons name="chevron-forward" size={28} color={colors.primary} />
-          </TouchableOpacity>
+          {/* Date navigation arrows */}
+          <View style={styles.arrowContainer}>
+            <TouchableOpacity onPress={() => changeDate(-1)}>
+              <Ionicons name="chevron-back" size={26} color="#0077B6" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => changeDate(1)}>
+              <Ionicons name="chevron-forward" size={26} color="#0077B6" />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
-      {/* Task Categories */}
-      <ScrollView
-        contentContainerStyle={styles.contentContainer}
-        showsVerticalScrollIndicator={false}
-        onTouchStart={() => {
-          if (dropdown) {
-            setDropdown(false);
-          }
-        }}
-      >
-        <View style={styles.filterWrapper}>
-          <TouchableOpacity onPress={toggleDropdown} style={styles.filterButton}>
-            <Ionicons name="funnel-outline" size={20} color={colors.primary} />
-          </TouchableOpacity>
-          {dropdown && (
-            <>
-              <TouchableOpacity style={styles.dropdownBackdrop} onPress={() => setDropdown(false)} />
-              <View style={styles.dropdown}>
-                <TouchableOpacity onPress={() => handleSort(dropdownOptions[0])} style={styles.dropdownOption}>
-                  <Text style={styles.dropdownOptionText}>Default</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleSort(dropdownOptions[1])} style={styles.dropdownOption}>
-                  <Text style={styles.dropdownOptionText}>Points: High to Low</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleSort(dropdownOptions[2])} style={styles.dropdownOption}>
-                  <Text style={styles.dropdownOptionText}>Points: Low to High</Text>
-                </TouchableOpacity>
-              </View>
-            </>
-          )}
-        </View>
-        {categories.map((category) => (
-          <View key={category.id}>{renderCategory(category)}</View>
-        ))}
-      </ScrollView>
+      {/*Dropdown for sorting tasks */}
 
-      {/* Edit Task Modal */}
-      <Modal visible={editModal} animationType="slide" transparent={true}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>Edit Task</Text>
-            <TextInput placeholder="Task name" placeholderTextColor={colors.textSecondary} value={editText} onChangeText={setEditText} style={styles.input} />
-            <TextInput placeholder="Description" placeholderTextColor={colors.textSecondary} value={editDescription} onChangeText={setEditDescription} style={styles.input} />
-            <TextInput placeholder="Points" placeholderTextColor={colors.textSecondary} keyboardType="numeric" value={editPoints} onChangeText={setEditPoints} style={styles.input} />
-            <View style={styles.modalButtonRow}>
-              <TouchableOpacity onPress={() => setEditModal(false)} style={styles.cancelButton}>
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={handleEditSave} style={styles.saveButton}>
-                <Text style={styles.saveButtonText}>Save</Text>
-              </TouchableOpacity>
-            </View>
+      <View style={styles.dropdownContainer}>
+        <TouchableOpacity onPress={toggleDropdown}>
+          <Ionicons name="funnel-outline" size = {20} color="gray"/>
+        </TouchableOpacity>
+        {dropdown && (
+          <View style={styles.dropdown}>
+            <TouchableOpacity onPress={() => handleSort(dropdownOptions[0])} style={styles.dropdownOption}>
+              <Text>Default</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => handleSort(dropdownOptions[1])} style={styles.dropdownOption}>
+              <Text>Points: High to Low</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => handleSort(dropdownOptions[2])} style={styles.dropdownOption}>
+              <Text>Points: Low to High</Text>
+            </TouchableOpacity>
           </View>
-        </View>
-      </Modal>
+        )}
+      </View>
 
-      {/* Completion Confirmation Modal */}
-      <Modal visible={confirmModal} animationType="fade" transparent={true}>
-        <View style={styles.modalOverlay}>
-          {taskToConfirm && (
-            <View style={styles.modalBox}>
-              <Text style={styles.modalTitle}>Complete this task?</Text>
-              <Text style={styles.modalBodyText}>Task: {taskToConfirm.text}</Text>
-              <Text style={styles.modalBodyText}>Description: {taskToConfirm.description}</Text>
-              <Text style={styles.modalBodyText}>Points: {taskToConfirm.points}</Text>
-              <View style={styles.modalButtonRow}>
-                <TouchableOpacity onPress={() => setConfirmModal(false)} style={styles.cancelButton}>
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => {
-                    toggleComplete(taskToConfirm.id);
-                    setConfirmModal(false);
-                    setTaskToConfirm(null);
-                  }}
-                  style={styles.saveButton}
-                >
-                  <Text style={styles.saveButtonText}>Confirm</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
-        </View>
-      </Modal>
+      {/* Task Categories; renders all categories vertically,flatlist for efficient scrolling */}
+      <FlatList
+        data={categories}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => renderCategory(item)}
+        contentContainerStyle={{ paddingBottom: 100 }}
+      />
+
       {/* Animated points gained popup */}
         {pointsPopup.visible && (
           <Animated.View style={[styles.pointsPopup, { opacity: fadeAnim }]}>

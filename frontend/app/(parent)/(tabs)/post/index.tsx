@@ -1,34 +1,28 @@
 // Parent chooses which child to create a task for
 
 import React, { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, FlatList, Image, Dimensions, Platform } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, FlatList, Image, Dimensions, Platform, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/hooks/useAuth";
-
-const getApiUrl = () => {
-  if (Platform.OS === 'android') {
-    return __DEV__ ? "http://10.0.2.2:4000" : "http://10.0.2.2:4000";
-  } else if (Platform.OS === 'ios') {
-    return __DEV__ ? "http://localhost:4000" : "http://localhost:4000";
-  } else {
-    return "http://localhost:4000";
-  }
-};
+import { useTheme } from '@/contexts/ThemeContext';
+import { getApiUrl } from '@/utils/api';
 
 const ParentSelectChildScreen = () => {
   type ChildAccount = {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email?: string;
-};
+    id: string;
+    firstName: string;
+    lastName: string;
+    email?: string;
+  };
+  
   const [children, setChildren] = useState<ChildAccount[]>([]);
   const [selectedChild, setSelectedChild] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const selectedChildData = children.find(child => child.id === selectedChild);
-
   const { token } = useAuth();
+  const { colors, isDarkMode } = useTheme();
   
   const router = useRouter();
   const screenWidth = Dimensions.get('window').width;
@@ -36,22 +30,75 @@ const ParentSelectChildScreen = () => {
 
   // Fetch children from backend
   useEffect(() => {
-    const loadChildren = async () => {
-      const api = getApiUrl();
+    const fetchChildren = async () => {
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+
       try {
-        const res = await fetch(`${api}/api/parent/children`, {
+        const apiUrl = getApiUrl();
+        const response = await fetch(`${apiUrl}/api/users/children`, {
+          method: 'GET',
           headers: {
-            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
           },
         });
-        const data = await res.json();
-        setChildren(data);
-      } catch (err) {
-        console.log("Error fetching children:", err);
+
+        if (response.ok) {
+          const data = await response.json();
+          setChildren(data.map((child: any) => ({
+            id: child.id.toString(),
+            firstName: child.firstName,
+            lastName: child.lastName,
+            email: child.email,
+          })));
+        } else {
+          console.error('Failed to fetch children');
+        }
+      } catch (error) {
+        console.error('Error fetching children:', error);
+      } finally {
+        setLoading(false);
       }
     };
-    loadChildren();
-  }, []);
+
+    fetchChildren();
+  }, [token]);
+
+  // Reset selected child when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      setSelectedChild(null);
+    }, [])
+  );
+
+  // Create styles using the theme
+  const styles = createStyles(colors, isDarkMode);
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#0077B6" />
+          <Text style={styles.loadingText}>Loading children...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (children.length === 0) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <Text style={styles.header}>Select a child to create a task</Text>
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>No children found in your family.</Text>
+          <Text style={styles.emptyText}>Make sure child accounts are registered with your family code.</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -65,7 +112,7 @@ const ParentSelectChildScreen = () => {
       <FlatList
         data={children}
         numColumns={2}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.id.toString()}
         columnWrapperStyle={styles.row}
         renderItem={({ item }) => (
           <TouchableOpacity
@@ -209,5 +256,27 @@ const createStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     color: "white",
     fontSize: 28,
     fontWeight: "bold",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: "#0077B6",
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: "#666",
+    textAlign: "center",
+    marginBottom: 10,
   },
 });

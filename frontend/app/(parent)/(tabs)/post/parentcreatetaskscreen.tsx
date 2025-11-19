@@ -50,6 +50,7 @@ const ParentCreateTaskScreen = () => {
     const { childId } = useLocalSearchParams();
     // API Authorization
     const { token } = useAuth();
+    const { colors, isDarkMode } = useTheme();
 
     const [taskName, setTaskName] = useState("");
     const [category, setCategory] = useState("");
@@ -64,10 +65,92 @@ const ParentCreateTaskScreen = () => {
     const [note, setNote] = useState("");
 
     const onDateChange = (_event: any, selectedDate?: Date) => {
-    if (Platform.OS === "android") setShowDatePicker(false);
-    if (selectedDate) setDate(selectedDate);
+      if (Platform.OS === "android") {
+        setShowDatePicker(false);
+      }
+      if (selectedDate) {
+        setDate(selectedDate);
+        if (Platform.OS === "ios") {
+          setShowDatePicker(false);
+        }
+      } else if (Platform.OS === "ios") {
+        setShowDatePicker(false);
+      }
     };
 
+    const handleAssignTask = async () => {
+      if (!taskName || !category) {
+        Alert.alert("Error", "Please fill in all required fields");
+        return;
+      }
+
+      try {
+        // Create the task
+        await addTask({
+          text: taskName,
+          category: category,
+          description: note || '',
+          points: 0, // You can add points logic later
+          dueDate: date.toISOString(),
+          assignedTo: childName as string,
+          assignedBy: user?.firstName || 'Parent',
+        });
+        
+        Alert.alert(
+          "Task Sent!",
+          `Task successfully assigned to ${childName}!`,
+          [
+            {
+              text: "Create Another Task",
+              onPress: () => {
+                resetForm();
+                router.back();
+              },
+            },
+            {
+              text: "Go to Homepage",
+              onPress: () => {
+                // Replace current screen with post index to reset stack
+                router.replace("/(parent)/(tabs)/post");
+                // Navigate to calendar immediately
+                router.push("/(parent)/(tabs)/calendar");
+              },
+            },
+          ],
+          { cancelable: false }
+        );
+      } catch (error: any) {
+        console.error('Error creating task:', error);
+        Alert.alert(
+          "Error",
+          error.message || "Failed to create task. Please try again."
+        );
+      }
+    };
+
+    const handleCancel = () => {
+      Alert.alert(
+        "Discard Task?",
+        "Are you sure you want to discard this task? All your changes will be lost.",
+        [
+          {
+            text: "Go Back",
+            style: "cancel",
+            onPress: () => {
+              // Do nothing, just close the alert
+            },
+          },
+          {
+            text: "Discard",
+            style: "destructive",
+            onPress: () => {
+              router.back(); // Navigate back to previous screen
+            },
+          },
+        ],
+        { cancelable: true }
+      );
+    };
     const handleCategorySelect = (selectedCategory: string) => {
       setCategory(selectedCategory);
       setShowCategoryDropdown(false);
@@ -119,6 +202,9 @@ const ParentCreateTaskScreen = () => {
         console.log(err);
       }
     };
+
+    // Create styles using the theme
+    const styles = createStyles(colors, isDarkMode);
 
     return (
       <SafeAreaView style={styles.container}>
@@ -302,143 +388,142 @@ const ParentCreateTaskScreen = () => {
     );
   };
     
-    export default ParentCreateTaskScreen;
-    
-    const createStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
-      container: {
-        flex: 1,
-        backgroundColor: colors.background,
-        padding: 20,
-      },
-      header: {
-        fontSize: 26,
-        fontWeight: "700",
-        color: colors.primary,
-        textAlign: "center",
-        marginBottom: 30,
-      },
-      label: {
-        fontSize: 16,
-        fontWeight: "600",
-        color: colors.text,
-        marginBottom: 6,
-      },
-      input: {
-        borderWidth: 1,
-        borderColor: colors.border,
-        borderRadius: 10,
-        padding: 12,
-        marginBottom: 20,
-        fontSize: 16,
-        color: colors.text,
-        backgroundColor: colors.surface,
-      },
-      categoryInputContainer: {
-        flexDirection: "row",
-        alignItems: "center",
-        borderWidth: 1,
-        borderColor: colors.border,
-        borderRadius: 10,
-        marginBottom: 20,
-        backgroundColor: colors.surface,
-      },
-      categoryInput: {
-        flex: 1,
-        padding: 12,
-        fontSize: 16,
-        color: colors.text,
-      },
-      dropdownIconButton: {
-        padding: 12,
-        justifyContent: "center",
-        alignItems: "center",
-      },
-      dateInputContainer: {
-        flexDirection: "row",
-        alignItems: "center",
-        borderWidth: 1,
-        borderColor: colors.border,
-        borderRadius: 10,
-        marginBottom: 20,
-        backgroundColor: colors.surface,
-      },
-      dateInput: {
-        flex: 1,
-        padding: 12,
-        fontSize: 16,
-        color: colors.text,
-      },
-      calendarIconButton: {
-        padding: 12,
-        justifyContent: "center",
-        alignItems: "center",
-      },
-      buttonRow: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        marginTop: 20,
-      },
-      cancelButton: {
-        flex: 1,
-        backgroundColor: colors.secondary,
-        padding: 15,
-        borderRadius: 10,
-        alignItems: "center",
-        marginRight: 10,
-      },
-      assignButton: {
-        flex: 1,
-        backgroundColor: colors.primary,
-        padding: 15,
-        borderRadius: 10,
-        alignItems: "center",
-        marginLeft: 10,
-      },
-      buttonText: {
-        color: "#fff",
-        fontSize: 18,
-        fontWeight: "700",
-      },
-      modalOverlay: {
-        flex: 1,
-        backgroundColor: isDarkMode ? "rgba(0, 0, 0, 0.7)" : "rgba(0, 0, 0, 0.5)",
-        justifyContent: "center",
-        alignItems: "center",
-      },
-      dropdownContainer: {
-        backgroundColor: colors.surface,
-        borderRadius: 12,
-        width: "80%",
-        maxHeight: 300,
-        shadowColor: "#000",
-        shadowOffset: {
-          width: 0,
-          height: 2,
-        },
-        shadowOpacity: isDarkMode ? 0.4 : 0.25,
-        shadowRadius: 4,
-        elevation: 5,
-        borderWidth: 1,
-        borderColor: colors.border,
-      },
-      categoryItem: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.border,
-      },
-      categoryItemSelected: {
-        backgroundColor: isDarkMode ? colors.primary + "40" : colors.primary + "20",
-      },
-      categoryItemText: {
-        fontSize: 16,
-        color: colors.text,
-      },
-      categoryItemTextSelected: {
-        color: colors.primary,
-        fontWeight: "600",
-      },
-    });
+export default ParentCreateTaskScreen;
 
+const createStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+    padding: 20,
+  },
+  header: {
+    fontSize: 26,
+    fontWeight: "700",
+    color: colors.primary,
+    textAlign: "center",
+    marginBottom: 30,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: colors.text,
+    marginBottom: 6,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 20,
+    fontSize: 16,
+    color: colors.text,
+    backgroundColor: colors.surface,
+  },
+  categoryInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    marginBottom: 20,
+    backgroundColor: colors.surface,
+  },
+  categoryInput: {
+    flex: 1,
+    padding: 12,
+    fontSize: 16,
+    color: colors.text,
+  },
+  dropdownIconButton: {
+    padding: 12,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  dateInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    marginBottom: 20,
+    backgroundColor: colors.surface,
+  },
+  dateInput: {
+    flex: 1,
+    padding: 12,
+    fontSize: 16,
+    color: colors.text,
+  },
+  calendarIconButton: {
+    padding: 12,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  buttonRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 20,
+  },
+  cancelButton: {
+    flex: 1,
+    backgroundColor: colors.secondary,
+    padding: 15,
+    borderRadius: 10,
+    alignItems: "center",
+    marginRight: 10,
+  },
+  assignButton: {
+    flex: 1,
+    backgroundColor: colors.primary,
+    padding: 15,
+    borderRadius: 10,
+    alignItems: "center",
+    marginLeft: 10,
+  },
+  buttonText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: isDarkMode ? "rgba(0, 0, 0, 0.7)" : "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  dropdownContainer: {
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    width: "80%",
+    maxHeight: 300,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: isDarkMode ? 0.4 : 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  categoryItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  categoryItemSelected: {
+    backgroundColor: isDarkMode ? colors.primary + "40" : colors.primary + "20",
+  },
+  categoryItemText: {
+    fontSize: 16,
+    color: colors.text,
+  },
+  categoryItemTextSelected: {
+    color: colors.primary,
+    fontWeight: "600",
+  },
+});

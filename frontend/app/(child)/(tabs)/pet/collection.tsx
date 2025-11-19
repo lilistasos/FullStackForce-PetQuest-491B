@@ -1,8 +1,18 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Modal, Platform } from "react-native";
 import { usePet } from "@/contexts/PetContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/hooks/useAuth";
+
+const getApiUrl = () => {
+  if (Platform.OS === 'android') {
+    return __DEV__ ? "http://10.0.2.2:4000" : "http://10.0.2.2:4000";
+  } else if (Platform.OS === 'ios') {
+    return __DEV__ ? "http://localhost:4000" : "http://localhost:4000";
+  } else {
+    return "http://localhost:4000";
+  }
+};
 
 interface CollectionItem {
   id: string;
@@ -10,6 +20,7 @@ interface CollectionItem {
   icon: string;
   selected?: boolean;
   owned: boolean;
+  level: number;
 }
 
 interface BackendAccessory {
@@ -30,6 +41,7 @@ interface BackendPet {
   isVisible: boolean;
   cost: number;
   accessories: BackendAccessory[];
+  level: number;
 }
 
 const petKeyFromName = (name: string) =>
@@ -44,14 +56,16 @@ export default function CollectionScreen() {
   const [backendPets, setBackendPets] = useState<BackendPet[]>([]);
   const [loading, setLoading] = useState(false);
 
+  const [showPet, setShowPet] = useState<CollectionItem | null>(null);
+  const [ petModal, setPetModal ] = useState(false);
 
   const staticCollectionItems: CollectionItem[] = [
-    { id: "dragon", name: "Dragon", icon: "", owned: true },
-    { id: "cat", name: "Cat", icon: "", owned: true },
-    { id: "bird", name: "Bird", icon: "", owned: false },
-    { id: "dog", name: "Dog", icon: "", owned: false },
-    { id: "rabbit", name: "Rabbit", icon: "", owned: false },
-    { id: "hamster", name: "Hamster", icon: "", owned: false },
+    { id: "dragon", name: "Dragon", icon: "", owned: true, level: 8 },
+    { id: "cat", name: "Cat", icon: "", owned: true, level: 5 },
+    { id: "bird", name: "Bird", icon: "", owned: false, level: 0 },
+    { id: "dog", name: "Dog", icon: "", owned: false, level: 0 },
+    { id: "rabbit", name: "Rabbit", icon: "", owned: false, level: 0 },
+    { id: "hamster", name: "Hamster", icon: "", owned: false, level: 0 },
   ];
 
   const collectionItems: CollectionItem[] =
@@ -61,6 +75,7 @@ export default function CollectionScreen() {
           name: p.name,
           icon: "",
           owned: p.isUnlocked,
+          level: p.level,
         }))
       : staticCollectionItems;
 
@@ -70,8 +85,14 @@ export default function CollectionScreen() {
         return require("@/assets/images/pdragon.png");
       case "cat":
         return require("@/assets/images/cat.png");
+      case "dog":
+        return require("@/assets/images/fbdog.png");
+      case "lion":
+        return require("@/assets/images/lion.png");
+      case "unicorn":
+        return require("@/assets/images/unicorn.png");
       default:
-        return require("@/assets/images/green-dragon.png"); // Default image
+        return require("@/assets/images/green-dragon.png"); // fallback
     }
   };
 
@@ -82,7 +103,8 @@ export default function CollectionScreen() {
     const loadPets = async () => {
       try {
         setLoading(true);
-        const res = await fetch("http://10.0.2.2:4000/api/pets", {
+        const API_URL = getApiUrl();
+        const res = await fetch(`${API_URL}/api/pets`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -142,8 +164,9 @@ export default function CollectionScreen() {
       if (!backendPet) return;
 
       try {
+        const API_URL = getApiUrl();
         await fetch(
-          `http://10.0.2.2:4000/api/pets/${backendPet.id}/visibility`,
+          `${API_URL}/api/pets/${backendPet.id}/visibility`,
           {
             method: "PATCH",
             headers: {
@@ -159,50 +182,52 @@ export default function CollectionScreen() {
     }
   };
 
+  const handleShowPet = (item : CollectionItem) => {
+    setShowPet(item);
+    setPetModal(true);
+  };
 
   const renderCollectionItem = (item: CollectionItem) => (
+    //<View>
     <TouchableOpacity 
       key={item.id} 
       style={styles.itemContainer}
-      onPress={() => handlePetSelect(item.id)}
+      // onPress={() => handlePetSelect(item.id)}
+      onPress={() => handleShowPet(item)}
       disabled={!item.owned}
       activeOpacity={item.owned ? 0.7 : 1}
     >
       <View style={[
         styles.itemBox,
-        { backgroundColor: item.owned ? colors.background : colors.surface, borderColor: colors.primary },
-        selectedPet.id === item.id && item.owned && { borderWidth: 4, borderColor: colors.primary },
-        !item.owned && { borderColor: colors.border }
-      ]}>
-        {item.id === "dragon" ? (
-          <Image 
-            source={require("@/assets/images/pdragon.png")} 
-            style={[
-              styles.itemImage,
-              !item.owned && styles.grayedOutImage
-            ]}
-            resizeMode="contain"
-          />
-        ) : item.id === "cat" ? (
-          <Image 
-            source={require("@/assets/images/cat.png")} 
-            style={[
-              styles.itemImage,
-              !item.owned && styles.grayedOutImage
-            ]}
-            resizeMode="contain"
-          />
-        ) : item.owned ? (
-          <Text style={[styles.itemTitle, { color: colors.text }]}>{item.name}</Text>
-        ) : (
-          // Empty box for unowned pets - no text
-          null
-        )}
-      </View>
-    </TouchableOpacity>
-  );
+        {
+          backgroundColor: item.owned ? colors.background : colors.surface,
+          borderColor: colors.primary,
+        },
+        selectedPet.id === item.id && item.owned && {
+          borderWidth: 4,
+          borderColor: colors.primary,
+        },
+        !item.owned && { borderColor: colors.border },
+      ]}
+    >
+      {["dragon", "cat", "dog", "lion", "unicorn"].includes(item.id) ? (
+        <Image
+          source={getPetImage(item.id)}
+          style={[styles.itemImage, !item.owned && styles.grayedOutImage]}
+          resizeMode="contain"
+        />
+      ) : item.owned ? (
+        <Text style={[styles.itemTitle, { color: colors.text }]}>
+          {item.name}
+        </Text>
+      ) : null}
+    </View>
+  </TouchableOpacity>
+);
+
 
   return (
+    <>
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]} showsVerticalScrollIndicator={false}>
       <View style={styles.gridContainer}>
         <View style={styles.grid}>
@@ -210,6 +235,57 @@ export default function CollectionScreen() {
         </View>
       </View>
     </ScrollView>
+
+    {/* Pet Selection Modal*/}
+     {showPet && (
+      <Modal
+        visible={petModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => {
+          setPetModal(false);
+          setShowPet(null);
+        }}>
+          <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)'}}>
+            <View style={{backgroundColor: 'white', padding: 20, borderRadius: 10, width: '80%', alignItems: 'center'}}>
+              <View style={{flexDirection: 'column', justifyContent: 'space-between', width: '100%', alignItems: "center"}}>
+                <Image
+                  source={getPetImage(showPet.id)}
+                  style={{width: 150, height: 150}}
+                  resizeMode='contain'
+                />
+                {/* <View style={{flex: 1, alignItems: 'center', marginTop: 10}}> */}
+                <Text style={{fontSize: 28, fontWeight: 'bold', marginBottom: 10, color: 'black'}}>
+                  {showPet.name}
+                </Text>
+                {showPet.owned ? (
+                  <Text style={{fontSize: 20, marginBottom: 20}}>
+                    Level: {showPet.level}
+                  </Text> ) : (
+                  <Text style={{fontSize: 16, marginBottom: 20, color: 'red'}}>
+                    You do not own this pet yet.
+                  </Text>
+                  )
+                }
+                <View style={{flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginTop: 24, gap: 12, alignItems: 'center'}}>
+                <TouchableOpacity style={{backgroundColor: 'red', padding: 10, borderRadius: 5, marginBottom: 10, marginLeft: 25}}
+                onPress={() => {setPetModal(false); setShowPet(null)}}>
+                  <Text>Close</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={{backgroundColor: 'green', padding: 10, borderRadius: 5, marginBottom: 10, marginRight: 25}} 
+                onPress={() => {handlePetSelect(showPet.id); setPetModal(false); setShowPet(null);}}>
+                  <Text>Select</Text>
+                </TouchableOpacity>
+                </View>
+              {/* </View> */}
+              </View>
+              
+            </View>
+          </View>
+      </Modal>
+    )}
+    
+    </>
   );
 }
 

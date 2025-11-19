@@ -8,6 +8,11 @@ import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import HamburgerMenu from '@/components/HamburgerMenu';
 import { useTheme } from '@/contexts/ThemeContext';
+import { NewTaskProvider } from '@/contexts/NewTaskContext';
+import NewTaskPopup from '@/components/NewTaskPopup';
+import NewTaskDetector from '@/components/NewTaskDetector';
+import { useTasks } from '@/contexts/TaskContext';
+
 
 // Function to calculate luminance and determine text color
 const getContrastColor = (backgroundColor: string): string => {
@@ -87,8 +92,23 @@ export default function ChildLayout() {
         setHeaderTitle('Calendar');
         setIsSubPage(false);
       } else if (tabName === '(tabs)/todo') {
-        setHeaderTitle('To-Do');
-        setIsSubPage(false);
+        // setHeaderTitle('To-Do');
+        // setIsSubPage(false);
+        if (activeTabRoute.state && activeTabRoute.state.routes && activeTabRoute.state.index !== undefined) {
+          const todoRoute = activeTabRoute.state.routes[activeTabRoute.state.index];
+          const todoPageName = todoRoute?.name || 'index';
+
+          setIsSubPage(todoPageName !== 'index');
+
+          if (todoPageName === 'task-history') setHeaderTitle('Task History');
+          else {
+            setHeaderTitle('To-Do');
+            setIsSubPage(false);
+          }
+        } else {
+          setHeaderTitle('To-Do');
+          setIsSubPage(false);
+        }
       } else if (tabName === '(tabs)/account') {
         if (activeTabRoute.state && activeTabRoute.state.routes && activeTabRoute.state.index !== undefined) {
           const accountRoute = activeTabRoute.state.routes[activeTabRoute.state.index];
@@ -125,6 +145,7 @@ export default function ChildLayout() {
   }, [navigationState, segments]);
 
   return (
+    <NewTaskProvider>
     <HamburgerMenu 
       visible={menuVisible} 
       onClose={() => setMenuVisible(false)}
@@ -194,6 +215,11 @@ export default function ChildLayout() {
         }}
       />
     </Tabs>
+
+
     </HamburgerMenu>
+     <NewTaskDetector />
+     <NewTaskPopup />
+     </NewTaskProvider>
   );
 }

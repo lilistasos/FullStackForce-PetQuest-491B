@@ -1,2 +1,6 @@
 node_modules
 runscript.sh
+.env
+.env.local
+.env.*.local
+frontend/utils/api.config.local.ts
