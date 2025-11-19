@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Modal } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Modal, Platform } from "react-native";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAchievements } from "@/contexts/AchievementContext";
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -12,7 +12,7 @@ interface ShopItem {
   price: number;
   owned: boolean;
   backendId?: number;
-  type: "pet" | "accessory"; 
+  type: "pet" | "accessory";
 }
 
 interface ShopData {
@@ -53,6 +53,16 @@ interface UserMe {
 }
 
 type ShopTab = keyof ShopData;
+
+const getApiUrl = () => {
+  if (Platform.OS === 'android') {
+    return __DEV__ ? "http://10.0.2.2:4000" : "http://10.0.2.2:4000";
+  } else if (Platform.OS === 'ios') {
+    return __DEV__ ? "http://localhost:4000" : "http://localhost:4000";
+  } else {
+    return "http://localhost:4000";
+  }
+};
 
 const petKeyFromName = (name: string) =>
   name.toLowerCase().replace(/\s+/g, "-");
@@ -104,11 +114,12 @@ export default function ShopScreen() {
 
     const loadShop = async () => {
       try {
+        const API_BASE = getApiUrl();
         const [meRes, petsRes] = await Promise.all([
-          fetch("http://10.0.2.2:4000/api/users/me", {
+          fetch(`${API_BASE}/api/users/me`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
-          fetch("http://10.0.2.2:4000/api/pets", {
+          fetch(`${API_BASE}/api/pets`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
         ]);
@@ -167,71 +178,71 @@ export default function ShopScreen() {
   };
 
   const confirmPurchase = async () => {
-  if (!itemToBuy || !token || !itemToBuy.backendId) {
-    setShowConfirmModal(false);
-    setItemToBuy(null);
-    return;
-  }
-
-  // Double-check in case UI got out of sync
-  if (userCoins < itemToBuy.price || itemToBuy.owned) {
-    setShowConfirmModal(false);
-    setItemToBuy(null);
-    return;
-  }
-
-  try {
-    const res = await fetch("http://10.0.2.2:4000/api/shop/purchase", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        type: itemToBuy.type,       // "pet" | "accessory"
-        id: itemToBuy.backendId,    // DB ID
-      }),
-    });
-
-    if (!res.ok) {
-      console.log("Purchase failed:", await res.text());
+    if (!itemToBuy || !token || !itemToBuy.backendId) {
       setShowConfirmModal(false);
       setItemToBuy(null);
       return;
     }
 
-    const data = await res.json(); // { success: true, points }
-    setUserCoins(data.points);     // update coins from backend
+    // Double-check in case UI got out of sync
+    if (userCoins < itemToBuy.price || itemToBuy.owned) {
+      setShowConfirmModal(false);
+      setItemToBuy(null);
+      return;
+    }
 
-    // Now update local owned state like before
-    setShopItems((prevItems) => {
-      const updatedItems: ShopData = {
-        pets: [...prevItems.pets],
-        customization: [...prevItems.customization],
-      };
+    try {
+      const API_BASE = getApiUrl();
+      const res = await fetch(`${API_BASE}/api/shop/purchase`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          type: itemToBuy.type,       // "pet" | "accessory"
+          id: itemToBuy.backendId,    // DB ID
+        }),
+      });
 
-      const currentTab = itemToBuy.type === "pet" ? "pets" : "customization";
-      const idx = updatedItems[currentTab].findIndex(
-        (i) => i.id === itemToBuy.id
-      );
-
-      if (idx !== -1) {
-        updatedItems[currentTab][idx] = {
-          ...updatedItems[currentTab][idx],
-          owned: true,
-        };
+      if (!res.ok) {
+        console.log("Purchase failed:", await res.text());
+        setShowConfirmModal(false);
+        setItemToBuy(null);
+        return;
       }
 
-      return updatedItems;
-    });
-  } catch (err) {
-    console.log("Error during purchase:", err);
-  } finally {
-    setShowConfirmModal(false);
-    setItemToBuy(null);
-  }
-};
+      const data = await res.json(); // { success: true, points }
+      setUserCoins(data.points);     // update coins from backend
 
+      // Now update local owned state like before
+      setShopItems((prevItems) => {
+        const updatedItems: ShopData = {
+          pets: [...prevItems.pets],
+          customization: [...prevItems.customization],
+        };
+
+        const currentTab = itemToBuy.type === "pet" ? "pets" : "customization";
+        const idx = updatedItems[currentTab].findIndex(
+          (i) => i.id === itemToBuy.id
+        );
+
+        if (idx !== -1) {
+          updatedItems[currentTab][idx] = {
+            ...updatedItems[currentTab][idx],
+            owned: true,
+          };
+        }
+
+        return updatedItems;
+      });
+    } catch (err) {
+      console.log("Error during purchase:", err);
+    } finally {
+      setShowConfirmModal(false);
+      setItemToBuy(null);
+    }
+  };
 
   const cancelPurchase = () => {
     setShowConfirmModal(false);
@@ -239,115 +250,114 @@ export default function ShopScreen() {
   };
 
   const renderShopItem = (item: ShopItem) => {
-  const isPet =
-    item.id === "dragon" ||
-    item.id === "cat" ||
-    item.id === "dog" ||
-    item.id === "lion" ||
-    item.id === "unicorn";
+    const isPet =
+      item.id === "dragon" ||
+      item.id === "cat" ||
+      item.id === "dog" ||
+      item.id === "lion" ||
+      item.id === "unicorn";
 
-  let content;
+    let content;
 
-  if (item.id === "top-hat") {
-    content = (
-      <>
-        <Image
-          source={require("@/assets/images/tophat.png")}
-          style={styles.itemImage}
-          resizeMode="contain"
-        />
-        <Text style={[styles.itemPrice, { color: colors.text }]}>{item.price}</Text>
-      </>
-    );
-  } else if (item.id === "glasses") {
-    content = (
-      <>
-        <Image
-          source={require("@/assets/images/sunglasses.png")}
-          style={styles.itemImage}
-          resizeMode="contain"
-        />
-        <Text style={[styles.itemPrice, { color: colors.text }]}>{item.price}</Text>
-      </>
-    );
-  } else if (item.id === "cap") {
-    content = (
-      <>
-        <Image
-          source={require("@/assets/images/bbhat.png")}
-          style={styles.itemImage}
-          resizeMode="contain"
-        />
-        <Text style={[styles.itemPrice, { color: colors.text }]}>{item.price}</Text>
-      </>
-    );
-  } else if (item.id === "football") {
-    content = (
-      <>
-        <Image
-          source={require("@/assets/images/football.png")}
-          style={styles.itemImage}
-          resizeMode="contain"
-        />
-        <Text style={[styles.itemPrice, { color: colors.text }]}>{item.price}</Text>
-      </>
-    );
-  } else if (isPet) {
-    const imgSource = getPetImage(item.id);
-    content = (
-      <>
-        <Image
-          source={imgSource}
-          style={styles.itemImage}
-          resizeMode="contain"
-        />
-        <Text style={[styles.itemPrice, { color: colors.text }]}>{item.price}</Text>
-      </>
-    );
-  } else {
-    content = (
-      <>
-        <Text style={[styles.itemTitle, { color: colors.text }]}>{item.name}</Text>
-        <Text style={[styles.itemPrice, { color: colors.text }]}>{item.price}</Text>
-      </>
-    );
-  }
+    if (item.id === "top-hat") {
+      content = (
+        <>
+          <Image
+            source={require("@/assets/images/tophat.png")}
+            style={styles.itemImage}
+            resizeMode="contain"
+          />
+          <Text style={[styles.itemPrice, { color: colors.text }]}>{item.price}</Text>
+        </>
+      );
+    } else if (item.id === "glasses") {
+      content = (
+        <>
+          <Image
+            source={require("@/assets/images/sunglasses.png")}
+            style={styles.itemImage}
+            resizeMode="contain"
+          />
+          <Text style={[styles.itemPrice, { color: colors.text }]}>{item.price}</Text>
+        </>
+      );
+    } else if (item.id === "cap") {
+      content = (
+        <>
+          <Image
+            source={require("@/assets/images/bbhat.png")}
+            style={styles.itemImage}
+            resizeMode="contain"
+          />
+          <Text style={[styles.itemPrice, { color: colors.text }]}>{item.price}</Text>
+        </>
+      );
+    } else if (item.id === "football") {
+      content = (
+        <>
+          <Image
+            source={require("@/assets/images/football.png")}
+            style={styles.itemImage}
+            resizeMode="contain"
+          />
+          <Text style={[styles.itemPrice, { color: colors.text }]}>{item.price}</Text>
+        </>
+      );
+    } else if (isPet) {
+      const imgSource = getPetImage(item.id);
+      content = (
+        <>
+          <Image
+            source={imgSource}
+            style={styles.itemImage}
+            resizeMode="contain"
+          />
+          <Text style={[styles.itemPrice, { color: colors.text }]}>{item.price}</Text>
+        </>
+      );
+    } else {
+      content = (
+        <>
+          <Text style={[styles.itemTitle, { color: colors.text }]}>{item.name}</Text>
+          <Text style={[styles.itemPrice, { color: colors.text }]}>{item.price}</Text>
+        </>
+      );
+    }
 
-  return (
-    <View key={item.id} style={styles.itemContainer}>
-      <View
-        style={[
-          styles.itemBox,
-          { borderColor: colors.primary, backgroundColor: colors.background },
-        ]}
-      >
-        {content}
-      </View>
-      <TouchableOpacity
-        style={[
-          styles.actionButton,
-          item.owned
-            ? { backgroundColor: colors.surface }
-            : { backgroundColor: "#90EE90" },
-          !item.owned && userCoins < item.price && { backgroundColor: "#FFCCCC" },
-        ]}
-        onPress={() => handlePurchaseClick(item)}
-        disabled={item.owned || (!item.owned && userCoins < item.price)}
-      >
-        <Text
+    return (
+      <View key={item.id} style={styles.itemContainer}>
+        <View
           style={[
-            styles.buttonText,
-            item.owned ? { color: colors.textSecondary } : { color: "#000" },
-            !item.owned && userCoins < item.price && { color: "#999" },
+            styles.itemBox,
+            { borderColor: colors.primary, backgroundColor: colors.background },
           ]}
         >
-          {item.owned ? "OWN" : "BUY"}
-        </Text>
-      </TouchableOpacity>
-    </View>
-  );
-};
-
+          {content}
+        </View>
+        <TouchableOpacity
+          style={[
+            styles.actionButton,
+            item.owned
+              ? { backgroundColor: colors.surface }
+              : { backgroundColor: "#90EE90" },
+            !item.owned && userCoins < item.price && { backgroundColor: "#FFCCCC" },
+          ]}
+          onPress={() => handlePurchaseClick(item)}
+          disabled={item.owned || (!item.owned && userCoins < item.price)}
+        >
+          <Text
+            style={[
+              styles.buttonText,
+              item.owned ? { color: colors.textSecondary } : { color: "#000" },
+              !item.owned && userCoins < item.price && { color: "#999" },
+            ]}
+          >
+            {item.owned ? "OWN" : "BUY"}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]} showsVerticalScrollIndicator={false}>

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo, useEffect, useCallback } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Image, Pressable, Modal, TextInput, Animated, ScrollView } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Image, Pressable, Modal, TextInput, Animated, ScrollView, FlatList, Platform, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from 'expo-router';
@@ -20,6 +20,16 @@ const defaultCategoryPreferences: TodoCategoryPreferences = {
   Extra: true,
 };
 
+const getApiUrl = () => {
+  if (Platform.OS === 'android') {
+    return __DEV__ ? "http://10.0.2.2:4000" : "http://10.0.2.2:4000";
+  } else if (Platform.OS === 'ios') {
+    return __DEV__ ? "http://localhost:4000" : "http://localhost:4000";
+  } else {
+    return "http://localhost:4000";
+  }
+};
+
 // Defines what a task looks like
 type Task = {
   id: string;
@@ -29,11 +39,13 @@ type Task = {
   originalCategory?: string;
   description: string;
   points: number;
+  date?: string;
+  time?: string;
 };
 
-const ToDoScreen = ()=> {
+const ToDoScreen = () => {
   const { getTasksByChild, toggleComplete: contextToggleComplete } = useTasks();
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const { colors, isDarkMode } = useTheme();
   const { selectedPet } = usePet();
   const { recordTaskCompletion } = useAchievements();
@@ -42,24 +54,12 @@ const ToDoScreen = ()=> {
   // Current Date State
   const [currentDate, setCurrentDate] = useState(new Date());
 
-  //const [showDetails, setShowDetails] = useState(false);
   const [showDetails, setShowDetails] = useState<string | null>(null);
   const dropdownOptions = ["Default", "Points: High to Low", "Points: Low to High"];
   
   //states for sort dropdown
   const [dropdown, setDropdown] = useState(false);
   const [sortType, setSortType] = useState(dropdownOptions[0]);
-
-  //states for delete task
-  const [deleteModal, setDeleteModal] = useState(false);
-  const [taskDelete, setTaskDelete] = useState<string | null>(null);
-
-  //states for edit task
-  const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
-  const [editModal, setEditModal] = useState(false);
-  const [editText, setEditText] = useState("");
-  const [editDescription, setEditDescription] = useState("");
-  const [editPoints, setEditPoints] = useState("");
 
   //states for confirm modal
   const [confirmModal, setConfirmModal] = useState(false);
@@ -75,6 +75,19 @@ const ToDoScreen = ()=> {
     }
   };
 
+  // Role check - only children can use this screen
+  if (user && user.role !== 'child') {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+          <Text style={{ fontSize: 18, textAlign: 'center' }}>
+            This screen is only available for child accounts
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   // Dropdown toggle function
   const toggleDropdown = () => {
     setDropdown((prev) => !prev);
@@ -86,28 +99,21 @@ const ToDoScreen = ()=> {
     setDropdown(false);
   };
 
-  // Delete task function
-  const deleteTask = (dateKey: string, taskId: string) => {
-    setTasksByDate((prev) => {
-      const updatedTasks = (prev[dateKey] || []).filter((task) => task.id !== taskId);
-      return { ...prev, [dateKey]: updatedTasks };
-    });
+  const handlePressTask = (taskId: string) => {
+    closeDropdown();
+    setShowDetails((prev) => (prev === taskId ? null : taskId));
   };
 
-  const handlePressTask = (taskId: string) => {
-  closeDropdown();
-  setShowDetails((prev) => (prev === taskId ? null : taskId)
-  );
-}
-
-// States for Categories
-// expanded state object to track which categories are currently expanded or collapsed
+  // States for Categories
   const [expanded, setExpanded] = useState<{ [key: string]: boolean }>({
-    Homework: false, // All categories are collaspsed at first
+    Homework: false,
     Chores: false,
     Work: false,
     Extra: false,
-    Extracurriculars: false, // Keep for backward compatibility
+    Extracurriculars: false,
+    Practice: false,
+    Appointments: false,
+    Other: false,
     Completed: false,
   });
 
@@ -139,29 +145,14 @@ const ToDoScreen = ()=> {
     }, [loadCategoryPreferences])
   );
 
-const [tasksByDate, setTasksByDate] = useState<{
-  [key: string]: Task[];
-}>({
-  "2025-10-20": [
-    { id: "1", text: "Read ch.1", completed: false, category: "Homework", description: "Read chapter 1 of history textbook", points: 10 },
-    { id: "2", text: "Clean kitchen", completed: false, category: "Chores", description: "Wash dishes and wipe counters", points: 5 },
-    { id: "3", text: "Clean room", completed: false, category: "Chores", description: "Tidy up and vacuum", points: 5 },
-    { id: "4", text: "Wash dishes", completed: false, category: "Chores", description: "Clean dirty dishes", points: 5 },
-    { id: "5", text: "Laundry", completed: false, category: "Chores", description: "Wash and fold clothes", points: 5 },
-  ],
-  "2025-10-21": [
-    { id: "6", text: "Math worksheet", completed: false, category: "Homework", description: "Complete assigned math worksheet", points: 10 },
-    { id: "7", text: "Soccer practice", completed: false, category: "Extracurriculars", description: "Attend soccer practice", points: 15 },
-  ],
-  "2025-10-22": [
-    { id: "8", text: "Take out trash", completed: false, category: "Chores", description: "Take out household trash", points: 5 },
-  ],
-});
+  const [tasksByDate, setTasksByDate] = useState<{
+    [key: string]: Task[];
+  }>({});
 
-// Converts current date to a string
-const formatDateKey = (date: Date) => date.toISOString().split("T")[0];
-const formattedKey = formatDateKey(currentDate);
-const tasks = tasksByDate[formattedKey] || [];
+  // Converts current date to a string
+  const formatDateKey = (date: Date) => date.toISOString().split("T")[0];
+  const formattedKey = formatDateKey(currentDate);
+  const tasks = tasksByDate[formattedKey] || [];
 
   // Helper functions for changing date
   // Able to move back and forth between days 
@@ -170,98 +161,150 @@ const tasks = tasksByDate[formattedKey] || [];
     const newDate = new Date(currentDate);
     newDate.setDate(newDate.getDate() + days);
     setCurrentDate(newDate);
-}
-//Format date in a 3 line stagger
-const getOrdinalSuffix = (day: number): string => {
-  if (day > 3 && day < 21) return "th";
-  switch (day % 10) {
-    case 1:
-      return "st";
-    case 2:
-      return "nd";
-    case 3:
-      return "rd";
-    default:
-      return "th";
-  }
-};
+  };
 
-const weekday = currentDate.toLocaleDateString("en-US", { weekday: "long" });
-const dayNumber = currentDate.getDate();
-const ordinalSuffix = getOrdinalSuffix(dayNumber);
-const monthName = currentDate.toLocaleDateString("en-US", { month: "long" });
-const monthDay = `${monthName} ${dayNumber}${ordinalSuffix}`;
-
-// Handling Edit Save Logic
-  const handleEditSave = () => {
-    if (taskToEdit) {
-      setTasksByDate((prev) => {
-        const updatedTasks = prev[formattedKey].map((task) =>
-          task.id === taskToEdit.id
-            ? { ...task, text: editText, description: editDescription, points: parseInt(editPoints) || task.points }
-            : task
-        );
-        return { ...prev, [formattedKey]: updatedTasks };
-      });
-      setEditModal(false);
-      setTaskToEdit(null);
+  //Format date in a 3 line stagger
+  const getOrdinalSuffix = (day: number): string => {
+    if (day > 3 && day < 21) return "th";
+    switch (day % 10) {
+      case 1:
+        return "st";
+      case 2:
+        return "nd";
+      case 3:
+        return "rd";
+      default:
+        return "th";
     }
   };
 
-// Points PopUp Function
-const showPopup = (message: string) => {
-  setPointsPopup({ visible: true, message });
+  const weekday = currentDate.toLocaleDateString("en-US", { weekday: "long" });
+  const dayNumber = currentDate.getDate();
+  const ordinalSuffix = getOrdinalSuffix(dayNumber);
+  const monthName = currentDate.toLocaleDateString("en-US", { month: "long" });
+  const monthDay = `${monthName} ${dayNumber}${ordinalSuffix}`;
 
-  // Fading in
-  Animated.timing(fadeAnim, {
-    toValue: 1,
-    duration: 400,
-    useNativeDriver: true,
-  }).start(() => {
-    // hold for 1.5s, then fade out
-    setTimeout(() => {
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 400,
-        useNativeDriver: true,
-      }).start(() => setPointsPopup({ visible: false, message: "" }));
-    }, 1500);
-  });
-};
+  // Fetch tasks from API
+  const fetchTasks = async () => {
+    if (!user || !token || user.role !== 'child') return;
+    
+    try {
+      const API_URL = getApiUrl();
+      const response = await fetch(`${API_URL}/api/tasks/my-assigned-tasks`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
 
-
-// Update toggleComplete
-const toggleComplete = (taskId: string) => {
-  setTasksByDate((prev) => {
-    const updatedDayTasks = (prev[formattedKey] || []).map((task) => {
-      if (task.id === taskId) {
-        if (task.completed && task.category === "Completed" && task.originalCategory) {
-          // unmark completed → move back to original
-          return {
-            ...task,
-            completed: false,
-            category: task.originalCategory,
-            originalCategory: undefined,
-          };
-        } else if (!task.completed && task.category !== "Completed") {
-          // mark as completed → move to Completed section
-          // Track achievement when task is completed
-          recordTaskCompletion();
-          return {
-            ...task,
-            completed: true,
-            originalCategory: task.category,
-            category: "Completed",
-          };
-        }
+      if (!response.ok) {
+        throw new Error('Failed to fetch tasks');
       }
-      return task;
-    });
-    return { ...prev, [formattedKey]: updatedDayTasks };
-  });
-};
 
-// Categories for tasks - filter based on preferences
+      const tasks = await response.json();
+      
+      // Transform tasks to the format expected by the to-do list
+      const tasksByDate: { [key: string]: Task[] } = {};
+
+      tasks.forEach((task: any) => {
+        const dateKey = task.date || formatDateKey(new Date()); // Use current date if no date specified
+        if (!tasksByDate[dateKey]) {
+          tasksByDate[dateKey] = [];
+        }
+        
+        tasksByDate[dateKey].push({
+          id: task.id.toString(),
+          text: task.text,
+          completed: task.completed || false,
+          category: task.category || 'Other',
+          description: task.description || '',
+          points: task.points || 0,
+          date: task.date,
+          time: task.time || 'All Day',
+        });
+      });
+
+      setTasksByDate(tasksByDate);
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+      Alert.alert('Error', 'Failed to load tasks');
+    }
+  };
+
+  // Load tasks when component mounts or user changes
+  useEffect(() => {
+    if (user && token) {
+      fetchTasks();
+    }
+  }, [user, token, currentDate]);
+
+  // Complete task function
+  const completeTask = async (taskId: string) => {
+    if (!token) return;
+
+    try {
+      const API_URL = getApiUrl();
+      const response = await fetch(`${API_URL}/api/tasks/${taskId}/complete`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to complete task');
+      }
+
+      const result = await response.json();
+      
+      // Update local state
+      setTasksByDate((prev) => {
+        const updatedDayTasks = (prev[formattedKey] || []).map((task) => {
+          if (task.id === taskId) {
+            return {
+              ...task,
+              completed: true,
+              category: "Completed",
+            };
+          }
+          return task;
+        });
+        return { ...prev, [formattedKey]: updatedDayTasks };
+      });
+
+      // Show points popup
+      showPopup(result.message || `You earned ${result.pointsEarned} points!`);
+      return result.pointsEarned;
+    } catch (error) {
+      console.error('Error completing task:', error);
+      Alert.alert('Error', 'Failed to complete task');
+      return 0;
+    }
+  };
+
+  // Points PopUp Function
+  const showPopup = (message: string) => {
+    setPointsPopup({ visible: true, message });
+
+    // Fading in
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 400,
+      useNativeDriver: true,
+    }).start(() => {
+      // hold for 1.5s, then fade out
+      setTimeout(() => {
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: true,
+        }).start(() => setPointsPopup({ visible: false, message: "" }));
+      }, 1500);
+    });
+  };
+
+  // Categories for tasks - filter based on preferences
   // Map category IDs to preference keys (for backward compatibility, map Extracurriculars to Work)
   const categoryMapping: { [key: string]: keyof TodoCategoryPreferences } = {
     "Homework": "Homework",
@@ -276,8 +319,11 @@ const toggleComplete = (taskId: string) => {
     { id: "Chores", title: "Chores" },
     { id: "Work", title: "Work" },
     { id: "Extra", title: "Extra" },
-    { id: "Extracurriculars", title: "Extracurriculars" }, // Keep for backward compatibility
-    { id: "Completed", title: "Completed" }, // Always visible
+    { id: "Extracurriculars", title: "Extracurriculars" },
+    { id: "Practice", title: "Practice" },
+    { id: "Appointments", title: "Appointments" },
+    { id: "Other", title: "Other" },
+    { id: "Completed", title: "Completed" },
   ];
 
   // Filter categories based on preferences (Completed is always shown)
@@ -289,10 +335,12 @@ const toggleComplete = (taskId: string) => {
       return categoryPreferences[preferenceKey] !== false;
     });
   }, [categoryPreferences]);
+
   const renderCategory = (category: { id: string; title: string }) => {
     const isExpanded = expanded[category.id];
     const tasks = tasksByDate[formattedKey] || [];
     const categoryTasks = tasks.filter((t) => t.category === category.id);
+    
     //sort tasks based on selected sort
     switch(sortType) {
       case (dropdownOptions[1]):
@@ -306,6 +354,7 @@ const toggleComplete = (taskId: string) => {
         categoryTasks.sort((a, b) => a.text.localeCompare(b.text));
         break;
     }
+    
     const visibleTasks = isExpanded ? categoryTasks : categoryTasks.slice(0, 3);
     const hiddenCount = categoryTasks.length - visibleTasks.length;
     
@@ -341,7 +390,7 @@ const toggleComplete = (taskId: string) => {
                     setTaskToConfirm(task);
                     setConfirmModal(true);
                   } else {
-                    toggleComplete(task.id);
+                    completeTask(task.id);
                   }
                 }}
                 >
@@ -378,14 +427,11 @@ const toggleComplete = (taskId: string) => {
                     <View style={styles.pointsBadge}>
                       <Text style={[styles.pointsText, { color: colors.primary }]}>{task.points} pts</Text>
                     </View>
-                    {/* Delete option removed for child view */}
-                    {/* Edit option removed for child view */}
+                    {task.time && task.time !== 'All Day' && (
+                      <Text style={styles.detailText}>Time: {task.time}</Text>
+                    )}
                   </View>
                 )}
-
-                {/* Delete Confirmation Modal */}
-                
-                {/* Delete modal removed for child view */}
                 </View>
               </View>
             ))
@@ -465,26 +511,6 @@ const toggleComplete = (taskId: string) => {
         ))}
       </ScrollView>
 
-      {/* Edit Task Modal */}
-      <Modal visible={editModal} animationType="slide" transparent={true}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>Edit Task</Text>
-            <TextInput placeholder="Task name" placeholderTextColor={colors.textSecondary} value={editText} onChangeText={setEditText} style={styles.input} />
-            <TextInput placeholder="Description" placeholderTextColor={colors.textSecondary} value={editDescription} onChangeText={setEditDescription} style={styles.input} />
-            <TextInput placeholder="Points" placeholderTextColor={colors.textSecondary} keyboardType="numeric" value={editPoints} onChangeText={setEditPoints} style={styles.input} />
-            <View style={styles.modalButtonRow}>
-              <TouchableOpacity onPress={() => setEditModal(false)} style={styles.cancelButton}>
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={handleEditSave} style={styles.saveButton}>
-                <Text style={styles.saveButtonText}>Save</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
       {/* Completion Confirmation Modal */}
       <Modal visible={confirmModal} animationType="fade" transparent={true}>
         <View style={styles.modalOverlay}>
@@ -499,8 +525,8 @@ const toggleComplete = (taskId: string) => {
                   <Text style={styles.cancelButtonText}>Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  onPress={() => {
-                    toggleComplete(taskToConfirm.id);
+                  onPress={async () => {
+                    await completeTask(taskToConfirm.id);
                     setConfirmModal(false);
                     setTaskToConfirm(null);
                   }}
@@ -513,6 +539,7 @@ const toggleComplete = (taskId: string) => {
           )}
         </View>
       </Modal>
+
       {/* Animated points gained popup */}
         {pointsPopup.visible && (
           <Animated.View style={[styles.pointsPopup, { opacity: fadeAnim }]}>
@@ -663,28 +690,6 @@ const createStyles = (colors: any, isDarkMode: boolean) =>
       color: colors.textSecondary,
       fontStyle: "italic",
     },
-    deleteButton: {
-      backgroundColor: "#FF4D4D",
-      padding: 10,
-      marginHorizontal: 0,
-      borderRadius: 5,
-      marginTop: 6,
-      alignSelf: "flex-start",
-    },
-    deleteButtonText: {
-      color: "#FFFFFF",
-      fontWeight: "600",
-    },
-    editButton: {
-      padding: 10,
-      borderRadius: 5,
-      marginTop: 6,
-      alignSelf: "flex-start",
-    },
-    editButtonText: {
-      color: "#FFFFFF",
-      fontWeight: "600",
-    },
     dropdownOption: {
       padding: 10,
       borderBottomWidth: 1,
@@ -715,47 +720,6 @@ const createStyles = (colors: any, isDarkMode: boolean) =>
       backgroundColor: isDarkMode ? "rgba(0,0,0,0.7)" : "rgba(0,0,0,0.4)",
       padding: 20,
     },
-    deleteModalContainer: {
-      width: "100%",
-      maxWidth: 360,
-      backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderWidth: 1,
-      borderRadius: 10,
-      padding: 20,
-    },
-    deleteModalText: {
-      fontSize: 18,
-      fontWeight: "600",
-      marginBottom: 16,
-      textAlign: "center",
-      color: colors.text,
-    },
-    deleteConfirmButton: {
-      backgroundColor: "#FF4D4D",
-      paddingVertical: 10,
-      paddingHorizontal: 16,
-      borderRadius: 5,
-      marginLeft: 12,
-      flex: 1,
-      alignItems: "center",
-    },
-    deleteConfirmButtonText: {
-      color: "#FFFFFF",
-      fontWeight: "600",
-    },
-    cancelDeleteButton: {
-      backgroundColor: colors.secondary,
-      paddingVertical: 10,
-      paddingHorizontal: 16,
-      borderRadius: 5,
-      flex: 1,
-      alignItems: "center",
-    },
-    cancelDeleteButtonText: {
-      color: colors.text,
-      fontWeight: "600",
-    },
     modalBox: {
       width: "100%",
       maxWidth: 360,
@@ -776,16 +740,6 @@ const createStyles = (colors: any, isDarkMode: boolean) =>
       color: colors.textSecondary,
       marginTop: 6,
       textAlign: "center",
-    },
-    input: {
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: 5,
-      padding: 10,
-      width: "100%",
-      marginBottom: 8,
-      color: colors.text,
-      backgroundColor: colors.background,
     },
     modalButtonRow: {
       flexDirection: "row",

@@ -1,8 +1,18 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, FlatList } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, FlatList, Platform } from "react-native";
 import { usePet } from "@/contexts/PetContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/hooks/useAuth"; 
+
+const getApiUrl = () => {
+  if (Platform.OS === 'android') {
+    return __DEV__ ? "http://10.0.2.2:4000" : "http://10.0.2.2:4000";
+  } else if (Platform.OS === 'ios') {
+    return __DEV__ ? "http://localhost:4000" : "http://localhost:4000";
+  } else {
+    return "http://localhost:4000";
+  }
+};
 
 interface AccessoryItem {
   id: string;
@@ -87,7 +97,8 @@ export default function CustomizeScreen() {
     if (!token) return staticData;
 
     try {
-      const res = await fetch("http://10.0.2.2:4000/api/pets", {
+      const API_URL = getApiUrl();
+      const res = await fetch(`${API_URL}/api/pets`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -193,7 +204,8 @@ export default function CustomizeScreen() {
     });
 
     if (item.backendId && token && !item.isEmpty) {
-      fetch(`http://10.0.2.2:4000/api/pet-accessories/${item.backendId}/visibility`, {
+      const API_URL = getApiUrl();
+      fetch(`${API_URL}/api/pet-accessories/${item.backendId}/visibility`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -364,7 +376,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   selectedCategory: {
-    // backgroundColor will be set dynamically
+    // Background color will be set dynamically
   },
   categoryText: {
     fontFamily: "monospace",
