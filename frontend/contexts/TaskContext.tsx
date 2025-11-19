@@ -1,17 +1,6 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect, useRef } from 'react';
-import { Platform } from 'react-native';
 import { useAuth } from '@/hooks/useAuth';
-
-// Get API URL based on platform
-const getApiUrl = () => {
-  if (Platform.OS === 'android') {
-    return "http://10.0.2.2:4000";
-  } else if (Platform.OS === 'ios') {
-    return "http://localhost:4000";
-  } else {
-    return "http://localhost:4000";
-  }
-};
+import { getApiUrl } from '@/utils/api';
 
 export type Task = {
   id: string | number;

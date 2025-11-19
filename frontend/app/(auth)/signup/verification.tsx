@@ -1,6 +1,7 @@
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
+import { getApiUrl } from '@/utils/api';
 
 export default function VerificationScreen() {
     const router = useRouter();
@@ -9,7 +10,7 @@ export default function VerificationScreen() {
     const [code, setCode] = useState("");
     const [isCodeSent, setIsCodeSent] = useState(false);
     const [generatedCode, setGeneratedCode] = useState("");
-    const API_URL = "http://10.0.2.2:4000/api/auth"; // Change this to http://localhost:4000/api/auth if your are in web preview mode
+    const API_URL = `${getApiUrl()}/api/auth`;
 
     const handleSendCode = async () => {
         try {

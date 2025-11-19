@@ -7,6 +7,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
+import { getApiUrl } from '@/utils/api';
 
 export default function AccountDetailsScreen() {
   const router = useRouter();
@@ -54,11 +55,7 @@ export default function AccountDetailsScreen() {
           return;
         }
 
-        // ✅ Platform-safe backend URL (works for Android Emulator or local dev)
-        const API_BASE_URL =
-          Platform.OS === "android"
-            ? "http://10.0.2.2:4000"
-            : "http://localhost:4000";
+        const API_BASE_URL = getApiUrl();
 
         const endpoint = `${API_BASE_URL}/api/account/delete-account`;
         console.log("🪪 Deleting account at:", endpoint);
