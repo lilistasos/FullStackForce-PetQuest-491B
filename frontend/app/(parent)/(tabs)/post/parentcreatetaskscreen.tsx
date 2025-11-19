@@ -10,6 +10,7 @@ import {
   Modal,
   FlatList,
   Alert,
+  KeyboardAvoidingView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import DateTimePicker from "@react-native-community/datetimepicker";
@@ -100,6 +101,24 @@ const ParentCreateTaskScreen = () => {
     };    
 
     const handleAssignTask = async () => {
+      // Validate required fields
+      if (!taskName.trim()) {
+        Alert.alert("Error", "Please enter a task title.");
+        return;
+      }
+      if (!category) {
+        Alert.alert("Error", "Please select a category.");
+        return;
+      }
+      if (points === 0) {
+        Alert.alert("Error", "Please select points for this task.");
+        return;
+      }
+      if (!childId) {
+        Alert.alert("Error", "Child not selected.");
+        return;
+      }
+
       try {
         const api = getApiUrl();
         const res = await fetch(`${api}/api/tasks`, {
@@ -109,12 +128,12 @@ const ParentCreateTaskScreen = () => {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            title: taskName,
-            description: note,
-            dueDate: date.toISOString(),
-            pointValue: points,
+            text: taskName, // Backend expects 'text' not 'title'
+            description: note || '',
+            dueDate: date.toISOString().split('T')[0], // Format as YYYY-MM-DD
+            points: points, // Backend expects 'points' not 'pointValue'
             category: category || "Other",
-            assignedTo: childId,
+            assignedToUserId: parseInt(childId as string), // Backend expects 'assignedToUserId' as number, not 'assignedTo' as string
           }),
         });
         const data = await res.json();
@@ -125,19 +144,26 @@ const ParentCreateTaskScreen = () => {
         Alert.alert("Task Sent!", "Task successfully assigned.", [
           {
             text: "Create Another Task",
-            onPress: () => router.back(),
+            onPress: () => {
+              // Reset form
+              setTaskName("");
+              setCategory("");
+              setPoints(0);
+              setNote("");
+              setDate(new Date());
+              router.back();
+            },
           },
           {
             text: "Go to Homepage",
             onPress: () => {
-              router.replace("/(parent)/(tabs)/post");
-              router.push("/(parent)/(tabs)/calendar");
+              router.replace("/(parent)/(tabs)/calendar");
             },
           },
         ]);
-      } catch (err) {
-        Alert.alert("Error", "Failed to send task.");
-        console.log(err);
+      } catch (err: any) {
+        console.error("Task creation error:", err);
+        Alert.alert("Error", err.message || "Failed to send task. Please check your connection.");
       }
     };
 
@@ -145,8 +171,20 @@ const ParentCreateTaskScreen = () => {
     const styles = createStyles(colors, isDarkMode);
 
     return (
-      <SafeAreaView style={styles.container}>
-        <ScrollView contentContainerStyle={{ paddingBottom: 60 }}>
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <KeyboardAvoidingView 
+          style={styles.keyboardView}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        >
+          <ScrollView 
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={true}
+            keyboardShouldPersistTaps="handled"
+            nestedScrollEnabled={true}
+            bounces={true}
+          >
         <Text style={styles.header}>Create a task</Text>
   
           {/* Task Name */}
@@ -218,18 +256,32 @@ const ParentCreateTaskScreen = () => {
             multiline
             style={[styles.input, { height: 80 }]}
           />
-  
-          {/* Buttons */}
+          
+          {/* Extra spacing at bottom of scroll */}
+          <View style={{ height: 40 }} />
+          </ScrollView>
+        </KeyboardAvoidingView>
+        
+        {/* Buttons fixed at bottom - always visible */}
+        <View style={styles.buttonContainer}>
           <View style={styles.buttonRow}>
-            <TouchableOpacity style={styles.cancelButton} onPress={() => router.back()}>
+            <TouchableOpacity 
+              style={styles.cancelButton} 
+              onPress={() => router.back()}
+              activeOpacity={0.7}
+            >
               <Text style={styles.buttonText}>Cancel</Text>
             </TouchableOpacity>
   
-            <TouchableOpacity style={styles.assignButton} onPress={handleAssignTask}>
+            <TouchableOpacity 
+              style={styles.assignButton} 
+              onPress={handleAssignTask}
+              activeOpacity={0.7}
+            >
               <Text style={styles.buttonText}>Send</Text>
             </TouchableOpacity>
           </View>
-        </ScrollView>
+        </View>
         
         {showDatePicker && (
           <DateTimePicker
@@ -332,7 +384,17 @@ const createStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
     padding: 20,
+    paddingBottom: 20,
   },
   header: {
     fontSize: 26,
@@ -397,29 +459,47 @@ const createStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  buttonContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    paddingBottom: 20,
+    backgroundColor: colors.background,
+    borderTopWidth: 1,
+    borderTopColor: colors.border || '#e0e0e0',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
+  },
   buttonRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 20,
+    gap: 12,
   },
   cancelButton: {
     flex: 1,
-    backgroundColor: colors.secondary,
-    padding: 15,
+    backgroundColor: colors.secondary || "#888",
+    padding: 16,
     borderRadius: 10,
     alignItems: "center",
-    marginRight: 10,
+    justifyContent: "center",
+    minHeight: 50,
   },
   assignButton: {
     flex: 1,
-    backgroundColor: colors.primary,
-    padding: 15,
+    backgroundColor: colors.primary || "#0077B6",
+    padding: 16,
     borderRadius: 10,
     alignItems: "center",
-    marginLeft: 10,
+    justifyContent: "center",
+    minHeight: 50,
   },
   buttonText: {
-    color: "#fff",
+    color: "#FFFFFF",
     fontSize: 18,
     fontWeight: "700",
   },

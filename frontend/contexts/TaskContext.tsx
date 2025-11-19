@@ -66,6 +66,8 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
       const transformedTasks: Task[] = data.map((task: any) => {
         // Find existing task to preserve originalCategory if it exists
         const existingTask = tasks.find(t => t.id.toString() === task.id.toString());
+        // If task already has originalCategory (from previous load), preserve it
+        // Otherwise, set it to the current category so we know where to restore it
         const originalCategory = existingTask?.originalCategory || task.category;
         
         return {
@@ -73,7 +75,7 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
           text: task.text,
           completed: task.completed,
           category: task.category,
-          originalCategory: originalCategory,
+          originalCategory: originalCategory, // Preserve original category for when uncompleting
           description: task.description || '',
           points: task.points || 0,
           dueDate: task.dueDate,
@@ -230,11 +232,13 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
       setTasks((prevTasks) =>
         prevTasks.map((t) => {
           if (t.id.toString() === taskId.toString()) {
+            // If originalCategory is not set, use current category as original
+            // This ensures we know where to restore the task when uncompleting
             const originalCategory = t.originalCategory || t.category;
             return {
               ...t,
               completed: updatedTask.completed,
-              originalCategory: originalCategory, // Always preserve original
+              originalCategory: originalCategory, // Always preserve original category for restoration
               // Note: The category field from backend stays as-is, we handle display logic in the UI
             };
           }

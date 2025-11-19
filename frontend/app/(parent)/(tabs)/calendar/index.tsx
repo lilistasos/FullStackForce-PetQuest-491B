@@ -17,16 +17,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// CHANGED: Added API URL helper function directly in the file
-const getApiUrl = () => {
-  if (Platform.OS === 'android') {
-    return __DEV__ ? "http://10.0.2.2:4000" : "http://10.0.2.2:4000";
-  } else if (Platform.OS === 'ios') {
-    return __DEV__ ? "http://localhost:4000" : "http://localhost:4000";
-  } else {
-    return "http://localhost:4000";
-  }
-};
+// Use the centralized API URL helper
+import { getApiUrl } from '@/utils/api';
 
 const WEEK_START_KEY = '@petquest:weekStart';
 
@@ -71,7 +63,8 @@ const fetchChildrenTasks = async (token: string): Promise<ChildTask[]> => {
   const API_URL = getApiUrl();
   
   try {
-    const response = await fetch(`${API_URL}/api/parent/children-tasks`, {
+    // Use the existing /api/tasks endpoint which returns tasks based on user role
+    const response = await fetch(`${API_URL}/api/tasks`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -84,7 +77,22 @@ const fetchChildrenTasks = async (token: string): Promise<ChildTask[]> => {
     }
 
     const tasks = await response.json();
-    return tasks;
+    
+    // Transform backend format to match ChildTask interface expected by parent calendar
+    const transformedTasks: ChildTask[] = tasks.map((task: any) => ({
+      id: task.id.toString(),
+      childName: task.assignedToName || 'Unknown Child',
+      childId: task.assignedToUserId?.toString() || '',
+      taskName: task.text || '',
+      description: task.description || '',
+      time: 'All Day', // Backend doesn't have time, using default
+      points: task.points || 0,
+      completed: task.completed || false,
+      category: task.category || 'Other',
+      date: task.dueDate || '', // Backend returns dueDate
+    }));
+    
+    return transformedTasks;
   } catch (error) {
     console.error('Error fetching children tasks:', error);
     throw error;

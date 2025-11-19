@@ -29,15 +29,25 @@ type Task = {
   originalCategory?: string;
   description: string;
   points: number;
+  assignedByUserId?: number; // If exists, task was assigned by parent (child cannot edit/delete)
 };
 
 const ToDoScreen = ()=> {
-  const { getTasksByChild, toggleComplete: contextToggleComplete } = useTasks();
+  const { getTasksByChild, toggleComplete: contextToggleComplete, tasks: contextTasks, refreshTasks, loading: tasksLoading } = useTasks();
   const { user } = useAuth();
   const { colors, isDarkMode } = useTheme();
   const { selectedPet } = usePet();
   const { recordTaskCompletion } = useAchievements();
   const styles = useMemo(() => createStyles(colors, isDarkMode), [colors, isDarkMode]);
+  
+  // Refresh tasks when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      if (user && user.role === 'child') {
+        refreshTasks();
+      }
+    }, [user, refreshTasks])
+  );
 
   // Current Date State
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -86,19 +96,19 @@ const ToDoScreen = ()=> {
     setDropdown(false);
   };
 
-  // Delete task function
-  const deleteTask = (dateKey: string, taskId: string) => {
-    setTasksByDate((prev) => {
-      const updatedTasks = (prev[dateKey] || []).filter((task) => task.id !== taskId);
-      return { ...prev, [dateKey]: updatedTasks };
-    });
+  // Delete task function - Note: Children typically can't delete tasks assigned by parents
+  // This is kept for UI purposes but may need to be restricted
+  const deleteTask = async (dateKey: string, taskId: string) => {
+    // Note: Task deletion would need backend API endpoint
+    // For now, this is UI-only. Backend may restrict child from deleting parent-assigned tasks
+    // Refresh tasks after attempting delete
+    refreshTasks();
   };
 
   const handlePressTask = (taskId: string) => {
-  closeDropdown();
-  setShowDetails((prev) => (prev === taskId ? null : taskId)
-  );
-}
+    closeDropdown();
+    setShowDetails((prev) => (prev === taskId ? null : taskId));
+  }
 
 // States for Categories
 // expanded state object to track which categories are currently expanded or collapsed
@@ -139,29 +149,56 @@ const ToDoScreen = ()=> {
     }, [loadCategoryPreferences])
   );
 
-const [tasksByDate, setTasksByDate] = useState<{
-  [key: string]: Task[];
-}>({
-  "2025-10-20": [
-    { id: "1", text: "Read ch.1", completed: false, category: "Homework", description: "Read chapter 1 of history textbook", points: 10 },
-    { id: "2", text: "Clean kitchen", completed: false, category: "Chores", description: "Wash dishes and wipe counters", points: 5 },
-    { id: "3", text: "Clean room", completed: false, category: "Chores", description: "Tidy up and vacuum", points: 5 },
-    { id: "4", text: "Wash dishes", completed: false, category: "Chores", description: "Clean dirty dishes", points: 5 },
-    { id: "5", text: "Laundry", completed: false, category: "Chores", description: "Wash and fold clothes", points: 5 },
-  ],
-  "2025-10-21": [
-    { id: "6", text: "Math worksheet", completed: false, category: "Homework", description: "Complete assigned math worksheet", points: 10 },
-    { id: "7", text: "Soccer practice", completed: false, category: "Extracurriculars", description: "Attend soccer practice", points: 15 },
-  ],
-  "2025-10-22": [
-    { id: "8", text: "Take out trash", completed: false, category: "Chores", description: "Take out household trash", points: 5 },
-  ],
-});
-
-// Converts current date to a string
+// Helper function to format date - defined before useMemo
 const formatDateKey = (date: Date) => date.toISOString().split("T")[0];
+
+// Transform tasks from TaskContext into tasksByDate format
+const tasksByDateTransformed = useMemo(() => {
+  const grouped: { [key: string]: Task[] } = {};
+  
+  contextTasks.forEach((task) => {
+    // Use dueDate to group tasks by date (format: YYYY-MM-DD)
+    const dateKey = task.dueDate ? task.dueDate.split('T')[0] : formatDateKey(new Date());
+    
+    if (!grouped[dateKey]) {
+      grouped[dateKey] = [];
+    }
+    
+    // Map TaskContext Task to local Task format
+    // Map category to match todo categories
+    let mappedCategory = task.category || 'Other';
+    // Map "Other" to "Extra" to match todo categories
+    if (mappedCategory === 'Other') {
+      mappedCategory = 'Extra';
+    }
+    // Keep Extracurriculars as is (it's a valid category)
+    
+    // Preserve original category before completion
+    const originalCategory = task.originalCategory || mappedCategory;
+    
+    // If task is completed, move it to "Completed" category
+    // When uncompleted, it will go back to original category
+    const displayCategory = task.completed ? 'Completed' : mappedCategory;
+    
+    grouped[dateKey].push({
+      id: task.id.toString(),
+      text: task.text,
+      completed: task.completed,
+      category: displayCategory, // Show in "Completed" if completed, otherwise original category
+      originalCategory: originalCategory, // Preserve original category for when uncompleting
+      description: task.description || '',
+      points: task.points || 0,
+      assignedByUserId: task.assignedByUserId, // Check if assigned by parent
+    });
+  });
+  
+  return grouped;
+}, [contextTasks]);
+
+// Get current date key and tasks for that date
 const formattedKey = formatDateKey(currentDate);
-const tasks = tasksByDate[formattedKey] || [];
+// Use transformed tasks from TaskContext instead of mock data
+const tasks = tasksByDateTransformed[formattedKey] || [];
 
   // Helper functions for changing date
   // Able to move back and forth between days 
@@ -192,19 +229,15 @@ const ordinalSuffix = getOrdinalSuffix(dayNumber);
 const monthName = currentDate.toLocaleDateString("en-US", { month: "long" });
 const monthDay = `${monthName} ${dayNumber}${ordinalSuffix}`;
 
-// Handling Edit Save Logic
+// Handling Edit Save Logic - Note: Editing tasks may need backend update
   const handleEditSave = () => {
     if (taskToEdit) {
-      setTasksByDate((prev) => {
-        const updatedTasks = prev[formattedKey].map((task) =>
-          task.id === taskToEdit.id
-            ? { ...task, text: editText, description: editDescription, points: parseInt(editPoints) || task.points }
-            : task
-        );
-        return { ...prev, [formattedKey]: updatedTasks };
-      });
+      // For now, just update local view - backend update would require API endpoint
+      // TODO: Implement backend API for editing tasks if needed
       setEditModal(false);
       setTaskToEdit(null);
+      // Refresh tasks from backend after editing
+      refreshTasks();
     }
   };
 
@@ -230,35 +263,31 @@ const showPopup = (message: string) => {
 };
 
 
-// Update toggleComplete
-const toggleComplete = (taskId: string) => {
-  setTasksByDate((prev) => {
-    const updatedDayTasks = (prev[formattedKey] || []).map((task) => {
-      if (task.id === taskId) {
-        if (task.completed && task.category === "Completed" && task.originalCategory) {
-          // unmark completed → move back to original
-          return {
-            ...task,
-            completed: false,
-            category: task.originalCategory,
-            originalCategory: undefined,
-          };
-        } else if (!task.completed && task.category !== "Completed") {
-          // mark as completed → move to Completed section
-          // Track achievement when task is completed
-          recordTaskCompletion();
-          return {
-            ...task,
-            completed: true,
-            originalCategory: task.category,
-            category: "Completed",
-          };
-        }
-      }
-      return task;
-    });
-    return { ...prev, [formattedKey]: updatedDayTasks };
-  });
+// Update toggleComplete - use TaskContext instead of local state
+const toggleComplete = async (taskId: string) => {
+  try {
+    const task = contextTasks.find(t => t.id.toString() === taskId);
+    if (!task) {
+      console.error('Task not found:', taskId);
+      return;
+    }
+    
+    // Track achievement when task is being completed (before toggle)
+    const wasCompleted = task.completed;
+    
+    // Use TaskContext's toggleComplete which syncs with backend
+    await contextToggleComplete(taskId);
+    
+    // Track achievement when task is completed (was false, now true)
+    if (!wasCompleted) {
+      recordTaskCompletion();
+    }
+    
+    // Refresh tasks to update the UI with new category (Completed or original)
+    refreshTasks();
+  } catch (error) {
+    console.error('Error toggling task completion:', error);
+  }
 };
 
 // Categories for tasks - filter based on preferences
@@ -291,8 +320,9 @@ const toggleComplete = (taskId: string) => {
   }, [categoryPreferences]);
   const renderCategory = (category: { id: string; title: string }) => {
     const isExpanded = expanded[category.id];
-    const tasks = tasksByDate[formattedKey] || [];
-    const categoryTasks = tasks.filter((t) => t.category === category.id);
+    // Use tasks from TaskContext for current date
+    const currentDateTasks = tasksByDateTransformed[formattedKey] || [];
+    const categoryTasks = currentDateTasks.filter((t) => t.category === category.id);
     //sort tasks based on selected sort
     switch(sortType) {
       case (dropdownOptions[1]):
@@ -378,26 +408,30 @@ const toggleComplete = (taskId: string) => {
                     <View style={styles.pointsBadge}>
                       <Text style={[styles.pointsText, { color: colors.primary }]}>{task.points} pts</Text>
                     </View>
-                    <View style={styles.buttonRow}>
-                      {/* Edit Button */}
-                      {!task.completed && (
-                        <TouchableOpacity
-                          onPress={() => {
-                            setTaskToEdit(task);
-                            setEditText(task.text);
-                            setEditDescription(task.description);
-                            setEditPoints(task.points.toString());
-                            setEditModal(true);
-                          }}
-                          style={[styles.editButton, { backgroundColor: colors.primary }]}
-                        >
-                          <Text style={styles.editButtonText}>Edit</Text>
+                    {/* Only show edit/delete buttons if task was NOT assigned by a parent */}
+                    {!task.assignedByUserId && (
+                      <View style={styles.buttonRow}>
+                        {/* Edit Button - only for non-completed, non-parent-assigned tasks */}
+                        {!task.completed && (
+                          <TouchableOpacity
+                            onPress={() => {
+                              setTaskToEdit(task);
+                              setEditText(task.text);
+                              setEditDescription(task.description);
+                              setEditPoints(task.points.toString());
+                              setEditModal(true);
+                            }}
+                            style={[styles.editButton, { backgroundColor: colors.primary }]}
+                          >
+                            <Text style={styles.editButtonText}>Edit</Text>
+                          </TouchableOpacity>
+                        )}
+                        {/* Delete Button - only for non-parent-assigned tasks */}
+                        <TouchableOpacity onPress={() => {setDeleteModal(true); setTaskDelete(task.id)}} style={styles.deleteButton}>
+                          <Text style={styles.deleteButtonText}>Delete</Text>
                         </TouchableOpacity>
-                      )}
-                      <TouchableOpacity onPress={() => {setDeleteModal(true); setTaskDelete(task.id)}} style={styles.deleteButton}>
-                        <Text style={styles.deleteButtonText}>Delete</Text>
-                      </TouchableOpacity>
-                    </View>
+                      </View>
+                    )}
                   </View>
                 )}
 

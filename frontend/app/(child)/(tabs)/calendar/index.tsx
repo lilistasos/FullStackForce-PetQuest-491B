@@ -175,7 +175,8 @@ export default function CalendarScreen() {
     try {
       setLoading(true);
       const API_URL = getApiUrl();
-      const response = await fetch(`${API_URL}/api/tasks/my-assigned-tasks`, {
+      const response = await fetch(`${API_URL}/api/tasks`, {
+        method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -193,21 +194,22 @@ export default function CalendarScreen() {
       const tasksByDate: { [key: string]: TaskItem[] } = {};
 
       tasks.forEach((task: any) => {
-        if (task.date) {
-          const dateKey = task.date;
+        // Backend returns 'dueDate', not 'date'
+        const dateKey = task.dueDate || task.date;
+        if (dateKey) {
           if (!tasksByDate[dateKey]) {
             tasksByDate[dateKey] = [];
           }
           
           tasksByDate[dateKey].push({
             id: task.id.toString(),
-            name: task.text || task.taskName,
-            description: task.description,
+            name: task.text || task.taskName || task.title,
+            description: task.description || '',
             time: task.time || 'All Day',
-            points: task.points || 0,
+            points: task.points || 0, // Points from backend
             complete: task.completed || false,
             category: task.category || 'Other',
-            dueDate: task.date,
+            dueDate: dateKey,
           });
         }
       });
