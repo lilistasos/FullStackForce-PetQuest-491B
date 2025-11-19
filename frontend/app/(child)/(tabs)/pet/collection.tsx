@@ -1,8 +1,18 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Platform } from "react-native";
 import { usePet } from "@/contexts/PetContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/hooks/useAuth";
+
+const getApiUrl = () => {
+  if (Platform.OS === 'android') {
+    return __DEV__ ? "http://10.0.2.2:4000" : "http://10.0.2.2:4000";
+  } else if (Platform.OS === 'ios') {
+    return __DEV__ ? "http://localhost:4000" : "http://localhost:4000";
+  } else {
+    return "http://localhost:4000";
+  }
+};
 
 interface CollectionItem {
   id: string;
@@ -88,7 +98,8 @@ export default function CollectionScreen() {
     const loadPets = async () => {
       try {
         setLoading(true);
-        const res = await fetch("http://10.0.2.2:4000/api/pets", {
+        const API_URL = getApiUrl();
+        const res = await fetch(`${API_URL}/api/pets`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -148,8 +159,9 @@ export default function CollectionScreen() {
       if (!backendPet) return;
 
       try {
+        const API_URL = getApiUrl();
         await fetch(
-          `http://10.0.2.2:4000/api/pets/${backendPet.id}/visibility`,
+          `${API_URL}/api/pets/${backendPet.id}/visibility`,
           {
             method: "PATCH",
             headers: {
