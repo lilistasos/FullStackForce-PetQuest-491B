@@ -6,6 +6,8 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
+    "setup-db": "node setup-database.js",
+    "check-db": "node check-db.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

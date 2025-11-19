@@ -1,6 +1,11 @@
 node_modules
 runscript.sh
+# Environment variables - never commit these!
 .env
 .env.local
 .env.*.local
-frontend/utils/api.config.local.ts
+# Ignore .env files but allow .env.example (which should be committed)
+.env.*
+!.env.example
+# Allow api.config.local.ts (if needed for local development)
+# frontend/utils/api.config.local.ts
