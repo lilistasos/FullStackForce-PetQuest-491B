@@ -18,19 +18,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTasks } from '@/contexts/TaskContext';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/contexts/ThemeContext';
-
-const getApiUrl = () => {
-  if (Platform.OS === "android") {
-    // Android emulator uses 10.0.2.2
-    return __DEV__ ? "http://10.0.2.2:4000" : "http://10.0.2.2:4000";
-  } else if (Platform.OS === "ios") {
-    // iOS simulator uses localhost
-    return __DEV__ ? "http://localhost:4000" : "http://localhost:4000";
-  } else {
-    // Web
-    return "http://localhost:4000";
-  }
-};
+import { getApiUrl } from '@/utils/api';
 
 const categories = [
   "Homework",
@@ -75,56 +63,6 @@ const ParentCreateTaskScreen = () => {
         }
       } else if (Platform.OS === "ios") {
         setShowDatePicker(false);
-      }
-    };
-
-    const handleAssignTask = async () => {
-      if (!taskName || !category) {
-        Alert.alert("Error", "Please fill in all required fields");
-        return;
-      }
-
-      try {
-        // Create the task
-        await addTask({
-          text: taskName,
-          category: category,
-          description: note || '',
-          points: 0, // You can add points logic later
-          dueDate: date.toISOString(),
-          assignedTo: childName as string,
-          assignedBy: user?.firstName || 'Parent',
-        });
-        
-        Alert.alert(
-          "Task Sent!",
-          `Task successfully assigned to ${childName}!`,
-          [
-            {
-              text: "Create Another Task",
-              onPress: () => {
-                resetForm();
-                router.back();
-              },
-            },
-            {
-              text: "Go to Homepage",
-              onPress: () => {
-                // Replace current screen with post index to reset stack
-                router.replace("/(parent)/(tabs)/post");
-                // Navigate to calendar immediately
-                router.push("/(parent)/(tabs)/calendar");
-              },
-            },
-          ],
-          { cancelable: false }
-        );
-      } catch (error: any) {
-        console.error('Error creating task:', error);
-        Alert.alert(
-          "Error",
-          error.message || "Failed to create task. Please try again."
-        );
       }
     };
 

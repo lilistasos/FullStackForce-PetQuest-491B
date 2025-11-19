@@ -1,21 +1,7 @@
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Platform } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { getApiUrl } from '@/utils/api';
-
-// Get API URL based on platform
-const getApiUrl = () => {
-  if (Platform.OS === 'android') {
-    // Android emulator uses 10.0.2.2, physical device needs your computer's IP
-    return __DEV__ ? "http://10.0.2.2:4000" : "http://10.0.2.2:4000";
-  } else if (Platform.OS === 'ios') {
-    // iOS simulator uses localhost
-    return __DEV__ ? "http://localhost:4000" : "http://localhost:4000";
-  } else {
-    // Web
-    return "http://localhost:4000";
-  }
-};
 
 export default function VerificationScreen() {
     const router = useRouter();
