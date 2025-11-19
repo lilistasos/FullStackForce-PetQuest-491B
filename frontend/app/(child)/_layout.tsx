@@ -87,8 +87,23 @@ export default function ChildLayout() {
         setHeaderTitle('Calendar');
         setIsSubPage(false);
       } else if (tabName === '(tabs)/todo') {
-        setHeaderTitle('To-Do');
-        setIsSubPage(false);
+        // setHeaderTitle('To-Do');
+        // setIsSubPage(false);
+        if (activeTabRoute.state && activeTabRoute.state.routes && activeTabRoute.state.index !== undefined) {
+          const todoRoute = activeTabRoute.state.routes[activeTabRoute.state.index];
+          const todoPageName = todoRoute?.name || 'index';
+
+          setIsSubPage(todoPageName !== 'index');
+
+          if (todoPageName === 'task-history') setHeaderTitle('Task History');
+          else {
+            setHeaderTitle('To-Do');
+            setIsSubPage(false);
+          }
+        } else {
+          setHeaderTitle('To-Do');
+          setIsSubPage(false);
+        }
       } else if (tabName === '(tabs)/account') {
         if (activeTabRoute.state && activeTabRoute.state.routes && activeTabRoute.state.index !== undefined) {
           const accountRoute = activeTabRoute.state.routes[activeTabRoute.state.index];

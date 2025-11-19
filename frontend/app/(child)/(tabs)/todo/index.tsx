@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from 'expo-router';
 import { useTasks } from "@/contexts/TaskContext";
 import { useAuth } from "@/hooks/useAuth";
+import { useRouter } from "expo-router";
 import { useTheme } from "@/contexts/ThemeContext";
 import { usePet } from "@/contexts/PetContext";
 import { useAchievements } from "@/contexts/AchievementContext";
@@ -45,6 +46,7 @@ type Task = {
 
 const ToDoScreen = () => {
   const { getTasksByChild, toggleComplete: contextToggleComplete } = useTasks();
+  const router = useRouter();
   const { user, token } = useAuth();
   const { colors, isDarkMode } = useTheme();
   const { selectedPet } = usePet();
@@ -598,6 +600,12 @@ const ToDoScreen = () => {
             <Text style={styles.pointsPopupText}>{pointsPopup.message}</Text>
           </Animated.View>
         )}      
+        {/* <View style={{flex:1, flexDirection: 'row', alignItems: 'center'}}> */}
+        <TouchableOpacity style={{alignItems: 'center', backgroundColor: 'gray'}} 
+        onPress={() => router.push("/(child)/(tabs)/todo/task-history" as any)}>
+          <Text style={{fontSize: 20}}>Task History</Text>
+        </TouchableOpacity>
+        {/* </View> */}
     </SafeAreaView>
   );
 };
