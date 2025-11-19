@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, FlatList } from "react-native";
 import { usePet } from "@/contexts/PetContext";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useAchievements } from "@/contexts/AchievementContext";
 
 // Function to calculate luminance and determine text color
 const getContrastColor = (backgroundColor: string): string => {
@@ -28,6 +29,7 @@ interface AccessoriesData {
 export default function CustomizeScreen() {
   const { selectedPet, selectedAccessories, setSelectedAccessories } = usePet();
   const { colors } = useTheme();
+  const { recordCustomization } = useAchievements();
   const buttonTextColor = getContrastColor(colors.primary);
   const [selectedCategory, setSelectedCategory] = useState<keyof AccessoriesData>("hats");
   const [visibleRows, setVisibleRows] = useState(2);
@@ -56,6 +58,10 @@ export default function CustomizeScreen() {
   }, []);
 
   const handleAccessorySelect = (item: AccessoryItem) => {
+    // Only track customization if selecting a non-empty accessory (not "none")
+    if (item.id !== "none" && selectedAccessories[selectedCategory] !== item.id) {
+      recordCustomization();
+    }
     setSelectedAccessories({
       ...selectedAccessories,
       [selectedCategory]: item.id

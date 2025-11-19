@@ -6,14 +6,23 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/hooks/useAuth";
-
+import { useTheme } from '@/contexts/ThemeContext';
 import { getApiUrl } from '@/utils/api';
 
 const ParentSelectChildScreen = () => {
+  type ChildAccount = {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email?: string;
+  };
+  
+  const [children, setChildren] = useState<ChildAccount[]>([]);
   const [selectedChild, setSelectedChild] = useState<string | null>(null);
-  const [children, setChildren] = useState<{ id: number; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
+  const selectedChildData = children.find(child => child.id === selectedChild);
   const { token } = useAuth();
+  const { colors, isDarkMode } = useTheme();
   
   const router = useRouter();
   const screenWidth = Dimensions.get('window').width;
@@ -40,8 +49,10 @@ const ParentSelectChildScreen = () => {
         if (response.ok) {
           const data = await response.json();
           setChildren(data.map((child: any) => ({
-            id: child.id,
-            name: child.firstName,
+            id: child.id.toString(),
+            firstName: child.firstName,
+            lastName: child.lastName,
+            email: child.email,
           })));
         } else {
           console.error('Failed to fetch children');
@@ -63,9 +74,8 @@ const ParentSelectChildScreen = () => {
     }, [])
   );
 
-  const handleSelectChild = (childId: string) => {
-    setSelectedChild(childId);
-  };
+  // Create styles using the theme
+  const styles = createStyles(colors, isDarkMode);
 
   if (loading) {
     return (
@@ -93,7 +103,10 @@ const ParentSelectChildScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.header}>
-        {selectedChild ? `Create a task for ${selectedChild}` : "Select a child to create a task"}
+        {selectedChild 
+          ? `Create a task for ${selectedChildData?.firstName} ${selectedChildData?.lastName}` 
+          : "Select a child to create a task"
+        }
       </Text>
 
       <FlatList
@@ -106,9 +119,9 @@ const ParentSelectChildScreen = () => {
             style={[
               styles.childCard,
               { width: cardSize, height: cardSize },
-              selectedChild === item.name && styles.selectedChild,
+              selectedChild === item.id && styles.selectedChild,
             ]}
-            onPress={() => setSelectedChild(item.name)}
+            onPress={() => setSelectedChild(item.id)}
           >
             <View style={styles.cardContent}>
               <View style={styles.profileImageContainer}>
@@ -118,11 +131,14 @@ const ParentSelectChildScreen = () => {
                   defaultSource={require('@/assets/images/defaultpp.jpg')}
                 />
               </View>
-              <Text style={styles.childName}>{item.name}</Text>
+              <Text style={styles.childName}>
+                {item.firstName} {item.lastName}
+              </Text>
             </View>
-            {selectedChild === item.name && (
+
+            {selectedChild === item.id && (
               <View style={styles.checkmarkContainer}>
-                <Ionicons name="checkmark-circle" size={24} color="#0077B6" />
+                <Ionicons name="checkmark-circle" size={24} color={colors.primary} />
               </View>
             )}
           </TouchableOpacity>
@@ -135,7 +151,7 @@ const ParentSelectChildScreen = () => {
           onPress={() =>
             router.push({
               pathname: "/(parent)/(tabs)/post/parentcreatetaskscreen",
-              params: { childName: selectedChild },
+              params: { childId: selectedChild },
             })
           }
         >
@@ -148,24 +164,24 @@ const ParentSelectChildScreen = () => {
 
 export default ParentSelectChildScreen;
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: colors.background,
     padding: 20,
   },
   header: {
     fontSize: 22,
     fontWeight: "700",
     textAlign: "center",
-    color: "#0077B6",
+    color: colors.primary,
     marginBottom: 30,
   },
   row: {
     justifyContent: "space-between",
   },
   childCard: {
-    backgroundColor: "#E1F5FE",
+    backgroundColor: isDarkMode ? colors.surface : colors.primary + "20",
     borderRadius: 16,
     marginBottom: 15,
     padding: 16,
@@ -176,15 +192,15 @@ const styles = StyleSheet.create({
       width: 0,
       height: 2,
     },
-    shadowOpacity: 0.1,
+    shadowOpacity: isDarkMode ? 0.3 : 0.1,
     shadowRadius: 4,
     elevation: 3,
     justifyContent: "center",
     alignItems: "center",
   },
   selectedChild: {
-    borderColor: "#0077B6",
-    backgroundColor: "#B3E5FC",
+    borderColor: colors.primary,
+    backgroundColor: isDarkMode ? colors.primary + "40" : colors.primary + "30",
   },
   cardContent: {
     flexDirection: "column",
@@ -197,9 +213,9 @@ const styles = StyleSheet.create({
     borderRadius: 40,
     overflow: "hidden",
     marginBottom: 12,
-    backgroundColor: "#fff",
+    backgroundColor: colors.surface,
     borderWidth: 2,
-    borderColor: "#0077B6",
+    borderColor: colors.primary,
   },
   profileImage: {
     width: "100%",
@@ -209,7 +225,7 @@ const styles = StyleSheet.create({
   childName: {
     fontSize: 18,
     fontWeight: "600",
-    color: "#0077B6",
+    color: colors.primary,
     textAlign: "center",
   },
   checkmarkContainer: {
@@ -221,12 +237,20 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 20,
     right: 20,
-    backgroundColor: "#0077B6",
+    backgroundColor: colors.primary,
     borderRadius: 30,
     width: 50,
     height: 50,
     justifyContent: "center",
     alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
   },
   nextArrow: {
     color: "white",

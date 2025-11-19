@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS users (
-  id SERIAL PRIMARY KEY,
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
   first_name TEXT NOT NULL,
@@ -12,6 +12,49 @@ CREATE TABLE IF NOT EXISTS users (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS pets (
+  id          SERIAL PRIMARY KEY,
+  user_id     UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  name        TEXT NOT NULL,
+  image_url   TEXT,
+  is_unlocked BOOLEAN NOT NULL DEFAULT FALSE,
+  is_visible  BOOLEAN NOT NULL DEFAULT FALSE
+);
+
+CREATE TABLE IF NOT EXISTS pet_accessories (
+  id          SERIAL PRIMARY KEY,
+  pet_id      INTEGER NOT NULL REFERENCES public.pets(id) ON DELETE CASCADE,
+  name        TEXT NOT NULL,
+  image_url   TEXT,
+  is_unlocked BOOLEAN NOT NULL DEFAULT FALSE,
+  is_visible  BOOLEAN NOT NULL DEFAULT FALSE
+);
+
+CREATE TABLE IF NOT EXISTS tasks (
+  id           SERIAL PRIMARY KEY,
+  user_id      UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  title        TEXT NOT NULL,
+  description  TEXT,
+  due_date     TIMESTAMPTZ,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  completed    BOOLEAN NOT NULL DEFAULT FALSE,
+  completed_at TIMESTAMPTZ
+);
+
 ALTER TABLE users
-ADD COLUMN IF NOT EXISTS reset_token TEXT,
-ADD COLUMN IF NOT EXISTS reset_expires TIMESTAMP;
+ADD COLUMN points INTEGER NOT NULL DEFAULT 0;
+
+ALTER TABLE tasks
+ADD COLUMN point_value INTEGER NOT NULL DEFAULT 0;
+
+ALTER TABLE pets
+ADD COLUMN cost INTEGER NOT NULL DEFAULT 0;
+
+ALTER TABLE pet_accessories
+ADD COLUMN cost INTEGER NOT NULL DEFAULT 0;
+
+ALTER TABLE tasks
+ADD COLUMN assigned_to UUID REFERENCES public.users(id) ON DELETE SET NULL;
+
+ALTER TABLE tasks ADD COLUMN category VARCHAR(20) 
+CHECK (category IN ('Homework', 'Chores', 'Extracurriculars', 'Practice', 'Appointments', 'Other'));
