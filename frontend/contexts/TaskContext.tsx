@@ -46,6 +46,7 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
 
     try {
       const apiUrl = getApiUrl();
+      console.log('TaskContext: Loading tasks from API URL:', `${apiUrl}/api/tasks`);
       const response = await fetch(`${apiUrl}/api/tasks`, {
         method: 'GET',
         headers: {

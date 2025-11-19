@@ -28,31 +28,34 @@ export const getApiUrl = (): string => {
   const COMPUTER_IP = localConfig?.COMPUTER_IP || '';
   const PORT = localConfig?.PORT || '4000';
 
+  let url: string;
+
   if (Platform.OS === 'android') {
     // Check for platform-specific override first
     if (localConfig?.ANDROID_URL) {
-      return localConfig.ANDROID_URL;
+      url = localConfig.ANDROID_URL;
+    } else if (COMPUTER_IP) {
+      // Use COMPUTER_IP if provided, otherwise default to emulator IP
+      url = `http://${COMPUTER_IP}:${PORT}`;
+    } else {
+      url = `http://10.0.2.2:${PORT}`; // Android emulator default
     }
-    
-    // Use COMPUTER_IP if provided, otherwise default to emulator IP
-    if (COMPUTER_IP) {
-      return `http://${COMPUTER_IP}:${PORT}`;
-    }
-    return `http://10.0.2.2:${PORT}`; // Android emulator default
   } else if (Platform.OS === 'ios') {
     // Check for platform-specific override first
     if (localConfig?.IOS_URL) {
-      return localConfig.IOS_URL;
+      url = localConfig.IOS_URL;
+    } else if (COMPUTER_IP) {
+      // Use COMPUTER_IP if provided, otherwise default to localhost
+      url = `http://${COMPUTER_IP}:${PORT}`;
+    } else {
+      url = `http://localhost:${PORT}`; // iOS simulator default
     }
-    
-    // Use COMPUTER_IP if provided, otherwise default to localhost
-    if (COMPUTER_IP) {
-      return `http://${COMPUTER_IP}:${PORT}`;
-    }
-    return `http://localhost:${PORT}`; // iOS simulator default
   } else {
     // Web - use override or default to localhost
-    return localConfig?.WEB_URL || `http://localhost:${PORT}`;
+    url = localConfig?.WEB_URL || `http://localhost:${PORT}`;
   }
+
+  console.log(`getApiUrl: Platform=${Platform.OS}, URL=${url}`);
+  return url;
 };
 
