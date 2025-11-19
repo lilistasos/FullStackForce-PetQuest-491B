@@ -91,7 +91,7 @@ const ParentSelectChildScreen = () => {
 
             {selectedChild === item.id && (
               <View style={styles.checkmarkContainer}>
-                <Ionicons name="checkmark-circle" size={24} color="#0077B6" />
+                <Ionicons name="checkmark-circle" size={24} color={colors.primary} />
               </View>
             )}
           </TouchableOpacity>
@@ -117,24 +117,24 @@ const ParentSelectChildScreen = () => {
 
 export default ParentSelectChildScreen;
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: colors.background,
     padding: 20,
   },
   header: {
     fontSize: 22,
     fontWeight: "700",
     textAlign: "center",
-    color: "#0077B6",
+    color: colors.primary,
     marginBottom: 30,
   },
   row: {
     justifyContent: "space-between",
   },
   childCard: {
-    backgroundColor: "#E1F5FE",
+    backgroundColor: isDarkMode ? colors.surface : colors.primary + "20",
     borderRadius: 16,
     marginBottom: 15,
     padding: 16,
@@ -145,15 +145,15 @@ const styles = StyleSheet.create({
       width: 0,
       height: 2,
     },
-    shadowOpacity: 0.1,
+    shadowOpacity: isDarkMode ? 0.3 : 0.1,
     shadowRadius: 4,
     elevation: 3,
     justifyContent: "center",
     alignItems: "center",
   },
   selectedChild: {
-    borderColor: "#0077B6",
-    backgroundColor: "#B3E5FC",
+    borderColor: colors.primary,
+    backgroundColor: isDarkMode ? colors.primary + "40" : colors.primary + "30",
   },
   cardContent: {
     flexDirection: "column",
@@ -166,9 +166,9 @@ const styles = StyleSheet.create({
     borderRadius: 40,
     overflow: "hidden",
     marginBottom: 12,
-    backgroundColor: "#fff",
+    backgroundColor: colors.surface,
     borderWidth: 2,
-    borderColor: "#0077B6",
+    borderColor: colors.primary,
   },
   profileImage: {
     width: "100%",
@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
   childName: {
     fontSize: 18,
     fontWeight: "600",
-    color: "#0077B6",
+    color: colors.primary,
     textAlign: "center",
   },
   checkmarkContainer: {
@@ -190,12 +190,20 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 20,
     right: 20,
-    backgroundColor: "#0077B6",
+    backgroundColor: colors.primary,
     borderRadius: 30,
     width: 50,
     height: 50,
     justifyContent: "center",
     alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
   },
   nextArrow: {
     color: "white",

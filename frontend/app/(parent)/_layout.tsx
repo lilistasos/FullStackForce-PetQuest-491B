@@ -50,7 +50,22 @@ export default function ParentLayout() {
       } else if (tabName === '(tabs)/todo') {
         setHeaderTitle('To-Do');
       } else if (tabName === '(tabs)/post') {
-        setHeaderTitle('Post');
+        // Check if we're on a sub-page within post tab
+        if (activeTabRoute.state && activeTabRoute.state.routes && activeTabRoute.state.index !== undefined) {
+          const postRoute = activeTabRoute.state.routes[activeTabRoute.state.index];
+          const postPageName = postRoute?.name || 'index';
+          
+          if (postPageName === 'parentcreatetaskscreen') {
+            setHeaderTitle('Create Task');
+            setIsSubPage(true); // Show back button for subpage
+          } else {
+            setHeaderTitle('Post');
+            setIsSubPage(false);
+          }
+        } else {
+          setHeaderTitle('Post');
+          setIsSubPage(false);
+        }
       } else if (tabName === '(tabs)/account') {
         if (activeTabRoute.state && activeTabRoute.state.routes && activeTabRoute.state.index !== undefined) {
           const accountRoute = activeTabRoute.state.routes[activeTabRoute.state.index];

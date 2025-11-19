@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Modal } from "react-native";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useAchievements } from "@/contexts/AchievementContext";
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from "@/hooks/useAuth";
 

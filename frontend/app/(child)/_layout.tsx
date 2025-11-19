@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Tabs, useRouter } from 'expo-router';
+import { Tabs, useRouter, useSegments } from 'expo-router';
 import { TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigationState } from '@react-navigation/native';
@@ -36,10 +36,19 @@ export default function ChildLayout() {
   // Get appropriate text color for header based on primary color
   const headerTextColor = getContrastColor(colors.primary);
   const router = useRouter();
+  const segments = useSegments();
 
   const navigationState = useNavigationState(state => state);
 
   useEffect(() => {
+    // Check if we're on achievements page using segments (must be the last segment)
+    const lastSegment = segments[segments.length - 1];
+    if (lastSegment === 'achievements') {
+      setHeaderTitle('Achievements');
+      setIsSubPage(true);
+      return;
+    }
+
     if (navigationState && navigationState.index !== undefined) {
       const currentRoute = navigationState.routes[navigationState.index];
       
@@ -96,7 +105,10 @@ export default function ChildLayout() {
           else if (accountPageName === 'parental-controls') setHeaderTitle('Parental Controls');
           else if (accountPageName === 'contact') setHeaderTitle('Contact');
           else if (accountPageName === 'help-center') setHeaderTitle('Help Center');
-          else if (accountPageName === 'achievements') setHeaderTitle('Achievements');
+          else if (accountPageName === 'achievements') {
+            setHeaderTitle('Achievements');
+            setIsSubPage(true);
+          }
           else if (accountPageName === 'preferences') setHeaderTitle('Preferences');
           else {
             setHeaderTitle('Account');
@@ -110,7 +122,7 @@ export default function ChildLayout() {
         setIsSubPage(false);
       }
     }
-  }, [navigationState]);
+  }, [navigationState, segments]);
 
   return (
     <HamburgerMenu 

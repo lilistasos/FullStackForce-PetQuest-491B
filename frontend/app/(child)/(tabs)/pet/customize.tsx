@@ -183,6 +183,10 @@ export default function CustomizeScreen() {
   }, [token, selectedPet.id]);
 
   const handleAccessorySelect = (item: AccessoryItem) => {
+    // Only track customization if selecting a non-empty accessory (not "none")
+    if (item.id !== "none" && selectedAccessories[selectedCategory] !== item.id) {
+      recordCustomization();
+    }
     setSelectedAccessories({
       ...selectedAccessories,
       [selectedCategory]: item.id
