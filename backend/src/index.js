@@ -1092,6 +1092,45 @@ app.post('/api/shop/purchase', authMiddleware, async (req, res) => {
   }
 });
 
+// Update pet name
+app.patch('/api/pets/:id', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.sub;
+    const petId = req.params.id;
+    const { name } = req.body;
+
+    if (!name || name.trim().length === 0) {
+      return res.status(400).json({ error: 'Pet name is required' });
+    }
+
+    // Verify the pet belongs to this user
+    const { rows: petRows } = await pool.query(
+      `SELECT id, user_id FROM pets WHERE id = $1`,
+      [petId]
+    );
+
+    if (petRows.length === 0) {
+      return res.status(404).json({ error: 'Pet not found' });
+    }
+
+    if (petRows[0].user_id !== parseInt(userId)) {
+      return res.status(403).json({ error: 'You can only update your own pets' });
+    }
+
+    // Update the pet name
+    const { rows: updatedRows } = await pool.query(
+      `UPDATE pets SET name = $1 WHERE id = $2 RETURNING id, name, image_url AS "imageUrl", 
+              is_unlocked AS "isUnlocked", is_visible AS "isVisible", cost`,
+      [name.trim(), petId]
+    );
+
+    res.json(updatedRows[0]);
+  } catch (err) {
+    console.error('Update pet error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Starts Server
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));

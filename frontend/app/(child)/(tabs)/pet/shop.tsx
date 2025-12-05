@@ -198,10 +198,15 @@ export default function ShopScreen() {
                     }))
                   );
                   
-                  // Deduplicate accessories by name (keep first occurrence)
+                  // Deduplicate accessories by name, preferring unlocked ones
                   const customization: ShopItem[] = allAccessories.reduce((acc, accessory) => {
-                    if (!acc.find(existing => existing.name.toLowerCase() === accessory.name.toLowerCase())) {
+                    const existing = acc.find(existing => existing.name.toLowerCase() === accessory.name.toLowerCase());
+                    if (!existing) {
                       acc.push(accessory);
+                    } else if (accessory.owned && !existing.owned) {
+                      // Replace locked accessory with unlocked one if we find a duplicate
+                      const index = acc.indexOf(existing);
+                      acc[index] = accessory;
                     }
                     return acc;
                   }, [] as ShopItem[]);
@@ -250,10 +255,15 @@ export default function ShopScreen() {
             }))
           );
           
-          // Deduplicate accessories by name (keep first occurrence)
+          // Deduplicate accessories by name, preferring unlocked ones
           const customization: ShopItem[] = allAccessories.reduce((acc, accessory) => {
-            if (!acc.find(existing => existing.name.toLowerCase() === accessory.name.toLowerCase())) {
+            const existing = acc.find(existing => existing.name.toLowerCase() === accessory.name.toLowerCase());
+            if (!existing) {
               acc.push(accessory);
+            } else if (accessory.owned && !existing.owned) {
+              // Replace locked accessory with unlocked one if we find a duplicate
+              const index = acc.indexOf(existing);
+              acc[index] = accessory;
             }
             return acc;
           }, [] as ShopItem[]);
@@ -323,27 +333,60 @@ export default function ShopScreen() {
       const data = await res.json(); // { success: true, points }
       setUserCoins(data.points);     // update coins from backend
 
-      // Now update local owned state like before
-      setShopItems((prevItems) => {
-        const updatedItems: ShopData = {
-          pets: [...prevItems.pets],
-          customization: [...prevItems.customization],
-        };
-
-        const currentTab = itemToBuy.type === "pet" ? "pets" : "customization";
-        const idx = updatedItems[currentTab].findIndex(
-          (i) => i.id === itemToBuy.id
-        );
-
-        if (idx !== -1) {
-          updatedItems[currentTab][idx] = {
-            ...updatedItems[currentTab][idx],
-            owned: true,
-          };
-        }
-
-        return updatedItems;
+      // Refresh shop data to get updated unlock status from backend
+      // This ensures we have the latest state after purchase
+      const petsRes = await fetch(`${API_BASE}/api/pets`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
+
+      if (petsRes.ok) {
+        const backendPets: BackendPet[] = await petsRes.json();
+        
+        // Filter to only show unique pets (by name) - take the first one if duplicates exist
+        const uniquePets = backendPets.reduce((acc, p) => {
+          const key = petKeyFromName(p.name);
+          if (!acc.find(existing => petKeyFromName(existing.name) === key)) {
+            acc.push(p);
+          }
+          return acc;
+        }, [] as BackendPet[]);
+
+        const pets: ShopItem[] = uniquePets.map((p) => {
+          const key = petKeyFromName(p.name);
+          return {
+            id: `pet-${p.id}`, // Use backend ID to ensure uniqueness
+            name: p.name,
+            icon: key,
+            price: p.cost ?? 0,
+            owned: p.isUnlocked,
+            backendId: p.id,
+            type: "pet",
+          };
+        });
+
+        // Collect all accessories and deduplicate by name
+        const allAccessories = uniquePets.flatMap((p) =>
+          p.accessories.map((a) => ({
+            id: `acc-${a.id}`, // Use backend ID to ensure uniqueness
+            name: a.name,
+            icon: "",
+            price: a.cost ?? 0,
+            owned: a.isUnlocked,
+            backendId: a.id,
+            type: "accessory",
+          }))
+        );
+        
+        // Deduplicate accessories by name (keep first occurrence)
+        const customization: ShopItem[] = allAccessories.reduce((acc, accessory) => {
+          if (!acc.find(existing => existing.name.toLowerCase() === accessory.name.toLowerCase())) {
+            acc.push(accessory);
+          }
+          return acc;
+        }, [] as ShopItem[]);
+
+        setShopItems({ pets, customization });
+      }
     } catch (err) {
       // Silently handle purchase errors
     } finally {
