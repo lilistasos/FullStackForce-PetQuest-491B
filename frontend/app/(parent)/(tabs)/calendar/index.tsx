@@ -81,37 +81,60 @@ const fetchChildrenTasks = async (token: string): Promise<ChildTask[]> => {
     
       // Transform backend format to match ChildTask interface expected by parent calendar
       // Filter to show only events (type === 'event')
+      console.log('Parent Calendar: All tasks received:', tasks.length, tasks.map((t: any) => ({ id: t.id, text: t.text, type: t.type, dueDate: t.dueDate })));
       const transformedTasks: ChildTask[] = tasks
         .filter((task: any) => {
           // Show events: type === 'event' OR if type is missing but category suggests it's an event
-          return task.type === 'event' || 
+          const isEvent = task.type === 'event' || 
                  (!task.type && ['School', 'Sporting Games', 'Family Gatherings'].includes(task.category));
+          if (isEvent) {
+            console.log('Parent Calendar: Found event:', { id: task.id, text: task.text, type: task.type, dueDate: task.dueDate });
+          }
+          return isEvent;
         })
         .map((task: any) => {
           // Convert dueDate to YYYY-MM-DD format
+          // Backend returns PostgreSQL format: "2025-12-06 00:00:00-08" or ISO: "2025-12-06T00:00:00Z" or just "2025-12-06"
           let dateStr = '';
           if (task.dueDate) {
-            // Handle both date strings and Date objects
-            const date = typeof task.dueDate === 'string' ? new Date(task.dueDate) : task.dueDate;
-            if (!isNaN(date.getTime())) {
-              dateStr = date.toISOString().split('T')[0]; // Extract YYYY-MM-DD
-            } else if (typeof task.dueDate === 'string' && task.dueDate.match(/^\d{4}-\d{2}-\d{2}/)) {
-              // Already in YYYY-MM-DD format
+            if (typeof task.dueDate === 'string') {
+              // Extract just the date part (before T or space)
               dateStr = task.dueDate.split('T')[0].split(' ')[0];
+              // Ensure it's a valid date format
+              if (!dateStr.match(/^\d{4}-\d{2}-\d{2}/)) {
+                console.warn('Parent Calendar: Invalid date format:', task.dueDate, 'extracted:', dateStr);
+                dateStr = '';
+              }
+            } else {
+              // Date object, convert to YYYY-MM-DD
+              const date = new Date(task.dueDate);
+              if (!isNaN(date.getTime())) {
+                dateStr = date.toISOString().split('T')[0];
+              } else {
+                console.warn('Parent Calendar: Invalid date object:', task.dueDate);
+              }
             }
+          } else {
+            console.warn('Parent Calendar: Task has no dueDate:', task.id, task.text);
           }
           
           // Extract time from dueDate if it's a full datetime (for events)
           let timeStr = '';
           if (task.type === 'event' && task.dueDate) {
             // For events, dueDate might be a full datetime string
+            // Backend returns PostgreSQL timestamp format: "2025-12-06 00:00:00-08" or ISO: "2025-12-06T00:00:00Z"
             let dateObj: Date;
-            if (typeof task.dueDate === 'string' && task.dueDate.includes('T')) {
-              // ISO string with time
-              dateObj = new Date(task.dueDate);
-            } else if (typeof task.dueDate === 'string') {
-              // Try parsing as date string
-              dateObj = new Date(task.dueDate);
+            if (typeof task.dueDate === 'string') {
+              // Check if it's a datetime (has space or T separator, not just date)
+              const isDateTime = task.dueDate.includes('T') || (task.dueDate.includes(' ') && task.dueDate.match(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}/));
+              
+              if (isDateTime) {
+                // Parse the datetime string (handles both ISO and PostgreSQL formats)
+                dateObj = new Date(task.dueDate);
+              } else {
+                // Just a date, no time
+                dateObj = new Date(task.dueDate);
+              }
             } else {
               dateObj = new Date(task.dueDate);
             }
@@ -212,6 +235,8 @@ export default function ParentCalendarScreen() {
       // Fetch real data from database instead of using mock data
       const tasks = await fetchChildrenTasks(token);
       
+      console.log('Parent Calendar: Transformed tasks:', tasks.length, tasks.map((t: any) => ({ id: t.id, text: t.taskName, date: t.date, time: t.time })));
+      
       // Group tasks by date
       const tasksByDate: { [date: string]: ChildTask[] } = {};
       
@@ -224,8 +249,13 @@ export default function ParentCalendarScreen() {
             tasksByDate[normalizedDate] = [];
           }
           tasksByDate[normalizedDate].push(task);
+          console.log('Parent Calendar: Added task to date:', normalizedDate, task.taskName);
+        } else {
+          console.log('Parent Calendar: Task skipped - invalid date:', task.date, task.taskName);
         }
       });
+      
+      console.log('Parent Calendar: Tasks by date keys:', Object.keys(tasksByDate));
       
       setChildrenTasks(tasksByDate);
     } catch (error) {

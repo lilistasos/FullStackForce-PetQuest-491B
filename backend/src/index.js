@@ -626,6 +626,7 @@ const CreateTaskSchema = z.object({
   points: z.number().int().min(0).optional().default(0),
   dueDate: z.string(), // ISO string
   assignedToUserId: z.number().int(),
+  type: z.enum(['task', 'event']).optional().default('task'), // Allow 'task' or 'event'
 });
 
 // Create a task (parent creates task for child)
@@ -659,7 +660,8 @@ app.post('/api/tasks', authMiddleware, async (req, res) => {
       return res.status(403).json({ error: 'Can only assign tasks to children in your family' });
     }
 
-    const taskType = data.type || 'task'; // Default to 'task' if not provided
+    // Use the validated type from schema (defaults to 'task' if not provided)
+    const taskType = data.type || 'task';
     const { rows } = await pool.query(
       `INSERT INTO tasks (text, category, description, points, due_date, assigned_to_user_id, assigned_by_user_id, type)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -786,6 +788,11 @@ app.put('/api/tasks/:id', authMiddleware, async (req, res) => {
       currentUserIdType: typeof userId,
       areEqual: assignedToUserId === currentUserId
     });
+    
+    // Prevent children from completing events
+    if (completed !== undefined && task.type === 'event' && user.role === 'child') {
+      return res.status(403).json({ error: 'Events cannot be completed. They are informational only.' });
+    }
     
     if (completed !== undefined && assignedToUserId !== currentUserId) {
       console.error('Permission denied - User ID mismatch:', {

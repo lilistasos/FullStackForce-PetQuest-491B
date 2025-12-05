@@ -171,6 +171,27 @@ const ParentCreateTaskScreen = () => {
 
       try {
         const api = getApiUrl();
+        
+        // For events, combine date and time into a full datetime
+        // For tasks, just use the date
+        let dueDate: string;
+        if (itemType === "events") {
+          // Combine date and time into a single datetime
+          // Create a new date from the date's year, month, day
+          const year = date.getFullYear();
+          const month = date.getMonth();
+          const day = date.getDate();
+          
+          // Create new date with the time's hours and minutes
+          const combinedDateTime = new Date(year, month, day, time.getHours(), time.getMinutes(), 0, 0);
+          
+          // Format as ISO string for backend (includes timezone)
+          dueDate = combinedDateTime.toISOString();
+        } else {
+          // For tasks, just use the date (YYYY-MM-DD format)
+          dueDate = date.toISOString().split('T')[0];
+        }
+        
         const res = await fetch(`${api}/api/tasks`, {
           method: "POST",
           headers: {
@@ -180,7 +201,7 @@ const ParentCreateTaskScreen = () => {
           body: JSON.stringify({
             text: taskName,
             description: note || '',
-            dueDate: date.toISOString().split('T')[0],
+            dueDate: dueDate,
             points: points || 0, // Events can have 0 points
             category: category || "Other",
             assignedToUserId: parseInt(childId as string),

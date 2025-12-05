@@ -30,6 +30,7 @@ interface TaskItem {
   complete: boolean;
   category?: string;
   dueDate?: string;
+  type?: string; // 'task' or 'event'
 }
 
 interface AgendaSection {
@@ -185,10 +186,14 @@ export default function CalendarScreen() {
       const agendaSections: AgendaSection[] = [];
       const tasksByDate: { [key: string]: TaskItem[] } = {};
 
+      console.log('Child Calendar: All tasks received:', tasks.length, tasks.map((t: any) => ({ id: t.id, text: t.text, type: t.type, dueDate: t.dueDate })));
       const eventTasks = tasks.filter((task: any) => {
         // Show events: type === 'event' OR if type is missing but category suggests it's an event
         const isEvent = task.type === 'event' || 
                        (!task.type && ['School', 'Sporting Games', 'Family Gatherings'].includes(task.category));
+        if (isEvent) {
+          console.log('Child Calendar: Found event:', { id: task.id, text: task.text, type: task.type, dueDate: task.dueDate });
+        }
         return isEvent;
       });
 
@@ -201,21 +206,29 @@ export default function CalendarScreen() {
           
           if (dateKey) {
             // Extract time from dueDate if it's a full datetime (for events)
-            if (task.type === 'event' && typeof dateKey === 'string' && dateKey.includes('T')) {
-              // Full datetime string, extract time
-              const dateObj = new Date(dateKey);
-              if (!isNaN(dateObj.getTime())) {
-                const hours = dateObj.getHours();
-                const minutes = dateObj.getMinutes();
-                const period = hours >= 12 ? 'PM' : 'AM';
-                const displayHours = hours % 12 || 12;
-                const displayMinutes = minutes.toString().padStart(2, '0');
-                timeStr = `${displayHours}:${displayMinutes} ${period}`;
+            // Backend returns PostgreSQL timestamp format: "2025-12-06 00:00:00-08" or ISO: "2025-12-06T00:00:00Z"
+            if (task.type === 'event' && typeof dateKey === 'string') {
+              // Check if it's a datetime (has space or T separator, not just date)
+              const isDateTime = dateKey.includes('T') || (dateKey.includes(' ') && dateKey.match(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}/));
+              
+              if (isDateTime) {
+                // Parse the datetime string (handles both ISO and PostgreSQL formats)
+                const dateObj = new Date(dateKey);
+                if (!isNaN(dateObj.getTime())) {
+                  const hours = dateObj.getHours();
+                  const minutes = dateObj.getMinutes();
+                  const period = hours >= 12 ? 'PM' : 'AM';
+                  const displayHours = hours % 12 || 12;
+                  const displayMinutes = minutes.toString().padStart(2, '0');
+                  timeStr = `${displayHours}:${displayMinutes} ${period}`;
+                }
               }
             }
             
             // Ensure date is in YYYY-MM-DD format
+            // Handle both ISO (T separator) and PostgreSQL (space separator) formats
             if (typeof dateKey === 'string') {
+              // Extract just the date part (before T or space)
               dateKey = dateKey.split('T')[0].split(' ')[0];
             }
             
@@ -233,6 +246,7 @@ export default function CalendarScreen() {
                 complete: task.completed || false,
                 category: task.category || 'Other',
                 dueDate: dateKey,
+                type: task.type || 'task', // Store the type to check if it's an event
               });
             }
           }
@@ -272,18 +286,31 @@ export default function CalendarScreen() {
   const completeTask = async (taskId: string) => {
     if (!token) return;
 
+    // Find the task to check if it's an event
+    const task = items
+      .flatMap(section => section.data)
+      .find(item => item.id === taskId);
+    
+    // Prevent completing events
+    if (task?.type === 'event') {
+      Alert.alert('Cannot Complete Event', 'Events cannot be completed. They are informational only.');
+      return 0;
+    }
+
     try {
       const API_URL = getApiUrl();
-      const response = await fetch(`${API_URL}/api/tasks/${taskId}/complete`, {
-        method: 'POST',
+      const response = await fetch(`${API_URL}/api/tasks/${taskId}`, {
+        method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({ completed: true }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to complete task');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to complete task');
       }
 
       const result = await response.json();
@@ -300,8 +327,14 @@ export default function CalendarScreen() {
         }))
       );
 
-      Alert.alert('Task Completed', `You have earned ${result.pointsEarned} points!`);
-      return result.pointsEarned;
+      // Show success message with points if available
+      const pointsEarned = result.points || task?.points || 0;
+      if (pointsEarned > 0) {
+        Alert.alert('Task Completed', `You have earned ${pointsEarned} points!`);
+      } else {
+        Alert.alert('Task Completed', 'Task marked as complete!');
+      }
+      return pointsEarned;
     } catch (error) {
       console.error('Error completing task:', error);
       Alert.alert('Error', 'Failed to complete task');
@@ -745,7 +778,7 @@ export default function CalendarScreen() {
                   >
                     <Text style={styles.buttonText}>Close</Text>
                   </TouchableOpacity>
-                  {!selectedItem.complete && (
+                  {!selectedItem.complete && selectedItem.type !== 'event' && (
                     <TouchableOpacity
                       style={[styles.completeButton, { backgroundColor: colors.primary }]}
                       onPress={() => toggleComplete(currentDate, selectedItem.id)}
