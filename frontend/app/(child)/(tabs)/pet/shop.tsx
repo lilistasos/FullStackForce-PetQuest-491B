@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Modal, Platform } from "react-native";
+import React, { useState, useEffect, useCallback } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Modal, Platform, ActivityIndicator } from "react-native";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAchievements } from "@/contexts/AchievementContext";
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from "@/hooks/useAuth";
+import { useFocusEffect } from "expo-router";
 import { getApiUrl } from '@/utils/api';
 
 interface ShopItem {
@@ -99,11 +100,17 @@ export default function ShopScreen() {
     pets: [],
     customization: [],
   });
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (!token) return;
+  const loadShop = useCallback(async () => {
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+    
+    setLoading(true);
 
-    const loadShop = async () => {
+    const loadShopData = async () => {
       try {
         const API_BASE = getApiUrl();
         const [meRes, petsRes] = await Promise.all([
@@ -118,17 +125,109 @@ export default function ShopScreen() {
         if (meRes.ok) {
           const me: UserMe = await meRes.json();
           setUserCoins(me.points ?? 0);
-        } else {
-          console.log("Failed to fetch /api/users/me:", await meRes.text());
         }
 
         if (petsRes.ok) {
           const backendPets: BackendPet[] = await petsRes.json();
 
-          const pets: ShopItem[] = backendPets.map((p) => {
+          // If no pets exist, initialize them
+          if (backendPets.length === 0) {
+            try {
+              const initRes = await fetch(`${API_BASE}/api/pets/initialize`, {
+                method: "POST",
+                headers: { 
+                  Authorization: `Bearer ${token}`,
+                  "Content-Type": "application/json"
+                },
+              });
+              
+              let initData;
+              const responseText = await initRes.text();
+              
+              if (!initRes.ok) {
+                throw new Error(`Initialize failed: ${initRes.status} - ${responseText.substring(0, 100)}`);
+              }
+              
+              try {
+                initData = JSON.parse(responseText);
+              } catch (parseErr) {
+                throw new Error(`Server returned non-JSON response (status ${initRes.status}): ${responseText.substring(0, 200)}`);
+              }
+              
+              if (initRes.ok) {
+                // Fetch pets again after initialization
+                const newPetsRes = await fetch(`${API_BASE}/api/pets`, {
+                  headers: { Authorization: `Bearer ${token}` },
+                });
+                
+                if (newPetsRes.ok) {
+                  const newBackendPets: BackendPet[] = await newPetsRes.json();
+                  
+                  // Filter to only show unique pets (by name) - take the first one if duplicates exist
+                  const uniquePets = newBackendPets.reduce((acc, p) => {
+                    const key = petKeyFromName(p.name);
+                    if (!acc.find(existing => petKeyFromName(existing.name) === key)) {
+                      acc.push(p);
+                    }
+                    return acc;
+                  }, [] as BackendPet[]);
+
+                  const pets: ShopItem[] = uniquePets.map((p) => {
+                    const key = petKeyFromName(p.name);
+                    return {
+                      id: `pet-${p.id}`, // Use backend ID to ensure uniqueness
+                      name: p.name,
+                      icon: key,
+                      price: p.cost ?? 0,
+                      owned: p.isUnlocked,
+                      backendId: p.id,
+                      type: "pet",
+                    };
+                  });
+
+                  // Collect all accessories and deduplicate by name
+                  const allAccessories = uniquePets.flatMap((p) =>
+                    p.accessories.map((a) => ({
+                      id: `acc-${a.id}`, // Use backend ID to ensure uniqueness
+                      name: a.name,
+                      icon: "",
+                      price: a.cost ?? 0,
+                      owned: a.isUnlocked,
+                      backendId: a.id,
+                      type: "accessory",
+                    }))
+                  );
+                  
+                  // Deduplicate accessories by name (keep first occurrence)
+                  const customization: ShopItem[] = allAccessories.reduce((acc, accessory) => {
+                    if (!acc.find(existing => existing.name.toLowerCase() === accessory.name.toLowerCase())) {
+                      acc.push(accessory);
+                    }
+                    return acc;
+                  }, [] as ShopItem[]);
+
+                  setShopItems({ pets, customization });
+                  return;
+                }
+              }
+            } catch (initErr: any) {
+              // Silently handle initialization errors
+            }
+          }
+
+          // Filter to only show unique pets (by name) - take the first one if duplicates exist
+          const uniquePets = backendPets.reduce((acc, p) => {
+            const key = petKeyFromName(p.name);
+            if (!acc.find(existing => petKeyFromName(existing.name) === key)) {
+              acc.push(p);
+            }
+            return acc;
+          }, [] as BackendPet[]);
+
+          const pets: ShopItem[] = uniquePets.map((p) => {
             const key = petKeyFromName(p.name);
             return {
-              id: key, // "dragon", "cat", etc.
+              id: `pet-${p.id}`, // Use backend ID to ensure uniqueness
               name: p.name,
               icon: key,
               price: p.cost ?? 0,
@@ -138,9 +237,10 @@ export default function ShopScreen() {
             };
           });
 
-          const customization: ShopItem[] = backendPets.flatMap((p) =>
+          // Collect all accessories and deduplicate by name
+          const allAccessories = uniquePets.flatMap((p) =>
             p.accessories.map((a) => ({
-              id: mapAccessoryIdFromName(a.name),
+              id: `acc-${a.id}`, // Use backend ID to ensure uniqueness
               name: a.name,
               icon: "",
               price: a.cost ?? 0,
@@ -149,18 +249,36 @@ export default function ShopScreen() {
               type: "accessory",
             }))
           );
+          
+          // Deduplicate accessories by name (keep first occurrence)
+          const customization: ShopItem[] = allAccessories.reduce((acc, accessory) => {
+            if (!acc.find(existing => existing.name.toLowerCase() === accessory.name.toLowerCase())) {
+              acc.push(accessory);
+            }
+            return acc;
+          }, [] as ShopItem[]);
 
           setShopItems({ pets, customization });
-        } else {
-          console.log("Failed to fetch /api/pets:", await petsRes.text());
         }
       } catch (err) {
-        console.log("Error loading shop data:", err);
+        // Silently handle errors
+      } finally {
+        setLoading(false);
       }
     };
 
-    loadShop();
+    await loadShopData();
   }, [token]);
+
+  useEffect(() => {
+    loadShop();
+  }, [loadShop]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadShop();
+    }, [loadShop])
+  );
 
   const handlePurchaseClick = (item: ShopItem) => {
     if (item.owned || userCoins < item.price) return;
@@ -197,7 +315,6 @@ export default function ShopScreen() {
       });
 
       if (!res.ok) {
-        console.log("Purchase failed:", await res.text());
         setShowConfirmModal(false);
         setItemToBuy(null);
         return;
@@ -228,7 +345,7 @@ export default function ShopScreen() {
         return updatedItems;
       });
     } catch (err) {
-      console.log("Error during purchase:", err);
+      // Silently handle purchase errors
     } finally {
       setShowConfirmModal(false);
       setItemToBuy(null);
@@ -241,61 +358,76 @@ export default function ShopScreen() {
   };
 
   const renderShopItem = (item: ShopItem) => {
-    const isPet =
-      item.id === "dragon" ||
-      item.id === "cat" ||
-      item.id === "dog" ||
-      item.id === "lion" ||
-      item.id === "unicorn";
+    // Check if it's a pet by checking the icon or name
+    const isPet = item.type === "pet" || 
+      item.icon === "dragon" ||
+      item.icon === "cat" ||
+      item.icon === "dog" ||
+      item.icon === "lion" ||
+      item.icon === "unicorn";
 
     let content;
 
-    if (item.id === "top-hat") {
-      content = (
-        <>
-          <Image
-            source={require("@/assets/images/tophat.png")}
-            style={styles.itemImage}
-            resizeMode="contain"
-          />
-          <Text style={[styles.itemPrice, { color: colors.text }]}>{item.price}</Text>
-        </>
-      );
-    } else if (item.id === "glasses") {
-      content = (
-        <>
-          <Image
-            source={require("@/assets/images/sunglasses.png")}
-            style={styles.itemImage}
-            resizeMode="contain"
-          />
-          <Text style={[styles.itemPrice, { color: colors.text }]}>{item.price}</Text>
-        </>
-      );
-    } else if (item.id === "cap") {
-      content = (
-        <>
-          <Image
-            source={require("@/assets/images/bbhat.png")}
-            style={styles.itemImage}
-            resizeMode="contain"
-          />
-          <Text style={[styles.itemPrice, { color: colors.text }]}>{item.price}</Text>
-        </>
-      );
-    } else if (item.id === "football") {
-      content = (
-        <>
-          <Image
-            source={require("@/assets/images/football.png")}
-            style={styles.itemImage}
-            resizeMode="contain"
-          />
-          <Text style={[styles.itemPrice, { color: colors.text }]}>{item.price}</Text>
-        </>
-      );
+    // Check accessories by name (case-insensitive)
+    const itemNameLower = item.name.toLowerCase();
+    
+    if (item.type === "accessory") {
+      if (itemNameLower.includes("top hat") || itemNameLower.includes("top-hat")) {
+        content = (
+          <>
+            <Image
+              source={require("@/assets/images/tophat.png")}
+              style={styles.itemImage}
+              resizeMode="contain"
+            />
+            <Text style={[styles.itemPrice, { color: colors.text }]}>{item.price}</Text>
+          </>
+        );
+      } else if (itemNameLower.includes("sunglasses") || itemNameLower.includes("glass")) {
+        content = (
+          <>
+            <Image
+              source={require("@/assets/images/sunglasses.png")}
+              style={styles.itemImage}
+              resizeMode="contain"
+            />
+            <Text style={[styles.itemPrice, { color: colors.text }]}>{item.price}</Text>
+          </>
+        );
+      } else if (itemNameLower.includes("baseball cap") || itemNameLower.includes("cap")) {
+        content = (
+          <>
+            <Image
+              source={require("@/assets/images/bbhat.png")}
+              style={styles.itemImage}
+              resizeMode="contain"
+            />
+            <Text style={[styles.itemPrice, { color: colors.text }]}>{item.price}</Text>
+          </>
+        );
+      } else if (itemNameLower.includes("football")) {
+        content = (
+          <>
+            <Image
+              source={require("@/assets/images/football.png")}
+              style={styles.itemImage}
+              resizeMode="contain"
+            />
+            <Text style={[styles.itemPrice, { color: colors.text }]}>{item.price}</Text>
+          </>
+        );
+      } else {
+        // Fallback for other accessories
+        content = (
+          <>
+            <Text style={[styles.itemTitle, { color: colors.text }]}>{item.name}</Text>
+            <Text style={[styles.itemPrice, { color: colors.text }]}>{item.price}</Text>
+          </>
+        );
+      }
     } else if (isPet) {
-      const imgSource = getPetImage(item.id);
+      // Use item.icon which contains the pet key (dragon, cat, etc.)
+      const imgSource = getPetImage(item.icon);
       content = (
         <>
           <Image
@@ -402,9 +534,25 @@ export default function ShopScreen() {
       </View>
 
       <View style={styles.gridContainer}>
-        <View style={styles.grid}>
-          {shopItems[selectedTab].map(renderShopItem)}
-        </View>
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={[styles.loadingText, { color: colors.text }]}>Loading shop...</Text>
+          </View>
+        ) : shopItems[selectedTab].length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Text style={[styles.emptyText, { color: colors.text }]}>
+              No {selectedTab === "pets" ? "pets" : "accessories"} available yet.
+            </Text>
+            <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>
+              Check back soon!
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.grid}>
+            {shopItems[selectedTab].map(renderShopItem)}
+          </View>
+        )}
       </View>
 
       {/* Confirmation Modal */}
@@ -618,5 +766,34 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 8,
     alignItems: "center",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 60,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontFamily: "monospace",
+    fontSize: 16,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 60,
+  },
+  emptyText: {
+    fontFamily: "monospace",
+    fontSize: 18,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    fontFamily: "monospace",
+    fontSize: 14,
+    textAlign: "center",
   },
 });

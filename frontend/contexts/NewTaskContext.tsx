@@ -25,9 +25,7 @@ export const NewTaskProvider = ({ children }: { children: React.ReactNode }) => 
   const [newTask, setNewTask] = useState<Task | null>(null);
 
   const showTask = (task: Task) => {
-    console.log('NewTaskContext: showTask called with:', task);
     setNewTask(task);
-    console.log('NewTaskContext: newTask state set to:', task);
   };
 
   const hideTask = () => {

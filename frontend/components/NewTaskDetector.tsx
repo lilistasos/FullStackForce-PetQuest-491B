@@ -14,6 +14,7 @@ export default function NewTaskDetector() {
   const { user } = useAuth();
   const { showTask } = useNewTask();
   const previousTaskIdsRef = useRef<Set<string>>(new Set());
+  const shownTaskIdsRef = useRef<Set<string>>(new Set()); // Track tasks that have already been shown
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const isInitialLoadRef = useRef(true);
 
@@ -32,15 +33,20 @@ export default function NewTaskDetector() {
     if (isInitialLoadRef.current) {
       if (tasks.length >= 0) { // Changed to >= 0 to handle empty task lists too
         // First load - just store the IDs, don't show notifications
-        previousTaskIdsRef.current = new Set(tasks.map(t => t.id.toString()));
+        // Also mark all existing tasks as already shown so they don't trigger popups
+        const taskIds = tasks.map(t => t.id.toString());
+        previousTaskIdsRef.current = new Set(taskIds);
+        shownTaskIdsRef.current = new Set(taskIds);
         isInitialLoadRef.current = false;
       }
       return;
     }
 
-    // After initial load, detect new tasks (not completed)
+    // After initial load, detect new tasks (not completed and not already shown)
     const newTasks = tasks.filter(
-      t => !previousTaskIdsRef.current.has(t.id.toString()) && !t.completed
+      t => !previousTaskIdsRef.current.has(t.id.toString()) && 
+           !t.completed && 
+           !shownTaskIdsRef.current.has(t.id.toString())
     );
 
     // Show notification for the most recent new task
@@ -50,9 +56,14 @@ export default function NewTaskDetector() {
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       )[0];
 
+      const taskId = latestNewTask.id.toString();
+      
+      // Mark this task as shown so it won't trigger again
+      shownTaskIdsRef.current.add(taskId);
+
       try {
         showTask({
-          id: latestNewTask.id.toString(),
+          id: taskId,
           title: latestNewTask.text,
           description: latestNewTask.description || 'No description provided',
           assignedAt: latestNewTask.createdAt,

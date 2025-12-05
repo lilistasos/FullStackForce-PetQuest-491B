@@ -209,8 +209,84 @@ async function registerUser(payload) {
     familyCode: finalFamilyCode,
     dateOfBirth });
 
+  // Create default pets for child users
+  if (role === 'child') {
+    await initializeDefaultPets(user.id);
+  }
+
   const token = generateToken(user);
   return { user, token };
+}
+
+// Initialize default pets and accessories for a user
+async function initializeDefaultPets(userId) {
+  const defaultPets = [
+    { name: 'Dragon', cost: 0, isUnlocked: true, isVisible: true },
+    { name: 'Cat', cost: 50, isUnlocked: false, isVisible: true },
+    { name: 'Dog', cost: 75, isUnlocked: false, isVisible: true },
+    { name: 'Lion', cost: 100, isUnlocked: false, isVisible: true },
+    { name: 'Unicorn', cost: 150, isUnlocked: false, isVisible: true },
+  ];
+
+  const defaultAccessories = {
+    'Dragon': [
+      { name: 'Baseball Cap', cost: 25, isUnlocked: false, isVisible: true },
+      { name: 'Top Hat', cost: 30, isUnlocked: false, isVisible: true },
+      { name: 'Sunglasses', cost: 20, isUnlocked: false, isVisible: true },
+      { name: 'Football', cost: 15, isUnlocked: false, isVisible: true },
+    ],
+    'Cat': [
+      { name: 'Baseball Cap', cost: 25, isUnlocked: false, isVisible: true },
+      { name: 'Top Hat', cost: 30, isUnlocked: false, isVisible: true },
+      { name: 'Sunglasses', cost: 20, isUnlocked: false, isVisible: true },
+      { name: 'Football', cost: 15, isUnlocked: false, isVisible: true },
+    ],
+    'Dog': [
+      { name: 'Baseball Cap', cost: 25, isUnlocked: false, isVisible: true },
+      { name: 'Top Hat', cost: 30, isUnlocked: false, isVisible: true },
+      { name: 'Sunglasses', cost: 20, isUnlocked: false, isVisible: true },
+      { name: 'Football', cost: 15, isUnlocked: false, isVisible: true },
+    ],
+    'Lion': [
+      { name: 'Baseball Cap', cost: 25, isUnlocked: false, isVisible: true },
+      { name: 'Top Hat', cost: 30, isUnlocked: false, isVisible: true },
+      { name: 'Sunglasses', cost: 20, isUnlocked: false, isVisible: true },
+      { name: 'Football', cost: 15, isUnlocked: false, isVisible: true },
+    ],
+    'Unicorn': [
+      { name: 'Baseball Cap', cost: 25, isUnlocked: false, isVisible: true },
+      { name: 'Top Hat', cost: 30, isUnlocked: false, isVisible: true },
+      { name: 'Sunglasses', cost: 20, isUnlocked: false, isVisible: true },
+      { name: 'Football', cost: 15, isUnlocked: false, isVisible: true },
+    ],
+  };
+
+  for (const pet of defaultPets) {
+    try {
+      const { rows: petRows } = await pool.query(
+        `INSERT INTO pets (user_id, name, is_unlocked, is_visible, cost)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING id`,
+        [userId, pet.name, pet.isUnlocked, pet.isVisible, pet.cost]
+      );
+
+      const petId = petRows[0].id;
+      const accessories = defaultAccessories[pet.name] || [];
+
+      for (const accessory of accessories) {
+        await pool.query(
+          `INSERT INTO pet_accessories (pet_id, name, is_unlocked, is_visible, cost)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [petId, accessory.name, accessory.isUnlocked, accessory.isVisible, accessory.cost]
+        );
+      }
+      console.log(`Created pet "${pet.name}" (ID: ${petId}) with ${accessories.length} accessories`);
+    } catch (err) {
+      console.error(`Error creating pet "${pet.name}":`, err);
+      throw err;
+    }
+  }
+  console.log(`Successfully initialized all pets for user ${userId}`);
 }
 
 // Login Function
@@ -830,12 +906,47 @@ app.get('/api/users/children', authMiddleware, async (req, res) => {
   }
 });
 
+// Initialize pets for existing users (if they don't have any)
+// NOTE: This route must come BEFORE /api/pets to avoid route conflicts
+app.post('/api/pets/initialize', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.sub;
+    console.log(`[POST /api/pets/initialize] Initializing pets for user ${userId}`);
+    
+    // Check if user already has pets
+    const { rows: existingPets } = await pool.query(
+      `SELECT id FROM pets WHERE user_id = $1 LIMIT 1`,
+      [userId]
+    );
+
+    if (existingPets.length > 0) {
+      console.log(`[POST /api/pets/initialize] User ${userId} already has ${existingPets.length} pets`);
+      return res.json({ message: 'Pets already initialized', initialized: false });
+    }
+
+    console.log(`[POST /api/pets/initialize] Creating default pets for user ${userId}`);
+    await initializeDefaultPets(userId);
+    
+    // Verify pets were created
+    const { rows: newPets } = await pool.query(
+      `SELECT id, name FROM pets WHERE user_id = $1`,
+      [userId]
+    );
+    console.log(`[POST /api/pets/initialize] Created ${newPets.length} pets:`, newPets.map(p => p.name));
+    
+    res.json({ message: 'Pets initialized successfully', initialized: true, count: newPets.length });
+  } catch (err) {
+    console.error('Initialize pets error:', err);
+    res.status(500).json({ error: 'Server error', details: err.message });
+  }
+});
+
 // Get pets for the current user (with accessories)
 app.get('/api/pets', authMiddleware, async (req, res) => {
   try {
     const userId = req.user.sub;
     
-    // Get all pets for this user
+    // Get all pets for this user (including invisible ones for shop display)
     const { rows: pets } = await pool.query(
       `SELECT id, user_id AS "userId", name, image_url AS "imageUrl", 
               is_unlocked AS "isUnlocked", is_visible AS "isVisible", cost
@@ -844,6 +955,8 @@ app.get('/api/pets', authMiddleware, async (req, res) => {
        ORDER BY id`,
       [userId]
     );
+
+    console.log(`[GET /api/pets] Found ${pets.length} pets for user ${userId}`);
 
     // Get accessories for each pet
     const petsWithAccessories = await Promise.all(
@@ -863,6 +976,7 @@ app.get('/api/pets', authMiddleware, async (req, res) => {
       })
     );
 
+    console.log(`[GET /api/pets] Returning ${petsWithAccessories.length} pets with accessories`);
     res.json(petsWithAccessories);
   } catch (err) {
     console.error('Get pets error:', err);
