@@ -4,6 +4,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useAchievements } from "@/contexts/AchievementContext";
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from "@/hooks/useAuth";
+import { getApiUrl } from '@/utils/api';
 
 interface ShopItem {
   id: string;
@@ -53,16 +54,6 @@ interface UserMe {
 }
 
 type ShopTab = keyof ShopData;
-
-const getApiUrl = () => {
-  if (Platform.OS === 'android') {
-    return __DEV__ ? "http://10.0.2.2:4000" : "http://10.0.2.2:4000";
-  } else if (Platform.OS === 'ios') {
-    return __DEV__ ? "http://localhost:4000" : "http://localhost:4000";
-  } else {
-    return "http://localhost:4000";
-  }
-};
 
 const petKeyFromName = (name: string) =>
   name.toLowerCase().replace(/\s+/g, "-");

@@ -78,19 +78,37 @@ const fetchChildrenTasks = async (token: string): Promise<ChildTask[]> => {
 
     const tasks = await response.json();
     
-    // Transform backend format to match ChildTask interface expected by parent calendar
-    const transformedTasks: ChildTask[] = tasks.map((task: any) => ({
-      id: task.id.toString(),
-      childName: task.assignedToName || 'Unknown Child',
-      childId: task.assignedToUserId?.toString() || '',
-      taskName: task.text || '',
-      description: task.description || '',
-      time: 'All Day', // Backend doesn't have time, using default
-      points: task.points || 0,
-      completed: task.completed || false,
-      category: task.category || 'Other',
-      date: task.dueDate || '', // Backend returns dueDate
-    }));
+      // Transform backend format to match ChildTask interface expected by parent calendar
+      // Filter to show only events (type === 'event')
+      const transformedTasks: ChildTask[] = tasks
+        .filter((task: any) => task.type === 'event') // Only show events on calendar
+        .map((task: any) => {
+          // Convert dueDate to YYYY-MM-DD format
+          let dateStr = '';
+          if (task.dueDate) {
+            // Handle both date strings and Date objects
+            const date = typeof task.dueDate === 'string' ? new Date(task.dueDate) : task.dueDate;
+            if (!isNaN(date.getTime())) {
+              dateStr = date.toISOString().split('T')[0]; // Extract YYYY-MM-DD
+            } else if (typeof task.dueDate === 'string' && task.dueDate.match(/^\d{4}-\d{2}-\d{2}/)) {
+              // Already in YYYY-MM-DD format
+              dateStr = task.dueDate.split('T')[0].split(' ')[0];
+            }
+          }
+          
+          return {
+            id: task.id.toString(),
+            childName: task.assignedToName || 'Unknown Child',
+            childId: task.assignedToUserId?.toString() || '',
+            taskName: task.text || '',
+            description: task.description || '',
+            time: 'All Day', // Backend doesn't have time, using default
+            points: task.points || 0,
+            completed: task.completed || false,
+            category: task.category || 'Other',
+            date: dateStr,
+          };
+        });
     
     return transformedTasks;
   } catch (error) {
@@ -164,11 +182,14 @@ export default function ParentCalendarScreen() {
       const tasksByDate: { [date: string]: ChildTask[] } = {};
       
       tasks.forEach(task => {
-        if (task.date) {
-          if (!tasksByDate[task.date]) {
-            tasksByDate[task.date] = [];
+        // Only include tasks with valid dates
+        if (task.date && task.date.match(/^\d{4}-\d{2}-\d{2}/)) {
+          // Normalize date to YYYY-MM-DD format
+          const normalizedDate = task.date.split('T')[0].split(' ')[0];
+          if (!tasksByDate[normalizedDate]) {
+            tasksByDate[normalizedDate] = [];
           }
-          tasksByDate[task.date].push(task);
+          tasksByDate[normalizedDate].push(task);
         }
       });
       

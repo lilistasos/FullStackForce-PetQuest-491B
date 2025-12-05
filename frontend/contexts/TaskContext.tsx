@@ -18,6 +18,7 @@ export type Task = {
   assignedToName?: string; // child name from backend
   assignedByName?: string; // parent name from backend
   createdAt: string;
+  type?: 'task' | 'event'; // Type of item: 'task' for todo list, 'event' for calendar
 };
 
 interface TaskContextType {
@@ -46,7 +47,6 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
 
     try {
       const apiUrl = getApiUrl();
-      console.log('TaskContext: Loading tasks from API URL:', `${apiUrl}/api/tasks`);
       const response = await fetch(`${apiUrl}/api/tasks`, {
         method: 'GET',
         headers: {
@@ -86,6 +86,7 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
           assignedToName: task.assignedToName,
           assignedByName: task.assignedByName,
           createdAt: task.createdAt,
+          type: task.type || 'task', // Default to 'task' for backward compatibility
         };
       });
 

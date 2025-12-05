@@ -190,29 +190,32 @@ export default function CalendarScreen() {
       const tasks = await response.json();
       
       // Transform tasks to the format expected by the calendar
+      // Filter to show only events (type === 'event')
       const agendaSections: AgendaSection[] = [];
       const tasksByDate: { [key: string]: TaskItem[] } = {};
 
-      tasks.forEach((task: any) => {
-        // Backend returns 'dueDate', not 'date'
-        const dateKey = task.dueDate || task.date;
-        if (dateKey) {
-          if (!tasksByDate[dateKey]) {
-            tasksByDate[dateKey] = [];
+      tasks
+        .filter((task: any) => task.type === 'event') // Only show events on calendar
+        .forEach((task: any) => {
+          // Backend returns 'dueDate', not 'date'
+          const dateKey = task.dueDate || task.date;
+          if (dateKey) {
+            if (!tasksByDate[dateKey]) {
+              tasksByDate[dateKey] = [];
+            }
+            
+            tasksByDate[dateKey].push({
+              id: task.id.toString(),
+              name: task.text || task.taskName || task.title,
+              description: task.description || '',
+              time: task.time || 'All Day',
+              points: task.points || 0, // Points from backend
+              complete: task.completed || false,
+              category: task.category || 'Other',
+              dueDate: dateKey,
+            });
           }
-          
-          tasksByDate[dateKey].push({
-            id: task.id.toString(),
-            name: task.text || task.taskName || task.title,
-            description: task.description || '',
-            time: task.time || 'All Day',
-            points: task.points || 0, // Points from backend
-            complete: task.completed || false,
-            category: task.category || 'Other',
-            dueDate: dateKey,
-          });
-        }
-      });
+        });
 
       // Convert to AgendaSection format
       Object.keys(tasksByDate).forEach(date => {
