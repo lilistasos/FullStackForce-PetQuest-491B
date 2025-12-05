@@ -139,8 +139,9 @@ async function findUserByEmail(email) {
 }
 
 async function findUserById(id) {
-  // Ensure id is converted to integer for database query
-  const userId = typeof id === 'string' ? parseInt(id, 10) : id;
+  // For UUID primary keys, just pass the id through as-is
+  const userId = id;
+
   const { rows } = await pool.query(
     `SELECT id, email, first_name AS "firstName", last_name AS "lastName",
             role, family_code AS "familyCode", date_of_birth AS "dateOfBirth", created_at AS "createdAt"
@@ -757,6 +758,82 @@ app.get('/api/users/children', authMiddleware, async (req, res) => {
   } catch (err) {
     console.error('Get children error:', err);
     res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Parent adds a child to their family (reuses registerUser logic)
+app.post('/api/users/add-child', authMiddleware, async (req, res) => {
+  try {
+    const parentId = req.user.sub;
+    const { email, password, firstName, lastName } = req.body;
+
+    // 1. Make sure the requester is a parent
+    const parent = await findUserById(parentId);
+    if (!parent || parent.role !== 'parent') {
+      return res.status(403).json({ error: 'Only parents can add children.' });
+    }
+
+    if (!parent.familyCode) {
+      return res.status(400).json({ error: 'Parent does not have a family code set.' });
+    }
+
+    // 2. Register the child user
+    const { user: child } = await registerUser({
+      email,
+      password,
+      firstName,
+      lastName,
+      role: 'child',
+      familyCode: parent.familyCode,
+      // children don't need DOB, so we omit dateOfBirth
+    });
+
+    return res.status(201).json({
+      message: 'Child added successfully.',
+      child,
+    });
+  } catch (err) {
+    console.error('Add child error:', {
+      message: err.message,
+      status: err.status,
+    });
+    const status = err.status || 500;
+    return res.status(status).json({
+      error: err.message || 'Failed to add child.',
+    });
+  }
+});
+
+// Parent removes a child from their family
+app.delete('/api/users/remove-child/:id', authMiddleware, async (req, res) => {
+  try {
+    const parentId = req.user.sub;      // UUID from JWT
+    const childId = req.params.id;      // UUID string from URL
+
+    // Verify the requester is a parent
+    const parent = await findUserById(parentId);
+    if (!parent || parent.role !== 'parent') {
+      return res.status(403).json({ error: 'Only parents can remove children.' });
+    }
+
+    // Find the child
+    const child = await findUserById(childId);
+    if (!child || child.role !== 'child') {
+      return res.status(404).json({ error: 'Child not found.' });
+    }
+
+    // Ensure this child is in the same family
+    if (child.familyCode !== parent.familyCode) {
+      return res.status(403).json({ error: 'This child does not belong to your family.' });
+    }
+
+    // Delete the child user (any cascading deletes depend on your DB constraints)
+    await pool.query('DELETE FROM users WHERE id = $1', [childId]);
+
+    res.json({ message: 'Child removed successfully.' });
+  } catch (err) {
+    console.error('Remove child error:', err);
+    res.status(500).json({ error: 'Failed to remove child.' });
   }
 });
 
