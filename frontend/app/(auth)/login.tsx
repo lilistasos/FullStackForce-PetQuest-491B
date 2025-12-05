@@ -1,7 +1,8 @@
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Platform, ActivityIndicator } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Platform, ActivityIndicator, Modal, Animated } from "react-native";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { Ionicons } from "@expo/vector-icons";
 
 import { getApiUrl } from '@/utils/api';
 
@@ -13,6 +14,9 @@ export default function LoginScreen() {
   const [message, setMessage] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showDailyReward, setShowDailyReward] = useState(false);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.8)).current;
 
   const handleLogin = async () => {
     setMessage("");
@@ -75,22 +79,67 @@ export default function LoginScreen() {
         // Save credentials using the auth context
         await login(data.token, userData);
         console.log("✅ Credentials saved successfully");
-      }
-
-      setMessage("Login successful!");
-      
-      // Navigate based on user role
-      if (data.user?.role === 'parent') {
-        router.replace("/(parent)/(tabs)/calendar");
-      } else if (data.user?.role === 'child') {
-        router.replace("/(child)/(tabs)/calendar");
-      } else {
-        router.replace("/(indv)/(tabs)/calendar");
+        
+        setLoading(false);
+        
+        // Show daily reward popup if awarded (only for children)
+        if (data.dailyRewardAwarded && data.user.role === 'child') {
+          setShowDailyReward(true);
+          // Animate popup
+          Animated.parallel([
+            Animated.timing(fadeAnim, {
+              toValue: 1,
+              duration: 300,
+              useNativeDriver: true,
+            }),
+            Animated.spring(scaleAnim, {
+              toValue: 1,
+              tension: 50,
+              friction: 7,
+              useNativeDriver: true,
+            }),
+          ]).start();
+          
+          // Auto-dismiss after 3 seconds
+          setTimeout(() => {
+            Animated.parallel([
+              Animated.timing(fadeAnim, {
+                toValue: 0,
+                duration: 200,
+                useNativeDriver: true,
+              }),
+              Animated.timing(scaleAnim, {
+                toValue: 0.8,
+                duration: 200,
+                useNativeDriver: true,
+              }),
+            ]).start(() => {
+              setShowDailyReward(false);
+              navigateAfterReward(data.user?.role);
+            });
+          }, 3000);
+        } else {
+          // Navigate immediately if no reward
+          navigateAfterReward(data.user?.role);
+        }
       }
     } catch (err: any) {
       console.log("Error:", err);
       setMessage(err.message || "Unable to connect to the server. Make sure the backend is running on port 4000.");
       setLoading(false);
+    }
+  };
+
+  const navigateAfterReward = (role?: string) => {
+    setMessage("Login successful!");
+    
+    // Navigate based on user role
+    if (role === 'parent') {
+      router.replace("/(parent)/(tabs)/calendar");
+    } else if (role === 'child') {
+      router.replace("/(child)/(tabs)/calendar");
+    } else {
+      router.replace("/(indv)/(tabs)/calendar");
     }
   };
 
@@ -156,6 +205,77 @@ export default function LoginScreen() {
       <TouchableOpacity onPress={() => router.back()}>
         <Text style={styles.back}>Back</Text>
       </TouchableOpacity>
+
+      {/* Daily Reward Popup */}
+      <Modal
+        visible={showDailyReward}
+        transparent={true}
+        animationType="none"
+        onRequestClose={() => {
+          Animated.parallel([
+            Animated.timing(fadeAnim, {
+              toValue: 0,
+              duration: 200,
+              useNativeDriver: true,
+            }),
+            Animated.timing(scaleAnim, {
+              toValue: 0.8,
+              duration: 200,
+              useNativeDriver: true,
+            }),
+          ]).start(() => {
+            setShowDailyReward(false);
+            navigateAfterReward('child');
+          });
+        }}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => {
+            Animated.parallel([
+              Animated.timing(fadeAnim, {
+                toValue: 0,
+                duration: 200,
+                useNativeDriver: true,
+              }),
+              Animated.timing(scaleAnim, {
+                toValue: 0.8,
+                duration: 200,
+                useNativeDriver: true,
+              }),
+            ]).start(() => {
+              setShowDailyReward(false);
+              navigateAfterReward('child');
+            });
+          }}
+        >
+          <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()}>
+            <Animated.View
+              style={[
+                styles.rewardPopup,
+                {
+                  opacity: fadeAnim,
+                  transform: [{ scale: scaleAnim }],
+                },
+              ]}
+            >
+              <View style={styles.rewardIconContainer}>
+                <Ionicons name="gift" size={64} color="#FFD700" />
+              </View>
+              <Text style={styles.rewardTitle}>Daily Login Reward! 🎉</Text>
+              <Text style={styles.rewardMessage}>
+                You've earned <Text style={styles.rewardPoints}>5 points</Text> for logging in today!
+              </Text>
+              <View style={styles.rewardStars}>
+                <Ionicons name="star" size={24} color="#FFD700" />
+                <Ionicons name="star" size={32} color="#FFD700" />
+                <Ionicons name="star" size={24} color="#FFD700" />
+              </View>
+            </Animated.View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -184,4 +304,49 @@ const styles = StyleSheet.create({
   passwordContainer: { flexDirection: "row", alignItems: "center", width: "90%", marginBottom: 15},
   showButton: { position: "absolute", right: 15},
   showButtonText: {color: "#52AFDD", fontWeight: "bold"},
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  rewardPopup: {
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 32,
+    alignItems: "center",
+    width: "80%",
+    maxWidth: 350,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 10,
+  },
+  rewardIconContainer: {
+    marginBottom: 16,
+  },
+  rewardTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#333",
+    marginBottom: 12,
+    textAlign: "center",
+  },
+  rewardMessage: {
+    fontSize: 16,
+    color: "#666",
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  rewardPoints: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#52AFDD",
+  },
+  rewardStars: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
 });

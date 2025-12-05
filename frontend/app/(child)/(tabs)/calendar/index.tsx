@@ -7,18 +7,9 @@ import { usePet } from '@/contexts/PetContext';
 import { useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@/hooks/useAuth';
+import { getApiUrl } from '@/utils/api';
 
 const WEEK_START_KEY = '@petquest:weekStart';
-
-const getApiUrl = () => {
-  if (Platform.OS === 'android') {
-    return __DEV__ ? "http://10.0.2.2:4000" : "http://10.0.2.2:4000";
-  } else if (Platform.OS === 'ios') {
-    return __DEV__ ? "http://localhost:4000" : "http://localhost:4000";
-  } else {
-    return "http://localhost:4000";
-  }
-};
 
 // Function to calculate luminance and determine text color
 const getContrastColor = (backgroundColor: string): string => {
@@ -194,26 +185,56 @@ export default function CalendarScreen() {
       const agendaSections: AgendaSection[] = [];
       const tasksByDate: { [key: string]: TaskItem[] } = {};
 
-      tasks
-        .filter((task: any) => task.type === 'event') // Only show events on calendar
+      const eventTasks = tasks.filter((task: any) => {
+        // Show events: type === 'event' OR if type is missing but category suggests it's an event
+        const isEvent = task.type === 'event' || 
+                       (!task.type && ['School', 'Sporting Games', 'Family Gatherings'].includes(task.category));
+        return isEvent;
+      });
+
+      eventTasks
         .forEach((task: any) => {
           // Backend returns 'dueDate', not 'date'
-          const dateKey = task.dueDate || task.date;
+          // Normalize date to YYYY-MM-DD format
+          let dateKey = task.dueDate || task.date;
+          let timeStr = '';
+          
           if (dateKey) {
-            if (!tasksByDate[dateKey]) {
-              tasksByDate[dateKey] = [];
+            // Extract time from dueDate if it's a full datetime (for events)
+            if (task.type === 'event' && typeof dateKey === 'string' && dateKey.includes('T')) {
+              // Full datetime string, extract time
+              const dateObj = new Date(dateKey);
+              if (!isNaN(dateObj.getTime())) {
+                const hours = dateObj.getHours();
+                const minutes = dateObj.getMinutes();
+                const period = hours >= 12 ? 'PM' : 'AM';
+                const displayHours = hours % 12 || 12;
+                const displayMinutes = minutes.toString().padStart(2, '0');
+                timeStr = `${displayHours}:${displayMinutes} ${period}`;
+              }
             }
             
-            tasksByDate[dateKey].push({
-              id: task.id.toString(),
-              name: task.text || task.taskName || task.title,
-              description: task.description || '',
-              time: task.time || 'All Day',
-              points: task.points || 0, // Points from backend
-              complete: task.completed || false,
-              category: task.category || 'Other',
-              dueDate: dateKey,
-            });
+            // Ensure date is in YYYY-MM-DD format
+            if (typeof dateKey === 'string') {
+              dateKey = dateKey.split('T')[0].split(' ')[0];
+            }
+            
+            if (dateKey && dateKey.match(/^\d{4}-\d{2}-\d{2}/)) {
+              if (!tasksByDate[dateKey]) {
+                tasksByDate[dateKey] = [];
+              }
+              
+              tasksByDate[dateKey].push({
+                id: task.id.toString(),
+                name: task.text || task.taskName || task.title,
+                description: task.description || '',
+                time: timeStr, // Use extracted time, empty string if no time
+                points: task.points || 0, // Points from backend
+                complete: task.completed || false,
+                category: task.category || 'Other',
+                dueDate: dateKey,
+              });
+            }
           }
         });
 
@@ -224,6 +245,12 @@ export default function CalendarScreen() {
           data: tasksByDate[date],
         });
       });
+
+      // Debug logging (remove after testing)
+      if (eventTasks.length > 0) {
+        console.log('Calendar: Found events:', eventTasks.length, eventTasks.map((t: any) => ({ id: t.id, text: t.text, type: t.type, dueDate: t.dueDate })));
+        console.log('Calendar: Tasks by date:', Object.keys(tasksByDate));
+      }
 
       setItems(agendaSections);
     } catch (error) {
@@ -330,14 +357,13 @@ export default function CalendarScreen() {
               <Ionicons name="checkmark-circle" size={16} color={colors.primary} style={styles.completeIcon} />
             )}
           </View>
-          <Text style={[styles.taskTime, { color: colors.textSecondary }]}>{item.time}</Text>
         </View>
         {item.description && (
           <Text style={[styles.taskDescription, { color: colors.textSecondary }]}>{item.description}</Text>
         )}
         <View style={styles.taskFooter}>
           <Text style={[styles.taskCategory, { color: colors.textSecondary }]}>
-            {item.category || 'Event'}
+            {item.time ? `${item.category || 'Event'}: ${item.time}` : (item.category || 'Event')}
           </Text>
           <Text style={[styles.taskPoints, { color: colors.primary }]}>{item.points} pts</Text>
         </View>
@@ -704,9 +730,11 @@ export default function CalendarScreen() {
                 <Text style={[styles.modalText, { color: colors.textSecondary }]}>
                   Description: {selectedItem.description || 'No description'}
                 </Text>
-                <Text style={[styles.modalText, { color: colors.textSecondary }]}>
-                  Time: {selectedItem.time}
-                </Text>
+                {selectedItem.time && (
+                  <Text style={[styles.modalText, { color: colors.textSecondary }]}>
+                    Time: {selectedItem.time}
+                  </Text>
+                )}
                 <Text style={[styles.modalText, { color: colors.textSecondary }]}>
                   Points: {selectedItem.points}
                 </Text>

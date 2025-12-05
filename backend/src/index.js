@@ -129,7 +129,8 @@ function authMiddleware(req, res, next) {
 async function findUserByEmail(email) {
   const { rows } = await pool.query(
     `SELECT id, email, password_hash, first_name AS "firstName", last_name AS "lastName",
-            role, family_code AS "familyCode", date_of_birth AS "dateOfBirth", created_at AS "createdAt"
+            role, family_code AS "familyCode", date_of_birth AS "dateOfBirth", created_at AS "createdAt",
+            points, last_login_date
      FROM users
      WHERE email = $1`,
     [email]
@@ -230,9 +231,62 @@ async function loginUser(payload) {
     throw err;
   }
 
-  const { password_hash, ...user } = userRow;
+  // Check for daily login reward (only for children)
+  let dailyRewardAwarded = false;
+  // Get today's date in UTC to avoid timezone issues
+  const now = new Date();
+  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
+    .toISOString().split('T')[0]; // YYYY-MM-DD format
+  
+  if (userRow.role === 'child') {
+    let lastLoginDate = null;
+    if (userRow.last_login_date) {
+      // Convert to UTC date string for comparison
+      const lastLogin = new Date(userRow.last_login_date);
+      lastLoginDate = new Date(Date.UTC(
+        lastLogin.getUTCFullYear(), 
+        lastLogin.getUTCMonth(), 
+        lastLogin.getUTCDate()
+      )).toISOString().split('T')[0];
+    }
+    
+    // Award daily reward if last login was not today
+    if (lastLoginDate !== today) {
+      const newPoints = (userRow.points || 0) + 5;
+      await pool.query(
+        `UPDATE users SET points = $1, last_login_date = $2 WHERE id = $3`,
+        [newPoints, today, userRow.id]
+      );
+      userRow.points = newPoints;
+      dailyRewardAwarded = true;
+    } else {
+      // Update last_login_date even if reward already given today
+      await pool.query(
+        `UPDATE users SET last_login_date = $1 WHERE id = $2`,
+        [today, userRow.id]
+      );
+    }
+  } else {
+    // Update last_login_date for non-child users (no reward)
+    await pool.query(
+      `UPDATE users SET last_login_date = $1 WHERE id = $2`,
+      [today, userRow.id]
+    );
+  }
+
+  // Fetch updated user data to ensure points are current
+  const { rows: updatedUserRows } = await pool.query(
+    `SELECT id, email, first_name AS "firstName", last_name AS "lastName", 
+            role, family_code AS "familyCode", date_of_birth AS "dateOfBirth", 
+            created_at AS "createdAt", points, username, profile_image AS "profileImage"
+     FROM users WHERE id = $1`,
+    [userRow.id]
+  );
+  
+  const updatedUser = updatedUserRows[0];
+  const { password_hash, ...user } = updatedUser || userRow;
   const token = generateToken(user);
-  return { user, token };
+  return { user, token, dailyRewardAwarded, dailyRewardPoints: dailyRewardAwarded ? 5 : 0 };
 }
 
 // Basic Routes
@@ -262,8 +316,8 @@ app.post('/api/auth/register', async (req, res) => {
 // Login Route
 app.post('/api/auth/login', async (req, res) => {
   try {
-    const { user, token } = await loginUser(req.body);
-    res.json({ user, token });
+    const { user, token, dailyRewardAwarded, dailyRewardPoints } = await loginUser(req.body);
+    res.json({ user, token, dailyRewardAwarded, dailyRewardPoints });
   } catch (err) {
     const status = err.status || 500;
     console.error('Login error:', err);
@@ -534,7 +588,11 @@ app.post('/api/tasks', authMiddleware, async (req, res) => {
       `INSERT INTO tasks (text, category, description, points, due_date, assigned_to_user_id, assigned_by_user_id, type)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING id, text, completed, category, description, points, 
-                 CASE WHEN due_date IS NOT NULL THEN TO_CHAR(due_date, 'YYYY-MM-DD') ELSE NULL END AS "dueDate",
+                 CASE 
+                   WHEN type = 'event' AND due_date IS NOT NULL THEN due_date::text
+                   WHEN due_date IS NOT NULL THEN TO_CHAR(due_date, 'YYYY-MM-DD')
+                   ELSE NULL 
+                 END AS "dueDate",
                  assigned_to_user_id AS "assignedToUserId",
                  assigned_by_user_id AS "assignedByUserId", created_at AS "createdAt", type`,
       [data.text, data.category, data.description, data.points, data.dueDate, data.assignedToUserId, userId, taskType]
@@ -563,8 +621,13 @@ app.get('/api/tasks', authMiddleware, async (req, res) => {
 
     if (user.role === 'parent') {
       // Parents see all tasks they created
+      // Return full datetime for events (to include time), date only for tasks
       query = `SELECT t.id, t.text, t.completed, t.category, t.description, t.points, t.type,
-                      CASE WHEN t.due_date IS NOT NULL THEN TO_CHAR(t.due_date, 'YYYY-MM-DD') ELSE NULL END AS "dueDate", 
+                      CASE 
+                        WHEN t.type = 'event' AND t.due_date IS NOT NULL THEN t.due_date::text
+                        WHEN t.due_date IS NOT NULL THEN TO_CHAR(t.due_date, 'YYYY-MM-DD')
+                        ELSE NULL 
+                      END AS "dueDate", 
                       t.assigned_to_user_id AS "assignedToUserId",
                       t.assigned_by_user_id AS "assignedByUserId", t.created_at AS "createdAt",
                       u.first_name AS "assignedToName"
@@ -575,8 +638,13 @@ app.get('/api/tasks', authMiddleware, async (req, res) => {
       params = [userId];
     } else if (user.role === 'child') {
       // Children see tasks assigned to them
+      // Return full datetime for events (to include time), date only for tasks
       query = `SELECT t.id, t.text, t.completed, t.category, t.description, t.points, t.type,
-                      CASE WHEN t.due_date IS NOT NULL THEN TO_CHAR(t.due_date, 'YYYY-MM-DD') ELSE NULL END AS "dueDate", 
+                      CASE 
+                        WHEN t.type = 'event' AND t.due_date IS NOT NULL THEN t.due_date::text
+                        WHEN t.due_date IS NOT NULL THEN TO_CHAR(t.due_date, 'YYYY-MM-DD')
+                        ELSE NULL 
+                      END AS "dueDate", 
                       t.assigned_to_user_id AS "assignedToUserId",
                       t.assigned_by_user_id AS "assignedByUserId", t.created_at AS "createdAt",
                       u.first_name AS "assignedByName"

@@ -23,7 +23,8 @@ CREATE TABLE IF NOT EXISTS users (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   points INTEGER NOT NULL DEFAULT 0,
   username TEXT,
-  profile_image TEXT
+  profile_image TEXT,
+  last_login_date DATE
 );
 
 -- Add columns if they don't exist (for existing tables)
@@ -40,6 +41,10 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
                  WHERE table_name='users' AND column_name='profile_image') THEN
     ALTER TABLE users ADD COLUMN profile_image TEXT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name='users' AND column_name='last_login_date') THEN
+    ALTER TABLE users ADD COLUMN last_login_date DATE;
   END IF;
 END $$;
 

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo, useEffect, useCallback } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Pressable, Modal, TextInput, Animated, ScrollView } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Pressable, Modal, TextInput, Animated, ScrollView, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from 'expo-router';
@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/contexts/ThemeContext";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { TodoCategoryPreferences } from '../account/preferences';
+import { getApiUrl } from '@/utils/api';
 
 const TODO_CATEGORIES_KEY = '@petquest:todoCategories';
 
@@ -32,7 +33,7 @@ type Task = {
 
 const ToDoScreen = ()=> {
   const { getTasksByChild, toggleComplete: contextToggleComplete } = useTasks();
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const { colors, isDarkMode } = useTheme();
   const styles = useMemo(() => createStyles(colors, isDarkMode), [colors, isDarkMode]);
 
@@ -42,9 +43,8 @@ const ToDoScreen = ()=> {
   // Child selection state
   const [selectedChild, setSelectedChild] = useState<string>("All");
   const [childSelectorOpen, setChildSelectorOpen] = useState(false);
-  
-  // Example children list - in production, this would come from the backend
-  const children = ["All", "Emma", "Lucas", "Sophia"];
+  const [children, setChildren] = useState<Array<{id: number, firstName: string, lastName: string}>>([]);
+  const [loadingChildren, setLoadingChildren] = useState(true);
 
   const [showDetails, setShowDetails] = useState<string | null>(null);
   const dropdownOptions = ["Default", "Points: High to Low", "Points: Low to High"];
@@ -89,12 +89,30 @@ const ToDoScreen = ()=> {
     setDropdown(false);
   };
 
-  // Delete task function
-  const deleteTask = (dateKey: string, taskId: string) => {
-    setTasksByDate((prev) => {
-      const updatedTasks = (prev[dateKey] || []).filter((task) => task.id !== taskId);
-      return { ...prev, [dateKey]: updatedTasks };
-    });
+  // Delete task function - sync with backend
+  const deleteTask = async (taskId: string) => {
+    if (!token) return;
+    
+    try {
+      const API_URL = getApiUrl();
+      const response = await fetch(`${API_URL}/api/tasks/${taskId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete task');
+      }
+
+      // Refresh tasks from backend
+      await fetchTasks();
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      Alert.alert('Error', 'Failed to delete task');
+    }
   };
 
   const handlePressTask = (taskId: string) => {
@@ -139,8 +157,120 @@ const ToDoScreen = ()=> {
   useFocusEffect(
     useCallback(() => {
       loadCategoryPreferences();
+      fetchChildren();
+      fetchTasks();
     }, [loadCategoryPreferences])
   );
+
+  // Fetch children from backend
+  const fetchChildren = async () => {
+    if (!user || user.role !== 'parent' || !token) return;
+    
+    try {
+      setLoadingChildren(true);
+      const API_URL = getApiUrl();
+      const response = await fetch(`${API_URL}/api/users/children`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch children');
+      }
+
+      const childrenData = await response.json();
+      setChildren(childrenData);
+    } catch (error) {
+      console.error('Error fetching children:', error);
+      Alert.alert('Error', 'Failed to load children');
+    } finally {
+      setLoadingChildren(false);
+    }
+  };
+
+  // Fetch tasks from backend
+  const fetchTasks = async () => {
+    if (!user || user.role !== 'parent' || !token) return;
+    
+    try {
+      const API_URL = getApiUrl();
+      const response = await fetch(`${API_URL}/api/tasks`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch tasks');
+      }
+
+      const tasks = await response.json();
+      
+      // Transform backend tasks to local format, filter to show only tasks (not events)
+      const tasksByDateMap: { [key: string]: Task[] } = {};
+      
+          tasks
+        .filter((task: any) => task.type === 'task' || !task.type) // Only show tasks, not events
+        .forEach((task: any) => {
+          const dateKey = task.dueDate ? task.dueDate.split('T')[0] : formatDateKey(new Date());
+          
+          if (!tasksByDateMap[dateKey]) {
+            tasksByDateMap[dateKey] = [];
+          }
+          
+          // Map category to match todo categories
+          let mappedCategory = task.category || 'Other';
+          if (mappedCategory === 'Other') {
+            mappedCategory = 'Extra';
+          }
+          
+          const displayCategory = task.completed ? 'Completed' : mappedCategory;
+          
+          // Get child name - match format used in child selector (full name)
+          let childName = 'Unknown';
+          if (task.assignedToName) {
+            // Find matching child by first name to get full name
+            const child = children.find(c => c.firstName === task.assignedToName);
+            childName = child ? `${child.firstName} ${child.lastName}` : task.assignedToName;
+          }
+          
+          tasksByDateMap[dateKey].push({
+            id: task.id.toString(),
+            text: task.text,
+            completed: task.completed,
+            category: displayCategory,
+            originalCategory: mappedCategory,
+            description: task.description || '',
+            points: task.points || 0,
+            childName: childName,
+          });
+        });
+      
+      setTasksByDate(tasksByDateMap);
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+      Alert.alert('Error', 'Failed to load tasks');
+    }
+  };
+
+  // Load children on mount
+  useEffect(() => {
+    if (user && user.role === 'parent' && token) {
+      fetchChildren();
+    }
+  }, [user, token]);
+
+  // Refetch tasks when children are loaded (to get proper child names)
+  useEffect(() => {
+    if (children.length > 0 && user && user.role === 'parent' && token) {
+      fetchTasks();
+    }
+  }, [children.length, user, token]);
 
 // Converts current date to a string
 const formatDateKey = (date: Date) => date.toISOString().split("T")[0];
@@ -148,24 +278,7 @@ const todayKey = formatDateKey(new Date());
 
 const [tasksByDate, setTasksByDate] = useState<{
   [key: string]: Task[];
-}>({
-  [todayKey]: [
-    { id: "1", text: "Complete science project", completed: false, category: "Homework", description: "Finish the solar system model for science class", points: 25, childName: "Emma" },
-    { id: "2", text: "Practice piano", completed: false, category: "Work", description: "Practice scales and new piece for 30 minutes", points: 15, childName: "Emma" },
-    { id: "3", text: "Clean bedroom", completed: false, category: "Chores", description: "Organize toys and make bed", points: 10, childName: "Lucas" },
-    { id: "4", text: "Read chapter 5", completed: false, category: "Homework", description: "Read and summarize chapter 5 of history book", points: 20, childName: "Sophia" },
-    { id: "5", text: "Set dinner table", completed: true, category: "Chores", description: "Set plates, utensils, and napkins", points: 5, childName: "Lucas" },
-    { id: "6", text: "Math homework pages 45-47", completed: false, category: "Homework", description: "Complete all problems and show work", points: 15, childName: "Emma" },
-    { id: "7", text: "Basketball practice", completed: false, category: "Work", description: "Team practice at the community center", points: 20, childName: "Lucas" },
-    { id: "8", text: "Feed the dog", completed: false, category: "Chores", description: "Morning and evening feeding", points: 8, childName: "Sophia" },
-    { id: "9", text: "Art club meeting", completed: false, category: "Extra", description: "After school art club session", points: 12, childName: "Emma" },
-    { id: "10", text: "Take out recycling", completed: false, category: "Chores", description: "Sort and take recycling bins to curb", points: 7, childName: "Lucas" },
-    { id: "11", text: "Book report draft", completed: false, category: "Homework", description: "Write first draft of book report on 'The Giver'", points: 30, childName: "Sophia" },
-    { id: "12", text: "Water plants", completed: false, category: "Chores", description: "Water all indoor plants", points: 5, childName: "Emma" },
-    { id: "13", text: "Swimming lessons", completed: false, category: "Work", description: "Weekly swimming lesson at the pool", points: 18, childName: "Lucas" },
-    { id: "14", text: "Science fair preparation", completed: false, category: "Extra", description: "Work on display board and presentation", points: 25, childName: "Sophia" },
-  ],
-});
+}>({});
 
 // Converts current date to a string (already defined above)
 const formattedKey = formatDateKey(currentDate);
@@ -200,19 +313,36 @@ const ordinalSuffix = getOrdinalSuffix(dayNumber);
 const monthName = currentDate.toLocaleDateString("en-US", { month: "long" });
 const monthDay = `${monthName} ${dayNumber}${ordinalSuffix}`;
 
-// Handling Edit Save Logic
-  const handleEditSave = () => {
-    if (taskToEdit) {
-      setTasksByDate((prev) => {
-        const updatedTasks = prev[formattedKey].map((task) =>
-          task.id === taskToEdit.id
-            ? { ...task, text: editText, description: editDescription, points: parseInt(editPoints) || task.points }
-            : task
-        );
-        return { ...prev, [formattedKey]: updatedTasks };
+// Handling Edit Save Logic - sync with backend
+  const handleEditSave = async () => {
+    if (!taskToEdit || !token) return;
+    
+    try {
+      const API_URL = getApiUrl();
+      const response = await fetch(`${API_URL}/api/tasks/${taskToEdit.id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text: editText,
+          description: editDescription,
+          points: parseInt(editPoints) || taskToEdit.points,
+        }),
       });
+
+      if (!response.ok) {
+        throw new Error('Failed to update task');
+      }
+
+      // Refresh tasks from backend
+      await fetchTasks();
       setEditModal(false);
       setTaskToEdit(null);
+    } catch (error) {
+      console.error('Error updating task:', error);
+      Alert.alert('Error', 'Failed to update task');
     }
   };
 
@@ -238,33 +368,30 @@ const showPopup = (message: string) => {
 };
 
 
-// Update toggleComplete
-const toggleComplete = (taskId: string) => {
-  setTasksByDate((prev) => {
-    const updatedDayTasks = (prev[formattedKey] || []).map((task) => {
-      if (task.id === taskId) {
-        if (task.completed && task.category === "Completed" && task.originalCategory) {
-          // unmark completed → move back to original
-          return {
-            ...task,
-            completed: false,
-            category: task.originalCategory,
-            originalCategory: undefined,
-          };
-        } else if (!task.completed && task.category !== "Completed") {
-          // mark as completed → move to Completed section
-          return {
-            ...task,
-            completed: true,
-            originalCategory: task.category,
-            category: "Completed",
-          };
-        }
-      }
-      return task;
+// Update toggleComplete - sync with backend
+const toggleComplete = async (taskId: string) => {
+  if (!token) return;
+  
+  try {
+    const API_URL = getApiUrl();
+    const response = await fetch(`${API_URL}/api/tasks/${taskId}/complete`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
     });
-    return { ...prev, [formattedKey]: updatedDayTasks };
-  });
+
+    if (!response.ok) {
+      throw new Error('Failed to toggle task completion');
+    }
+
+    // Refresh tasks from backend
+    await fetchTasks();
+  } catch (error) {
+    console.error('Error toggling task completion:', error);
+    Alert.alert('Error', 'Failed to update task');
+  }
 };
 
 // Categories for tasks - filter based on preferences
@@ -347,7 +474,7 @@ const toggleComplete = (taskId: string) => {
           {visibleTasks.length > 0 ? (
             visibleTasks.map((task) => (
               <View key={task.id} style={styles.taskItem}>
-                <View>
+                <TouchableOpacity onPress={() => toggleComplete(task.id)}>
                   <Ionicons
                     name={
                       task.completed ? "checkmark-circle" : "ellipse-outline"
@@ -355,7 +482,7 @@ const toggleComplete = (taskId: string) => {
                     size={20}
                     color={task.completed ? colors.primary : colors.textSecondary}
                   />
-                </View>
+                </TouchableOpacity>
                 <View style={styles.taskDetailsColumn}>
                   <Pressable onPress={() => handlePressTask(task.id)} style={styles.taskTitleRow}>
                     <Ionicons
@@ -442,27 +569,48 @@ const toggleComplete = (taskId: string) => {
             <>
               <TouchableOpacity style={styles.childSelectorBackdrop} onPress={() => setChildSelectorOpen(false)} />
               <View style={styles.childSelectorDropdown}>
-                {children.map((child) => (
-                  <TouchableOpacity
-                    key={child}
-                    style={[
-                      styles.childOption,
-                      selectedChild === child && styles.childOptionSelected
-                    ]}
-                    onPress={() => {
-                      setSelectedChild(child);
-                      setChildSelectorOpen(false);
-                    }}
-                  >
-                    <Text style={[
-                      styles.childOptionText,
-                      selectedChild === child && { color: colors.primary }
-                    ]}>{child}</Text>
-                    {selectedChild === child && (
-                      <Ionicons name="checkmark" size={16} color={colors.primary} />
-                    )}
-                  </TouchableOpacity>
-                ))}
+                <TouchableOpacity
+                  style={[
+                    styles.childOption,
+                    selectedChild === "All" && styles.childOptionSelected
+                  ]}
+                  onPress={() => {
+                    setSelectedChild("All");
+                    setChildSelectorOpen(false);
+                  }}
+                >
+                  <Text style={[
+                    styles.childOptionText,
+                    selectedChild === "All" && { color: colors.primary }
+                  ]}>All</Text>
+                  {selectedChild === "All" && (
+                    <Ionicons name="checkmark" size={16} color={colors.primary} />
+                  )}
+                </TouchableOpacity>
+                {children.map((child) => {
+                  const childName = `${child.firstName} ${child.lastName}`;
+                  return (
+                    <TouchableOpacity
+                      key={child.id}
+                      style={[
+                        styles.childOption,
+                        selectedChild === childName && styles.childOptionSelected
+                      ]}
+                      onPress={() => {
+                        setSelectedChild(childName);
+                        setChildSelectorOpen(false);
+                      }}
+                    >
+                      <Text style={[
+                        styles.childOptionText,
+                        selectedChild === childName && { color: colors.primary }
+                      ]}>{childName}</Text>
+                      {selectedChild === childName && (
+                        <Ionicons name="checkmark" size={16} color={colors.primary} />
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             </>
           )}
@@ -560,9 +708,10 @@ const toggleComplete = (taskId: string) => {
               <TouchableOpacity onPress={() => setDeleteModal(false)} style={styles.cancelDeleteButton}>
                 <Text style={styles.cancelDeleteButtonText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.deleteConfirmButton} onPress={() => {
-                if (taskDelete)
-                deleteTask(formattedKey, taskDelete);
+              <TouchableOpacity style={styles.deleteConfirmButton} onPress={async () => {
+                if (taskDelete) {
+                  await deleteTask(taskDelete);
+                }
                 setDeleteModal(false);
                 setTaskDelete(null);}}>
                 <Text style={styles.deleteConfirmButtonText}>Delete</Text>

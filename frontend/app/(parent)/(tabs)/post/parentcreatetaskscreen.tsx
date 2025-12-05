@@ -56,7 +56,9 @@ const ParentCreateTaskScreen = () => {
     const [category, setCategory] = useState("");
     const [categories, setCategories] = useState<string[]>(taskCategories);
     const [date, setDate] = useState(new Date());
+    const [time, setTime] = useState(new Date());
     const [showDatePicker, setShowDatePicker] = useState(false);
+    const [showTimePicker, setShowTimePicker] = useState(false);
     const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
     const [showTypeDropdown, setShowTypeDropdown] = useState(false);
 
@@ -78,6 +80,30 @@ const ParentCreateTaskScreen = () => {
       } else if (Platform.OS === "ios") {
         setShowDatePicker(false);
       }
+    };
+
+    const onTimeChange = (_event: any, selectedTime?: Date) => {
+      if (Platform.OS === "android") {
+        setShowTimePicker(false);
+      }
+      if (selectedTime) {
+        setTime(selectedTime);
+        if (Platform.OS === "ios") {
+          setShowTimePicker(false);
+        }
+      } else if (Platform.OS === "ios") {
+        setShowTimePicker(false);
+      }
+    };
+
+    // Format time as "10:00 AM" or "2:30 PM"
+    const formatTime = (date: Date): string => {
+      const hours = date.getHours();
+      const minutes = date.getMinutes();
+      const period = hours >= 12 ? 'PM' : 'AM';
+      const displayHours = hours % 12 || 12;
+      const displayMinutes = minutes.toString().padStart(2, '0');
+      return `${displayHours}:${displayMinutes} ${period}`;
     };
 
     const handleCancel = () => {
@@ -136,11 +162,8 @@ const ParentCreateTaskScreen = () => {
         Alert.alert("Error", "Please select a category.");
         return;
       }
-      // Points are required for tasks, optional for events
-      if (itemType === "tasks" && points === 0) {
-        Alert.alert("Error", "Please select points for this task.");
-        return;
-      }
+      // Points are optional for both tasks and events (can be 0)
+      // No validation needed - points can be 0 for events
       if (!childId) {
         Alert.alert("Error", "Child not selected.");
         return;
@@ -261,29 +284,25 @@ const ParentCreateTaskScreen = () => {
             </TouchableOpacity>
           </View>
 
-          {/* Points - Only show for tasks */}
-          {itemType === "tasks" && (
-            <>
-              <Text style={styles.label}>Points</Text>
-              <View style={styles.categoryInputContainer}>
-                <TextInput
-                  placeholder="Select points"
-                  value={points > 0 ? `${points} points` : ""}
-                  editable={false}
-                  style={styles.categoryInput}
-                />
-                <TouchableOpacity
-                  style={styles.dropdownIconButton}
-                  onPress={() => setShowPointsDropdown(true)}
-                >
-                  <Ionicons name="chevron-down-outline" size={24} color="#0077B6" />
-                </TouchableOpacity>
-              </View>
-            </>
-          )}
+          {/* Points - Available for both tasks and events */}
+          <Text style={styles.label}>Points</Text>
+          <View style={styles.categoryInputContainer}>
+            <TextInput
+              placeholder="Select points"
+              value={points > 0 ? `${points} points` : ""}
+              editable={false}
+              style={styles.categoryInput}
+            />
+            <TouchableOpacity
+              style={styles.dropdownIconButton}
+              onPress={() => setShowPointsDropdown(true)}
+            >
+              <Ionicons name="chevron-down-outline" size={24} color="#0077B6" />
+            </TouchableOpacity>
+          </View>
 
           {/* Due Date */}
-          <Text style={styles.label}>Due Date</Text>
+          <Text style={styles.label}>Date</Text>
           <View style={styles.dateInputContainer}>
             <TextInput
               placeholder="Select a date"
@@ -298,6 +317,27 @@ const ParentCreateTaskScreen = () => {
               <Ionicons name="calendar-outline" size={24} color="#0077B6" />
             </TouchableOpacity>
           </View>
+
+          {/* Time - Only show for events */}
+          {itemType === "events" && (
+            <>
+              <Text style={styles.label}>Time</Text>
+              <View style={styles.dateInputContainer}>
+                <TextInput
+                  placeholder="Select a time"
+                  value={formatTime(time)}
+                  editable={false}
+                  style={styles.dateInput}
+                />
+                <TouchableOpacity
+                  style={styles.calendarIconButton}
+                  onPress={() => setShowTimePicker(true)}
+                >
+                  <Ionicons name="time-outline" size={24} color="#0077B6" />
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
   
           {/* Optional Notes */}
           <Text style={styles.label}>Notes (optional)</Text>
@@ -341,6 +381,15 @@ const ParentCreateTaskScreen = () => {
             mode="date"
             display={Platform.OS === "ios" ? "spinner" : "default"}
             onChange={onDateChange}
+          />
+        )}
+
+        {showTimePicker && (
+          <DateTimePicker
+            value={time}
+            mode="time"
+            display={Platform.OS === "ios" ? "spinner" : "default"}
+            onChange={onTimeChange}
           />
         )}
 
