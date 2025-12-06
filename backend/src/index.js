@@ -41,15 +41,17 @@ const RegisterSchema = z.object({
   lastName: z.string().min(1),
   role: z.enum(['parent', 'child', 'individual']),
   familyCode: z.string().length(6).nullable().optional(),
-  dateOfBirth: IsoDateString.optional(),
+  dateOfBirth: IsoDateString, // Required for all roles (database constraint)
 }).refine((data) => {
+  // Parents and individuals must be 13+
   if (data.role === 'parent' || data.role === 'individual') {
-    if (!data.dateOfBirth) return false;
     return isAtLeastAge(data.dateOfBirth, 13);
   }
+  
+  // Children can be any age (no minimum age requirement)
   return true;
 }, {
-  message: 'Parent and individual accounts must have a valid date of birth (13+).'
+  message: 'Date of birth is required. Parent and individual accounts must be 13+ years old.'
 });
 
 const LoginSchema = z.object({
@@ -765,7 +767,7 @@ app.get('/api/users/children', authMiddleware, async (req, res) => {
 app.post('/api/users/add-child', authMiddleware, async (req, res) => {
   try {
     const parentId = req.user.sub;
-    const { email, password, firstName, lastName } = req.body;
+    const { email, password, firstName, lastName, dateOfBirth } = req.body;
 
     // 1. Make sure the requester is a parent
     const parent = await findUserById(parentId);
@@ -777,7 +779,13 @@ app.post('/api/users/add-child', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'Parent does not have a family code set.' });
     }
 
+    // Validate dateOfBirth is provided
+    if (!dateOfBirth || !dateOfBirth.trim()) {
+      return res.status(400).json({ error: 'Date of birth is required.' });
+    }
+
     // 2. Register the child user
+    console.log('Registering child with dateOfBirth:', dateOfBirth);
     const { user: child } = await registerUser({
       email,
       password,
@@ -785,7 +793,7 @@ app.post('/api/users/add-child', authMiddleware, async (req, res) => {
       lastName,
       role: 'child',
       familyCode: parent.familyCode,
-      // children don't need DOB, so we omit dateOfBirth
+      dateOfBirth: dateOfBirth.trim(), // Include date of birth
     });
 
     return res.status(201).json({
