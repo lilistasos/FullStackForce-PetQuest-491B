@@ -502,7 +502,7 @@ const CreateTaskSchema = z.object({
   description: z.string().optional().default(''),
   points: z.number().int().min(0).optional().default(0),
   dueDate: z.string(), // ISO string
-  assignedToUserId: z.number().int(),
+  assignedToUserId: z.string().uuid(), // UUID string for user ID
 });
 
 // Create a task (parent creates task for child)
@@ -537,11 +537,11 @@ app.post('/api/tasks', authMiddleware, async (req, res) => {
     }
 
     const { rows } = await pool.query(
-      `INSERT INTO tasks (text, category, description, points, due_date, assigned_to_user_id, assigned_by_user_id)
+      `INSERT INTO tasks (title, category, description, point_value, due_date, assigned_to, user_id)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING id, text, completed, category, description, points, 
-                 due_date AS "dueDate", assigned_to_user_id AS "assignedToUserId",
-                 assigned_by_user_id AS "assignedByUserId", created_at AS "createdAt"`,
+       RETURNING id, title AS "text", completed, category, description, point_value AS "points", 
+                 due_date AS "dueDate", assigned_to AS "assignedToUserId",
+                 user_id AS "assignedByUserId", created_at AS "createdAt"`,
       [data.text, data.category, data.description, data.points, data.dueDate, data.assignedToUserId, userId]
     );
 
@@ -568,33 +568,33 @@ app.get('/api/tasks', authMiddleware, async (req, res) => {
 
     if (user.role === 'parent') {
       // Parents see all tasks they created
-      query = `SELECT t.id, t.text, t.completed, t.category, t.description, t.points,
-                      t.due_date AS "dueDate", t.assigned_to_user_id AS "assignedToUserId",
-                      t.assigned_by_user_id AS "assignedByUserId", t.created_at AS "createdAt",
+      query = `SELECT t.id, t.title AS "text", t.completed, t.category, t.description, t.point_value AS "points",
+                      t.due_date AS "dueDate", t.assigned_to AS "assignedToUserId",
+                      t.user_id AS "assignedByUserId", t.created_at AS "createdAt",
                       u.first_name AS "assignedToName"
                FROM tasks t
-               JOIN users u ON t.assigned_to_user_id = u.id
-               WHERE t.assigned_by_user_id = $1
+               LEFT JOIN users u ON t.assigned_to = u.id
+               WHERE t.user_id = $1
                ORDER BY t.due_date ASC, t.created_at DESC`;
       params = [userId];
     } else if (user.role === 'child') {
       // Children see tasks assigned to them
-      query = `SELECT t.id, t.text, t.completed, t.category, t.description, t.points,
-                      t.due_date AS "dueDate", t.assigned_to_user_id AS "assignedToUserId",
-                      t.assigned_by_user_id AS "assignedByUserId", t.created_at AS "createdAt",
+      query = `SELECT t.id, t.title AS "text", t.completed, t.category, t.description, t.point_value AS "points",
+                      t.due_date AS "dueDate", t.assigned_to AS "assignedToUserId",
+                      t.user_id AS "assignedByUserId", t.created_at AS "createdAt",
                       u.first_name AS "assignedByName"
                FROM tasks t
-               JOIN users u ON t.assigned_by_user_id = u.id
-               WHERE t.assigned_to_user_id = $1
+               LEFT JOIN users u ON t.user_id = u.id
+               WHERE t.assigned_to = $1
                ORDER BY t.due_date ASC, t.created_at DESC`;
       params = [userId];
     } else {
       // Individual users see their own tasks (if any)
-      query = `SELECT t.id, t.text, t.completed, t.category, t.description, t.points,
-                      t.due_date AS "dueDate", t.assigned_to_user_id AS "assignedToUserId",
-                      t.assigned_by_user_id AS "assignedByUserId", t.created_at AS "createdAt"
+      query = `SELECT t.id, t.title AS "text", t.completed, t.category, t.description, t.point_value AS "points",
+                      t.due_date AS "dueDate", t.assigned_to AS "assignedToUserId",
+                      t.user_id AS "assignedByUserId", t.created_at AS "createdAt"
                FROM tasks t
-               WHERE t.assigned_to_user_id = $1 OR t.assigned_by_user_id = $1
+               WHERE t.assigned_to = $1 OR t.user_id = $1
                ORDER BY t.due_date ASC, t.created_at DESC`;
       params = [userId];
     }
@@ -629,18 +629,18 @@ app.put('/api/tasks/:id', authMiddleware, async (req, res) => {
     const user = await findUserById(userId);
 
     // Only the assigned child can toggle completion, or parent can update any field
-    // Convert both to numbers for proper comparison (handle both string and number types)
-    const assignedToUserId = Number(task.assigned_to_user_id);
-    const currentUserId = Number(userId);
+    // Convert both to UUIDs for proper comparison
+    const assignedToUserId = task.assigned_to;
+    const currentUserId = userId;
     
     // Debug logging
     console.log('Task completion check:', {
       taskId,
       assignedToUserId,
       currentUserId,
-      assignedToUserIdRaw: task.assigned_to_user_id,
+      assignedToUserIdRaw: task.assigned_to,
       currentUserIdRaw: userId,
-      assignedToUserIdType: typeof task.assigned_to_user_id,
+      assignedToUserIdType: typeof task.assigned_to,
       currentUserIdType: typeof userId,
       areEqual: assignedToUserId === currentUserId
     });
@@ -649,7 +649,7 @@ app.put('/api/tasks/:id', authMiddleware, async (req, res) => {
       console.error('Permission denied - User ID mismatch:', {
         assignedTo: assignedToUserId,
         current: currentUserId,
-        taskAssignedTo: task.assigned_to_user_id,
+        taskAssignedTo: task.assigned_to,
         reqUserId: userId
       });
       return res.status(403).json({ error: 'Only the assigned user can complete tasks' });
@@ -665,7 +665,7 @@ app.put('/api/tasks/:id', authMiddleware, async (req, res) => {
       values.push(completed);
     }
     if (text !== undefined) {
-      updates.push(`text = $${paramIndex++}`);
+      updates.push(`title = $${paramIndex++}`);
       values.push(text);
     }
     if (category !== undefined) {
@@ -677,7 +677,7 @@ app.put('/api/tasks/:id', authMiddleware, async (req, res) => {
       values.push(description);
     }
     if (points !== undefined) {
-      updates.push(`points = $${paramIndex++}`);
+      updates.push(`point_value = $${paramIndex++}`);
       values.push(points);
     }
     if (dueDate !== undefined) {
@@ -689,16 +689,15 @@ app.put('/api/tasks/:id', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'No fields to update' });
     }
 
-    updates.push(`updated_at = NOW()`);
     values.push(taskId);
 
     const query = `
       UPDATE tasks
       SET ${updates.join(', ')}
       WHERE id = $${paramIndex}
-      RETURNING id, text, completed, category, description, points,
-                due_date AS "dueDate", assigned_to_user_id AS "assignedToUserId",
-                assigned_by_user_id AS "assignedByUserId", created_at AS "createdAt"
+      RETURNING id, title AS "text", completed, category, description, point_value AS "points",
+                due_date AS "dueDate", assigned_to AS "assignedToUserId",
+                user_id AS "assignedByUserId", created_at AS "createdAt"
     `;
 
     const { rows } = await pool.query(query, values);
@@ -717,7 +716,7 @@ app.delete('/api/tasks/:id', authMiddleware, async (req, res) => {
 
     // Get the task first
     const { rows: taskRows } = await pool.query(
-      `SELECT assigned_by_user_id FROM tasks WHERE id = $1`,
+      `SELECT user_id FROM tasks WHERE id = $1`,
       [taskId]
     );
 
@@ -726,7 +725,7 @@ app.delete('/api/tasks/:id', authMiddleware, async (req, res) => {
     }
 
     // Only the parent who created the task can delete it
-    if (taskRows[0].assigned_by_user_id !== parseInt(userId)) {
+    if (taskRows[0].user_id !== userId) {
       return res.status(403).json({ error: 'Only the task creator can delete tasks' });
     }
 
@@ -847,4 +846,25 @@ app.delete('/api/users/remove-child/:id', authMiddleware, async (req, res) => {
 
 // Starts Server
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
+app.listen(PORT, '0.0.0.0', () => {
+  const os = require('os');
+  const networkInterfaces = os.networkInterfaces();
+  let networkIP = 'localhost';
+  
+  // Find the first non-internal IPv4 address
+  for (const interfaceName in networkInterfaces) {
+    const addresses = networkInterfaces[interfaceName];
+    for (const addr of addresses) {
+      if (addr.family === 'IPv4' && !addr.internal) {
+        networkIP = addr.address;
+        break;
+      }
+    }
+    if (networkIP !== 'localhost') break;
+  }
+  
+  console.log(`✅ Server running on port ${PORT}`);
+  console.log(`   Accessible at http://localhost:${PORT}`);
+  console.log(`   Accessible at http://127.0.0.1:${PORT}`);
+  console.log(`   Accessible at http://${networkIP}:${PORT} (for mobile devices/simulators)`);
+});

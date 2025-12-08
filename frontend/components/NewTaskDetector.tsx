@@ -12,7 +12,7 @@ import { useNewTask } from '@/contexts/NewTaskContext';
 export default function NewTaskDetector() {
   const { tasks, refreshTasks, loading } = useTasks();
   const { user } = useAuth();
-  const { showTask } = useNewTask();
+  const { showTasks } = useNewTask();
   const previousTaskIdsRef = useRef<Set<string>>(new Set());
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const isInitialLoadRef = useRef(true);
@@ -45,39 +45,37 @@ export default function NewTaskDetector() {
       t => !previousTaskIdsRef.current.has(t.id.toString()) && !t.completed
     );
 
-    // Show notification for the most recent new task
+    // Show notification for all new tasks
     if (newTasks.length > 0) {
       console.log('NewTaskDetector: Found', newTasks.length, 'new task(s)');
       
-      // Get the most recently created task
-      const latestNewTask = newTasks.sort((a, b) => 
+      // Sort by creation date (most recent first)
+      const sortedNewTasks = newTasks.sort((a, b) => 
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      )[0];
+      );
 
-      console.log('NewTaskDetector: Showing notification for task:', latestNewTask.text);
-      console.log('NewTaskDetector: Task details:', {
-        id: latestNewTask.id,
-        text: latestNewTask.text,
-        description: latestNewTask.description,
-        createdAt: latestNewTask.createdAt
-      });
+      console.log('NewTaskDetector: Showing notification for', sortedNewTasks.length, 'task(s)');
 
       try {
-        showTask({
-          id: latestNewTask.id.toString(),
-          title: latestNewTask.text,
-          description: latestNewTask.description || 'No description provided',
-          assignedAt: latestNewTask.createdAt,
-        });
-        console.log('NewTaskDetector: showTask called successfully');
+        // Convert all new tasks to the format expected by the popup
+        const tasksToShow = sortedNewTasks.map(task => ({
+          id: task.id.toString(),
+          title: task.text,
+          description: task.description || 'No description provided',
+          assignedAt: task.createdAt,
+          points: task.points || 0,
+        }));
+        
+        showTasks(tasksToShow);
+        console.log('NewTaskDetector: showTasks called successfully with', tasksToShow.length, 'task(s)');
       } catch (error) {
-        console.error('NewTaskDetector: Error calling showTask:', error);
+        console.error('NewTaskDetector: Error calling showTasks:', error);
       }
     }
 
     // Update previous task IDs
     previousTaskIdsRef.current = new Set(tasks.map(t => t.id.toString()));
-  }, [tasks, user?.role, showTask, loading]);
+  }, [tasks, user?.role, showTasks, loading]);
 
   // Refresh when app comes to foreground
   useEffect(() => {
@@ -124,11 +122,11 @@ export default function NewTaskDetector() {
     }
 
     // Refresh tasks periodically to catch new assignments
-    console.log('NewTaskDetector: Starting periodic refresh (every 5 seconds)');
+    console.log('NewTaskDetector: Starting periodic refresh (every 30 seconds)');
     refreshIntervalRef.current = setInterval(() => {
       console.log('NewTaskDetector: Periodic refresh triggered');
       refreshTasks();
-    }, 5000); // 5 seconds for better responsiveness
+    }, 30000); // 30 seconds to reduce load
 
     // Cleanup on unmount or when dependencies change
     return () => {
@@ -138,7 +136,7 @@ export default function NewTaskDetector() {
         refreshIntervalRef.current = null;
       }
     };
-  }, [user?.role, refreshTasks, loading, tasks.length]); // Add tasks.length to trigger when initial load completes
+  }, [user?.role, refreshTasks, loading]); // Removed tasks.length to prevent interval restart on every task change
 
   return null; // This component doesn't render anything
 }

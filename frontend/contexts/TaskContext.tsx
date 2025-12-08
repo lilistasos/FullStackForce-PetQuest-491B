@@ -47,13 +47,21 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
     try {
       const apiUrl = getApiUrl();
       console.log('TaskContext: Loading tasks from API URL:', `${apiUrl}/api/tasks`);
+      
+      // Add timeout to prevent hanging
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
       const response = await fetch(`${apiUrl}/api/tasks`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
+        signal: controller.signal,
       });
+      
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error(`Failed to fetch tasks: ${response.statusText}`);
@@ -92,9 +100,13 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
       // Update previous task IDs
       previousTaskIdsRef.current = new Set(transformedTasks.map(t => t.id.toString()));
       setTasks(transformedTasks);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading tasks:', error);
+      if (error.name === 'AbortError') {
+        console.error('TaskContext: Request timed out after 10 seconds');
+      }
       // Don't throw - just log and continue with empty tasks
+      setTasks([]); // Set empty tasks on error so app doesn't hang
     } finally {
       setLoading(false);
     }

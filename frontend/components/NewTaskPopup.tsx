@@ -1,21 +1,24 @@
 import React from 'react';
-import { View, Text, Modal, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { View, Text, Modal, TouchableOpacity, StyleSheet, Platform, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNewTask } from '@/contexts/NewTaskContext';
 import { useTheme } from '@/contexts/ThemeContext';
 
 export default function NewTaskPopup() {
-  const { newTask, hideTask } = useNewTask();
+  const { newTasks, hideTasks } = useNewTask();
   const { colors } = useTheme();
 
-  if (!newTask) return null;
+  if (!newTasks || newTasks.length === 0) return null;
+
+  const taskCount = newTasks.length;
+  const isMultiple = taskCount > 1;
 
   return (
     <Modal
       transparent
       animationType="fade"
-      visible={!!newTask}
-      onRequestClose={hideTask}
+      visible={newTasks.length > 0}
+      onRequestClose={hideTasks}
     >
       <View style={styles.overlay}>
         <View style={[styles.popup, { backgroundColor: colors.surface || colors.background }]}>
@@ -24,28 +27,59 @@ export default function NewTaskPopup() {
             <View style={[styles.iconContainer, { backgroundColor: colors.primary + '20' }]}>
               <Ionicons name="notifications" size={32} color={colors.primary} />
             </View>
-            <Text style={[styles.title, { color: colors.text }]}>New Task Assigned!</Text>
+            <Text style={[styles.title, { color: colors.text }]}>
+              {isMultiple ? `New Tasks Assigned! (${taskCount})` : 'New Task Assigned!'}
+            </Text>
           </View>
 
-          {/* Task details */}
-          <View style={styles.content}>
-            <View style={styles.taskRow}>
-              <Ionicons name="checkmark-circle" size={20} color={colors.primary} style={styles.taskIcon} />
-              <Text style={[styles.taskTitle, { color: colors.text }]}>{newTask.title}</Text>
-            </View>
-            
-            {newTask.description && (
-              <View style={styles.descriptionContainer}>
-                <Text style={[styles.label, { color: colors.textSecondary }]}>Description:</Text>
-                <Text style={[styles.description, { color: colors.text }]}>{newTask.description}</Text>
+          {/* Task details - scrollable if multiple tasks */}
+          <ScrollView 
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={true}
+          >
+            {newTasks.map((task, index) => (
+              <View key={task.id} style={styles.taskContainer}>
+                {isMultiple && (
+                  <View style={styles.taskNumberContainer}>
+                    <Text style={[styles.taskNumber, { color: colors.primary }]}>
+                      Task {index + 1}
+                    </Text>
+                  </View>
+                )}
+                <View style={styles.taskRow}>
+                  <Ionicons name="checkmark-circle" size={20} color={colors.primary} style={styles.taskIcon} />
+                  <Text style={[styles.taskTitle, { color: colors.text }]}>{task.title}</Text>
+                </View>
+                
+                {/* Points display */}
+                <View style={styles.pointsContainer}>
+                  <View style={[styles.pointsBadge, { backgroundColor: colors.primary + '20' }]}>
+                    <Ionicons name="star" size={16} color={colors.primary} style={styles.pointsIcon} />
+                    <Text style={[styles.pointsText, { color: colors.primary }]}>
+                      {task.points} {task.points === 1 ? 'Point' : 'Points'}
+                    </Text>
+                  </View>
+                </View>
+                
+                {task.description && (
+                  <View style={styles.descriptionContainer}>
+                    <Text style={[styles.label, { color: colors.textSecondary }]}>Description:</Text>
+                    <Text style={[styles.description, { color: colors.text }]}>{task.description}</Text>
+                  </View>
+                )}
+                
+                {index < newTasks.length - 1 && (
+                  <View style={[styles.divider, { borderTopColor: colors.border || '#E0E0E0' }]} />
+                )}
               </View>
-            )}
-          </View>
+            ))}
+          </ScrollView>
 
           {/* Close button */}
           <TouchableOpacity
             style={[styles.closeButton, { backgroundColor: colors.primary }]}
-            onPress={hideTask}
+            onPress={hideTasks}
             activeOpacity={0.8}
           >
             <Text style={styles.closeButtonText}>Got it!</Text>
@@ -98,13 +132,37 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
   },
+  scrollView: {
+    maxHeight: 400, // Limit height for multiple tasks
+    marginBottom: 16,
+  },
+  scrollContent: {
+    paddingBottom: 8,
+  },
   content: {
     marginBottom: 24,
+  },
+  taskContainer: {
+    marginBottom: 16,
+  },
+  taskNumberContainer: {
+    marginBottom: 8,
+  },
+  taskNumber: {
+    fontSize: 14,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   taskRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
+  },
+  divider: {
+    borderTopWidth: 1,
+    marginTop: 16,
+    marginBottom: 8,
   },
   taskIcon: {
     marginRight: 12,
@@ -113,6 +171,25 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     flex: 1,
+  },
+  pointsContainer: {
+    marginTop: 8,
+    marginBottom: 12,
+  },
+  pointsBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  pointsIcon: {
+    marginRight: 6,
+  },
+  pointsText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   descriptionContainer: {
     marginTop: 8,

@@ -89,6 +89,8 @@ export default function LoginScreen() {
       }
     } catch (err: any) {
       console.log("Error:", err);
+      console.log("Error details:", JSON.stringify(err, null, 2));
+      console.log("Error stack:", err.stack);
       setMessage(err.message || "Unable to connect to the server. Make sure the backend is running on port 4000.");
       setLoading(false);
     }
