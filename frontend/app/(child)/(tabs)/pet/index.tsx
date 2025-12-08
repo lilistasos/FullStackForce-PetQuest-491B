@@ -6,53 +6,109 @@ import {
   TouchableOpacity, 
   StyleSheet, 
   Modal, 
-  TextInput
+  TextInput, 
+  Alert,
+  Platform
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { usePet } from "@/contexts/PetContext";
 import { useTheme } from "@/contexts/ThemeContext";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/hooks/useAuth"; // Updated import
+
+// Helper function to get the correct API URL for different platforms
+const getApiUrl = () => {
+  if (Platform.OS === 'android') {
+    return __DEV__ ? "http://10.0.2.2:4000" : "http://10.0.2.2:4000";
+  } else if (Platform.OS === 'ios') {
+    return __DEV__ ? "http://localhost:4000" : "http://localhost:4000";
+  } else {
+    return "http://localhost:4000";
+  }
+};
 
 export default function PetScreen() {
   const router = useRouter();
   const { selectedPet, updatePetName } = usePet();
   const { colors } = useTheme();
-  const { token } = useAuth();
-  const [modalVisible, setModalVisible] = useState(false);
+  const { token } = useAuth(); // Using useAuth hook
+  
+  const [editModalVisible, setEditModalVisible] = useState(false);
   const [newPetName, setNewPetName] = useState(selectedPet.name);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleEditName = async () => {
+  const handleEditPress = () => {
+    setNewPetName(selectedPet.name);
+    setEditModalVisible(true);
+  };
+
+  const handleSaveName = async () => {
     if (!newPetName.trim()) {
+      Alert.alert("Error", "Pet name cannot be empty");
       return;
     }
 
-    if (newPetName === selectedPet.name) {
-      setModalVisible(false);
+    if (newPetName.trim() === selectedPet.name) {
+      setEditModalVisible(false);
       return;
     }
 
     setIsLoading(true);
-    const success = await updatePetName(selectedPet.id, newPetName, token || '');
-    setIsLoading(false);
-    
-    if (success) {
-      setModalVisible(false);
+    try {
+      const API_URL = getApiUrl();
+      
+      // Update pet name in backend
+      const response = await fetch(`${API_URL}/api/pets/${selectedPet.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: newPetName.trim()
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update pet name');
+      }
+
+      const updatedPet = await response.json();
+      
+      // Update in context
+      updatePetName(selectedPet.id, updatedPet.name);
+      
+      Alert.alert("Success", "Pet name updated successfully!");
+      setEditModalVisible(false);
+    } catch (error: any) {
+      console.error('Error updating pet name:', error);
+      Alert.alert("Error", error.message || "Failed to update pet name. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  const handleCancel = () => {
+    setNewPetName(selectedPet.name);
+    setEditModalVisible(false);
   };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.editButton}
-          onPress={() => setModalVisible(true)}
-        >
-          <Ionicons name="pencil-outline" size={24} color={colors.primary} />
-        </TouchableOpacity>
-        
-        <Text style={[styles.petName, { color: colors.text }]}>{selectedPet.name}</Text>
+        <View style={styles.nameRow}>
+          <Text style={[styles.petName, { color: colors.text }]}>
+            {selectedPet.name}
+          </Text>
+          <TouchableOpacity 
+            onPress={handleEditPress}
+            style={styles.editButton}
+            accessibilityLabel="Edit pet name"
+          >
+            <Ionicons name="pencil-outline" size={24} color={colors.primary} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.imageContainer}>
@@ -88,15 +144,12 @@ export default function PetScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Edit Name Modal */}
+      {/* Edit Pet Name Modal */}
       <Modal
         animationType="slide"
         transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => {
-          setNewPetName(selectedPet.name);
-          setModalVisible(false);
-        }}
+        visible={editModalVisible}
+        onRequestClose={handleCancel}
       >
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
@@ -111,29 +164,26 @@ export default function PetScreen() {
               value={newPetName}
               onChangeText={setNewPetName}
               placeholder="Enter new pet name"
-              placeholderTextColor={colors.textSecondary}
-              autoFocus
-              maxLength={20}
+              placeholderTextColor={colors.textSecondary || "#999"}
+              maxLength={30}
+              autoFocus={true}
             />
             
             <View style={styles.modalButtons}>
               <TouchableOpacity
-                style={[styles.modalButton, { backgroundColor: colors.border }]}
-                onPress={() => {
-                  setNewPetName(selectedPet.name);
-                  setModalVisible(false);
-                }}
+                style={[styles.modalButton, styles.cancelButton, { borderColor: colors.border }]}
+                onPress={handleCancel}
                 disabled={isLoading}
               >
-                <Text style={[styles.modalButtonText, { color: colors.text }]}>Cancel</Text>
+                <Text style={[styles.cancelButtonText, { color: colors.text }]}>Cancel</Text>
               </TouchableOpacity>
               
               <TouchableOpacity
-                style={[styles.modalButton, { backgroundColor: colors.primary }]}
-                onPress={handleEditName}
-                disabled={isLoading || !newPetName.trim()}
+                style={[styles.modalButton, styles.saveButton, { backgroundColor: colors.primary }]}
+                onPress={handleSaveName}
+                disabled={isLoading}
               >
-                <Text style={styles.modalButtonText}>
+                <Text style={styles.saveButtonText}>
                   {isLoading ? "Saving..." : "Save"}
                 </Text>
               </TouchableOpacity>
@@ -154,22 +204,23 @@ const styles = StyleSheet.create({
     width: "100%",
     paddingTop: 20,
     alignItems: "center",
-    position: "relative",
   },
-  editButton: {
-    position: "absolute",
-    right: 20,
-    top: 20,
-    padding: 8,
-    borderRadius: 20,
+  nameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 20,
+    marginBottom: 0.05,
   },
   petName: {
     fontSize: 34,
     fontWeight: "bold",
     fontFamily: "monospace",
-    marginTop: 20,
     textAlign: "center",
-    marginBottom: 0.05,
+    marginRight: 10,
+  },
+  editButton: {
+    padding: 8,
   },
   imageContainer: {
     flex: 1,
@@ -204,45 +255,66 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
   },
+  // Modal Styles
   modalOverlay: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    padding: 20,
   },
   modalContent: {
-    width: '80%',
-    padding: 20,
-    borderRadius: 12,
-    alignItems: 'center',
+    width: '90%',
+    maxWidth: 400,
+    borderRadius: 16,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
     marginBottom: 20,
+    textAlign: 'center',
   },
   input: {
-    width: '100%',
-    padding: 12,
     borderWidth: 1,
     borderRadius: 8,
-    fontSize: 16,
-    marginBottom: 20,
+    padding: 12,
+    fontSize: 18,
+    marginBottom: 24,
   },
   modalButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    width: '100%',
   },
   modalButton: {
     flex: 1,
-    padding: 12,
+    paddingVertical: 14,
     borderRadius: 8,
-    marginHorizontal: 5,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  modalButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
+  cancelButton: {
+    borderWidth: 1,
+    marginRight: 10,
+  },
+  saveButton: {
+    marginLeft: 10,
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  saveButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });
