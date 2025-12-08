@@ -5,37 +5,38 @@ type Task = {
   title: string;
   description: string;
   assignedAt: string;
+  points: number;
 };
 
 type NewTaskContextProps = {
-  newTask: Task | null;
-  showTask: (task: Task) => void;
-  hideTask: () => void;
+  newTasks: Task[];
+  showTasks: (tasks: Task[]) => void;
+  hideTasks: () => void;
 };
 
 const NewTaskContext = createContext<NewTaskContextProps>({
-  newTask: null,
-  showTask: () => {},
-  hideTask: () => {},
+  newTasks: [],
+  showTasks: () => {},
+  hideTasks: () => {},
 });
 
 export const useNewTask = () => useContext(NewTaskContext);
 
 export const NewTaskProvider = ({ children }: { children: React.ReactNode }) => {
-  const [newTask, setNewTask] = useState<Task | null>(null);
+  const [newTasks, setNewTasks] = useState<Task[]>([]);
 
-  const showTask = (task: Task) => {
-    console.log('NewTaskContext: showTask called with:', task);
-    setNewTask(task);
-    console.log('NewTaskContext: newTask state set to:', task);
+  const showTasks = (tasks: Task[]) => {
+    console.log('NewTaskContext: showTasks called with:', tasks.length, 'task(s)');
+    setNewTasks(tasks);
+    console.log('NewTaskContext: newTasks state set to:', tasks);
   };
 
-  const hideTask = () => {
-    setNewTask(null);
+  const hideTasks = () => {
+    setNewTasks([]);
   };
 
   return (
-    <NewTaskContext.Provider value={{ newTask, showTask, hideTask }}>
+    <NewTaskContext.Provider value={{ newTasks, showTasks, hideTasks }}>
       {children}
     </NewTaskContext.Provider>
   );

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -30,7 +30,6 @@ const categories = [
   "Other",
 ];
 
-const pointOptions = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
 
 const ParentCreateTaskScreen = () => {
     const router = useRouter();
@@ -48,7 +47,6 @@ const ParentCreateTaskScreen = () => {
     const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
 
     //Adding Task Points
-    const [showPointsDropdown, setShowPointsDropdown] = useState(false);
     const [points, setPoints] = useState(0);
 
     const [note, setNote] = useState("");
@@ -95,9 +93,12 @@ const ParentCreateTaskScreen = () => {
       setShowCategoryDropdown(false);
     };
 
-    const handlePointsSelect = (selectedPoints: number) => {
-      setPoints(selectedPoints);
-      setShowPointsDropdown(false);
+    const handlePointsIncrement = () => {
+      setPoints(prev => prev + 5);
+    };
+
+    const handlePointsDecrement = () => {
+      setPoints(prev => Math.max(0, prev - 5));
     };    
 
     const handleAssignTask = async () => {
@@ -110,8 +111,8 @@ const ParentCreateTaskScreen = () => {
         Alert.alert("Error", "Please select a category.");
         return;
       }
-      if (points === 0) {
-        Alert.alert("Error", "Please select points for this task.");
+      if (points < 0) {
+        Alert.alert("Error", "Points cannot be negative.");
         return;
       }
       if (!childId) {
@@ -133,7 +134,7 @@ const ParentCreateTaskScreen = () => {
             dueDate: date.toISOString().split('T')[0], // Format as YYYY-MM-DD
             points: points, // Backend expects 'points' not 'pointValue'
             category: category || "Other",
-            assignedToUserId: parseInt(childId as string), // Backend expects 'assignedToUserId' as number, not 'assignedTo' as string
+            assignedToUserId: childId as string, // Backend expects 'assignedToUserId' as UUID string
           }),
         });
         const data = await res.json();
@@ -213,22 +214,6 @@ const ParentCreateTaskScreen = () => {
             </TouchableOpacity>
           </View>
 
-          {/* Points */}
-          <Text style={styles.label}>Points</Text>
-          <View style={styles.categoryInputContainer}>
-            <TextInput
-              placeholder="Select points"
-              value={points > 0 ? `${points} points` : ""}
-              editable={false}
-              style={styles.categoryInput}
-            />
-            <TouchableOpacity
-              style={styles.dropdownIconButton}
-              onPress={() => setShowPointsDropdown(true)}
-            >
-              <Ionicons name="chevron-down-outline" size={24} color="#0077B6" />
-            </TouchableOpacity>
-          </View>
 
           {/* Due Date */}
           <Text style={styles.label}>Due Date</Text>
@@ -256,6 +241,44 @@ const ParentCreateTaskScreen = () => {
             multiline
             style={[styles.input, { height: 80 }]}
           />
+          
+          {/* Points Selector */}
+          <View style={styles.pointsSelectorContainer}>
+            <Text style={styles.pointsTitle}>Select Number</Text>
+            <Text style={styles.pointsSubtitle}>of Points</Text>
+            
+            <View style={styles.pointsDisplayContainer}>
+              {/* Background bar container */}
+              <View style={styles.pointsBarBackground}>
+                {/* Dynamic green fill bar */}
+                <View 
+                  style={[
+                    styles.pointsBarFill, 
+                    { width: `${Math.min((points / 100) * 100, 100)}%` }
+                  ]} 
+                />
+              </View>
+              <Text style={styles.pointsDisplayText}>{points} Points</Text>
+            </View>
+            
+            <View style={styles.pointsButtonsContainer}>
+              <TouchableOpacity 
+                style={styles.pointsButton}
+                onPress={handlePointsDecrement}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.pointsButtonText}>-</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.pointsButton}
+                onPress={handlePointsIncrement}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.pointsButtonText}>+</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
           
           {/* Extra spacing at bottom of scroll */}
           <View style={{ height: 40 }} />
@@ -334,46 +357,6 @@ const ParentCreateTaskScreen = () => {
           </TouchableOpacity>
         </Modal>
 
-        <Modal
-          visible={showPointsDropdown}
-          transparent={true}
-          animationType="fade"
-          onRequestClose={() => setShowPointsDropdown(false)}
-        >
-          <TouchableOpacity
-            style={styles.modalOverlay}
-            activeOpacity={1}
-            onPress={() => setShowPointsDropdown(false)}
-          >
-            <View style={styles.dropdownContainer}>
-              <FlatList
-                data={pointOptions}
-                keyExtractor={(item) => item.toString()}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={[
-                      styles.categoryItem,
-                      points === item && styles.categoryItemSelected,
-                    ]}
-                    onPress={() => handlePointsSelect(item)}
-                  >
-                    <Text
-                      style={[
-                        styles.categoryItemText,
-                        points === item && styles.categoryItemTextSelected,
-                      ]}
-                    >
-                      {item} points
-                    </Text>
-                    {points === item && (
-                      <Ionicons name="checkmark" size={20} color="#0077B6" />
-                    )}
-                  </TouchableOpacity>
-                )}
-              />
-            </View>
-          </TouchableOpacity>
-        </Modal>
       </SafeAreaView>
     );
   };
@@ -543,5 +526,101 @@ const createStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   categoryItemTextSelected: {
     color: colors.primary,
     fontWeight: "600",
+  },
+  pointsSelectorContainer: {
+    marginTop: 20,
+    marginBottom: 20,
+    alignItems: "center",
+  },
+  pointsTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: colors.text,
+    fontFamily: "monospace",
+    textAlign: "center",
+    marginBottom: 2,
+  },
+  pointsSubtitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: colors.text,
+    fontFamily: "monospace",
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  pointsDisplayContainer: {
+    borderWidth: 2,
+    borderColor: "#000",
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    marginBottom: 16,
+    minWidth: 200,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#E0E0E0", // Light gray background
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+    elevation: 3,
+    overflow: "hidden",
+    position: "relative",
+  },
+  pointsBarBackground: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "#E0E0E0",
+    borderRadius: 10,
+  },
+  pointsBarFill: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    bottom: 0,
+    backgroundColor: "#32CD32", // Lime green
+    borderRadius: 10,
+  },
+  pointsDisplayText: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#000",
+    fontFamily: "monospace",
+    zIndex: 1, // Ensure text is above the bar
+  },
+  pointsButtonsContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 12,
+  },
+  pointsButton: {
+    backgroundColor: "#FFFFFF",
+    borderWidth: 2,
+    borderColor: "#000",
+    borderRadius: 12,
+    width: 60,
+    height: 50,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  pointsButtonText: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#000",
+    fontFamily: "monospace",
   },
 });
