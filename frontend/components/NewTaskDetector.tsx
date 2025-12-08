@@ -122,11 +122,11 @@ export default function NewTaskDetector() {
     }
 
     // Refresh tasks periodically to catch new assignments
-    console.log('NewTaskDetector: Starting periodic refresh (every 5 seconds)');
+    console.log('NewTaskDetector: Starting periodic refresh (every 30 seconds)');
     refreshIntervalRef.current = setInterval(() => {
       console.log('NewTaskDetector: Periodic refresh triggered');
       refreshTasks();
-    }, 5000); // 5 seconds for better responsiveness
+    }, 30000); // 30 seconds to reduce load
 
     // Cleanup on unmount or when dependencies change
     return () => {
@@ -136,7 +136,7 @@ export default function NewTaskDetector() {
         refreshIntervalRef.current = null;
       }
     };
-  }, [user?.role, refreshTasks, loading, tasks.length]); // Add tasks.length to trigger when initial load completes
+  }, [user?.role, refreshTasks, loading]); // Removed tasks.length to prevent interval restart on every task change
 
   return null; // This component doesn't render anything
 }
