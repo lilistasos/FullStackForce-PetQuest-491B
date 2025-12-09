@@ -14,6 +14,7 @@ export default function AccountLayout() {
       <Stack.Screen name="feedback" />
       <Stack.Screen name="subscription" />
       <Stack.Screen name="parent-child-settings" />
+      <Stack.Screen name="child-options" />
       <Stack.Screen name="preferences" />
     </Stack>
   );

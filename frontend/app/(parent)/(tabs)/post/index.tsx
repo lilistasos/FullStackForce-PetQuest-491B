@@ -8,6 +8,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from '@/contexts/ThemeContext'; // Add this import
 
+
 const getApiUrl = () => {
   if (Platform.OS === 'android') {
     return __DEV__ ? "http://10.0.2.2:4000" : "http://10.0.2.2:4000";
@@ -55,6 +56,27 @@ const ParentSelectChildScreen = () => {
     };
     loadChildren();
   }, []);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      // Re-fetch children when screen comes into focus
+      const loadChildren = async () => {
+        const api = getApiUrl();
+        try {
+          const res = await fetch(`${api}/api/parent/children`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+          const data = await res.json();
+          setChildren(data);
+        } catch (err) {
+          console.log("Error fetching children:", err);
+        }
+      };
+      loadChildren();
+    }, [token])
+  );
 
   // Create styles using the theme
   const styles = createStyles(colors, isDarkMode);

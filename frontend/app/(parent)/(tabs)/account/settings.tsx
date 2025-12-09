@@ -23,6 +23,8 @@ export default function SettingsScreen() {
       router.push('/(parent)/(tabs)/account/feedback');
     } else if (route === 'preferences') {
       router.push('/(parent)/(tabs)/account/preferences');
+    } else if (route === 'child-options') {
+      router.push('/(parent)/(tabs)/account/child-options');
     } else {
       console.log(`Navigate to ${route}`);
     }
@@ -73,6 +75,14 @@ export default function SettingsScreen() {
           >
             <Ionicons name="timer-outline" size={24} color={colors.primary} />
             <Text style={[styles.settingText, { color: colors.text }]}>Screen Time</Text>
+            <Ionicons name="chevron-forward-outline" size={20} color={colors.text} />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.settingItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            onPress={() => handleNavigate('child-options')}
+          >
+            <Ionicons name="people-outline" size={24} color={colors.primary} />
+            <Text style={[styles.settingText, { color: colors.text }]}>Child Options</Text>
             <Ionicons name="chevron-forward-outline" size={20} color={colors.text} />
           </TouchableOpacity>
         </View>

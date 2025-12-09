@@ -925,6 +925,44 @@ app.get('/api/parent/children', authMiddleware, async (req, res) => {
   }
 });
 
+// Get children for the current parent user
+app.get('/api/users/children', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.sub;
+    
+    // First, check if the user is a parent
+    const user = await findUserById(userId);
+    if (!user || user.role !== 'parent') {
+      return res.status(403).json({ error: 'Only parents can view children.' });
+    }
+    
+    if (!user.familyCode) {
+      return res.status(400).json({ error: 'Parent does not have a family code set.' });
+    }
+
+    // Get all children in the parent's family
+    const { rows: children } = await pool.query(
+      `SELECT 
+        id, 
+        first_name AS "firstName", 
+        last_name AS "lastName", 
+        email,
+        date_of_birth AS "dateOfBirth",
+        created_at AS "createdAt",
+        points
+       FROM users 
+       WHERE family_code = $1 AND role = 'child' 
+       ORDER BY first_name, last_name`,
+      [user.familyCode]
+    );
+
+    res.json(children);
+  } catch (err) {
+    console.error('GET /api/users/children error:', err);
+    res.status(500).json({ error: 'Failed to load children' });
+  }
+});
+
 // Create and Send Task to Child
 app.post('/api/tasks', authMiddleware, async (req, res) => {
   const parentId = req.user.sub;
@@ -1354,6 +1392,125 @@ app.post('/api/tasks/:id/complete', authMiddleware, async (req, res) => {
     await client.query('ROLLBACK');
     console.error('POST /api/tasks/:id/complete error:', err);
     res.status(500).json({ error: 'Failed to complete task' });
+  }
+});
+
+// Parent adds a child to their family (reuses registerUser logic)
+app.post('/api/users/add-child', authMiddleware, async (req, res) => {
+  try {
+    const parentId = req.user.sub;
+    const { email, password, firstName, lastName, dateOfBirth } = req.body;
+
+    // 1. Make sure the requester is a parent
+    const parent = await findUserById(parentId);
+    if (!parent || parent.role !== 'parent') {
+      return res.status(403).json({ error: 'Only parents can add children.' });
+    }
+
+    if (!parent.familyCode) {
+      return res.status(400).json({ error: 'Parent does not have a family code set.' });
+    }
+
+    // Validate dateOfBirth is provided
+    if (!dateOfBirth || !dateOfBirth.trim()) {
+      return res.status(400).json({ error: 'Date of birth is required.' });
+    }
+
+    // 2. Register the child user
+    console.log('Registering child with dateOfBirth:', dateOfBirth);
+    const { user: child } = await registerUser({
+      email,
+      password,
+      firstName,
+      lastName,
+      role: 'child',
+      familyCode: parent.familyCode,
+      dateOfBirth: dateOfBirth.trim(), // Include date of birth
+    });
+
+    return res.status(201).json({
+      message: 'Child added successfully.',
+      child,
+    });
+  } catch (err) {
+    console.error('Add child error:', {
+      message: err.message,
+      status: err.status,
+    });
+    const status = err.status || 500;
+    return res.status(status).json({
+      error: err.message || 'Failed to add child.',
+    });
+  }
+});
+
+// Parent removes a child from their family
+app.delete('/api/users/remove-child/:id', authMiddleware, async (req, res) => {
+  try {
+    const parentId = req.user.sub;      // UUID from JWT
+    const childId = req.params.id;      // UUID string from URL
+
+    // Verify the requester is a parent
+    const parent = await findUserById(parentId);
+    if (!parent || parent.role !== 'parent') {
+      return res.status(403).json({ error: 'Only parents can remove children.' });
+    }
+
+    // Find the child
+    const child = await findUserById(childId);
+    if (!child || child.role !== 'child') {
+      return res.status(404).json({ error: 'Child not found.' });
+    }
+
+    // Ensure this child is in the same family
+    if (child.familyCode !== parent.familyCode) {
+      return res.status(403).json({ error: 'This child does not belong to your family.' });
+    }
+
+    // Delete the child user (any cascading deletes depend on your DB constraints)
+    await pool.query('DELETE FROM users WHERE id = $1', [childId]);
+
+    res.json({ message: 'Child removed successfully.' });
+  } catch (err) {
+    console.error('Remove child error:', err);
+    res.status(500).json({ error: 'Failed to remove child.' });
+  }
+});
+
+// Update pet name endpoint
+app.put('/api/pets/:id', authMiddleware, async (req, res) => {
+  try {
+    const petId = req.params.id;
+    const { name } = req.body;
+    const userId = req.user.sub;
+
+    if (!name || name.trim().length === 0) {
+      return res.status(400).json({ error: 'Pet name is required' });
+    }
+
+    // First, verify that the pet belongs to the current user
+    const { rows: petRows } = await pool.query(
+      `SELECT * FROM pets WHERE id = $1 AND user_id = $2`,
+      [petId, userId]
+    );
+
+    if (petRows.length === 0) {
+      return res.status(404).json({ error: 'Pet not found or you do not have permission to edit it' });
+    }
+
+    // Update the pet name
+    const { rows } = await pool.query(
+      `UPDATE pets 
+       SET name = $1 
+       WHERE id = $2 AND user_id = $3
+       RETURNING id, name, image_url AS "imageUrl", user_id AS "userId", is_unlocked AS "isUnlocked"`,
+      [name.trim(), petId, userId]
+    );
+
+    res.json(rows[0]);
+  } catch (err) {
+    console.error('Update pet name error:', err);
+    res.status(500).json({ error: 'Server error updating pet name' });
   }
 });
 

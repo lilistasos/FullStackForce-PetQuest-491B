@@ -1,0 +1,62 @@
+# Backend Setup Guide
+
+## Environment Variables
+
+1. **Copy the example environment file:**
+   ```bash
+   cp .env.example .env
+   ```
+
+2. **Edit `.env` and fill in your values:**
+   - `DATABASE_URL`: Your PostgreSQL connection string
+   - `JWT_SECRET`: A random secret key for JWT tokens (generate one with: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`)
+   - `SENDGRID_API_KEY`: Your SendGrid API key for emails (optional if not using email features)
+   - `SENDGRID_FROM_EMAIL`: Email address to send from (optional)
+   - `PORT`: Server port (defaults to 4000)
+   - `NODE_ENV`: Set to 'development' or 'production'
+
+## Database Setup
+
+1. **Make sure PostgreSQL is installed and running**
+
+2. **Create a database:**
+   ```bash
+   createdb petquest
+   # or using psql:
+   psql -c "CREATE DATABASE petquest;"
+   ```
+
+3. **Update your `.env` file with the database connection:**
+   ```
+   DATABASE_URL=postgresql://username:password@localhost:5432/petquest
+   ```
+
+4. **Run the database setup script:**
+   ```bash
+   npm run setup-db
+   ```
+   
+   This will create all the necessary tables (users, pets, pet_accessories, tasks).
+
+5. **Verify the setup:**
+   ```bash
+   npm run check-db
+   ```
+
+## Running the Server
+
+- **Development mode (with auto-reload):**
+  ```bash
+  npm run dev
+  ```
+
+- **Production mode:**
+  ```bash
+  npm start
+  ```
+
+## Important Notes
+
+- ⚠️ **Never commit your `.env` file to git** - it contains sensitive information
+- The `.env` file is already in `.gitignore` and will not be tracked
+- Use `.env.example` as a template for team members to set up their own `.env` file
