@@ -211,13 +211,15 @@ const ToDoScreen = () => {
       const tasksByDate: { [key: string]: Task[] } = {};
 
       tasks.forEach((task: any) => {
-        // Handle date parsing with timezone consideration
+        // Handle date parsing - FIXED VERSION
         let dateKey: string;
         
         if (task.date) {
-          // Parse the date string and convert to local timezone
-          const taskDate = new Date(task.date);
-          // Use the local date (not UTC) for grouping
+          // Parse the date string as LOCAL date (not UTC)
+          // Split the date string and create a date at noon local time to avoid timezone issues
+          const [year, month, day] = task.date.split('-').map(Number);
+          // Create date at noon local time to avoid timezone issues
+          const taskDate = new Date(year, month - 1, day, 12, 0, 0);
           dateKey = formatDateKey(taskDate);
         } else {
           // Use current local date if no date specified

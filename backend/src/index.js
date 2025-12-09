@@ -1337,64 +1337,6 @@ app.post('/api/tasks/:id/complete', authMiddleware, async (req, res) => {
   }
 });
 
-// Complete a task and award points
-app.post('/api/tasks/:id/complete', authMiddleware, async (req, res) => {
-  const userId = req.user.sub;
-  const taskId = req.params.id;
-
-  try {
-    const client = await pool.connect();
-    await client.query('BEGIN');
-
-    // Get the task and verify it belongs to the user
-    const { rows: tasks } = await client.query(
-      `SELECT id, point_value, completed, assigned_to
-       FROM tasks 
-       WHERE id = $1 AND assigned_to = $2
-       FOR UPDATE`,
-      [taskId, userId]
-    );
-
-    if (tasks.length === 0) {
-      await client.query('ROLLBACK');
-      return res.status(404).json({ error: 'Task not found or access denied' });
-    }
-
-    const task = tasks[0];
-
-    if (task.completed) {
-      await client.query('ROLLBACK');
-      return res.status(400).json({ error: 'Task already completed' });
-    }
-
-    // Mark task as completed
-    await client.query(
-      `UPDATE tasks SET completed = TRUE WHERE id = $1`,
-      [taskId]
-    );
-
-    // Award points to user
-    await client.query(
-      `UPDATE users SET points = points + $1 WHERE id = $2`,
-      [task.point_value, userId]
-    );
-
-    await client.query('COMMIT');
-    client.release();
-
-    res.json({
-      success: true,
-      pointsEarned: task.point_value,
-      message: `Task completed! You earned ${task.point_value} points!`
-    });
-
-  } catch (err) {
-    await client.query('ROLLBACK');
-    console.error('POST /api/tasks/:id/complete error:', err);
-    res.status(500).json({ error: 'Failed to complete task' });
-  }
-});
-
 // Parent adds a child to their family (reuses registerUser logic)
 app.post('/api/users/add-child', authMiddleware, async (req, res) => {
   try {
