@@ -33,10 +33,12 @@ export default function CustomizeScreen() {
   const { selectedPet, selectedAccessories, setSelectedAccessories } = usePet();
   const { colors } = useTheme();
   const combinedImages: Record<string, any> = {
-  "capdragon": require("@/assets/images/capdragon.png"),
-  "top-hatdragon": require("@/assets/images/top-hatdragon.png"),
-  "nonedragon": require("@/assets/images/pdragon.png"),
-};
+    "capdragon": require("@/assets/images/capdragon.png"),
+    "top-hatdragon": require("@/assets/images/top-hatdragon.png"),
+    "nonedragon": require("@/assets/images/pdragon.png"),
+    "glassesdragon": require("@/assets/images/glassesdragon.png"),
+    "footballdragon": require("@/assets/images/footballdragon.png"),
+  };
   const [selectedCategory, setSelectedCategory] =
     useState<keyof AccessoriesData>("hats");
   const [visibleRows, setVisibleRows] = useState(2);
@@ -47,7 +49,7 @@ export default function CustomizeScreen() {
 
   const [activity, setActivity] = useState<ActivityItem[]>([]);
   const [savingHat, setSavingHat] = useState(false);
-  const [combinedImage, setCombinedImage] = useState<string>("");
+  const [combinedImage, setCombinedImage] = useState<string>("nonedragon");
 
   const petId = selectedPet?.id; 
 
@@ -129,10 +131,7 @@ export default function CustomizeScreen() {
       [selectedCategory]: newId,
     });
 
-    // For non-hat category, no server call needed
-    if (selectedCategory !== "hats" || !HAT_ENDPOINT || !petId) return;
 
-    // Map "none" -> null so backend can unequip
     const hatIdPayload =
       newId === "none" ? null : newId; 
     try {

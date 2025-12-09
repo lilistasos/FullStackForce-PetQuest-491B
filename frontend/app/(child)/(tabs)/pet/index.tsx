@@ -9,6 +9,11 @@ const hatImages: Record<string, any> = {
   cap: require("@/assets/images/bbhat.png"),
   "top-hat": require("@/assets/images/tophat.png"),
 };
+const combinedImages: Record<string, any> = {
+  "capdragon": require("@/assets/images/capdragon.png"),
+  "top-hatdragon": require("@/assets/images/top-hatdragon.png"),
+  "nonedragon": require("@/assets/images/pdragon.png"),
+};
 
 
 export default function PetScreen() {
@@ -30,6 +35,8 @@ export default function PetScreen() {
   const hatId = selectedAccessories?.hats;
   const hatSource =
     hatId && hatId !== "none" ? hatImages[hatId] : null;
+  
+  const combinedSource = `${hatId.toLowerCase()}${selectedPet.name.toLowerCase()}`;
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
@@ -43,19 +50,11 @@ export default function PetScreen() {
         <View style={styles.petWrapper}>
           {/* Base pet image */}
           <Image
-            source={selectedPet.image}
+            source={combinedImages[combinedSource]}
             style={styles.petImage}
             resizeMode="contain"
           />
 
-          {/* Hat overlay, if selected */}
-          {hatSource && (
-            <Image
-              source={hatSource}
-              style={styles.hatOverlay}
-              resizeMode="contain"
-            />
-          )}
         </View>
       </View>
 
@@ -88,6 +87,7 @@ export default function PetScreen() {
             styles.button,
             { backgroundColor: colors.surface, borderColor: colors.border },
           ]}
+          onPress={() => router.push("/(child)/(tabs)/pet/shop")}
         >
           <Ionicons
             name="cart-outline"
@@ -110,6 +110,7 @@ export default function PetScreen() {
             styles.button,
             { backgroundColor: colors.surface, borderColor: colors.border },
           ]}
+          onPress ={() => router.push("/(child)/(tabs)/pet/collection")}
         >
           <Ionicons
             name="pricetags-outline"
