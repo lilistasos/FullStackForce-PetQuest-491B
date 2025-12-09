@@ -32,7 +32,11 @@ interface ActivityItem {
 export default function CustomizeScreen() {
   const { selectedPet, selectedAccessories, setSelectedAccessories } = usePet();
   const { colors } = useTheme();
-
+  const combinedImages: Record<string, any> = {
+  "capdragon": require("@/assets/images/capdragon.png"),
+  "top-hatdragon": require("@/assets/images/top-hatdragon.png"),
+  "nonedragon": require("@/assets/images/pdragon.png"),
+};
   const [selectedCategory, setSelectedCategory] =
     useState<keyof AccessoriesData>("hats");
   const [visibleRows, setVisibleRows] = useState(2);
@@ -43,6 +47,7 @@ export default function CustomizeScreen() {
 
   const [activity, setActivity] = useState<ActivityItem[]>([]);
   const [savingHat, setSavingHat] = useState(false);
+  const [combinedImage, setCombinedImage] = useState<string>("");
 
   const petId = selectedPet?.id; 
 
@@ -109,7 +114,7 @@ export default function CustomizeScreen() {
   }, []);
 
   useEffect(() => {
-    loadActivity();
+    //loadActivity();
   }, [petId]);
 
   // ------------------- Hat equip / unequip -------------------
@@ -118,9 +123,7 @@ export default function CustomizeScreen() {
     const isSame = currentlySelected === item.id;
 
     // For hats, tapping the same hat again should "take it off"
-    const newId =
-      selectedCategory === "hats" && isSame ? "none" : item.id;
-
+    const newId = isSame ? "none" : item.id;
     setSelectedAccessories({
       ...selectedAccessories,
       [selectedCategory]: newId,
@@ -132,14 +135,14 @@ export default function CustomizeScreen() {
     // Map "none" -> null so backend can unequip
     const hatIdPayload =
       newId === "none" ? null : newId; 
-
     try {
       setSavingHat(true);
-
-      const updatedPet = await api.put<{ hatId: string | null; name: string }>(
-        HAT_ENDPOINT,
-        { hatId: hatIdPayload }
-      );
+      console.log(`@/assets/images/${item.id.toLowerCase()}${selectedPet.name.toLowerCase()}.png`);
+      setCombinedImage((`${newId.toLowerCase()}${selectedPet.name.toLowerCase()}`));
+      // const updatedPet = await api.put<{ hatId: string | null; name: string }>(
+      //   HAT_ENDPOINT,
+      //   { hatId: hatIdPayload }
+      // );
 
       const message =
         hatIdPayload === null
@@ -161,6 +164,7 @@ export default function CustomizeScreen() {
         ...selectedAccessories,
         [selectedCategory]: currentlySelected,
       });
+      console.log("ahhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh")
       alert(err?.message ?? "Could not update hat on server.");
     } finally {
       setSavingHat(false);
@@ -260,7 +264,7 @@ export default function CustomizeScreen() {
     >
       <View style={styles.imageContainer}>
         <Image
-          source={selectedPet.image}
+          source={combinedImages[combinedImage]}
           style={styles.petImage}
           resizeMode="contain"
           blurRadius={0}

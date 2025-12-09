@@ -1,5 +1,5 @@
 import * as Notifications from "expo-notifications";
-import NotificationService from "@/services/NotificationService (2)";
+import NotificationService from "@/services/NotificationService";
 
 let handlerSet = false;
 let listenerSet = false;

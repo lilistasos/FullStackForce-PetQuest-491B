@@ -5,47 +5,126 @@ import { useRouter } from "expo-router";
 import { usePet } from "@/contexts/PetContext";
 import { useTheme } from "@/contexts/ThemeContext";
 
+const hatImages: Record<string, any> = {
+  cap: require("@/assets/images/bbhat.png"),
+  "top-hat": require("@/assets/images/tophat.png"),
+};
+
+
 export default function PetScreen() {
   const router = useRouter();
-  const { selectedPet } = usePet();
+  const { selectedPet, setSelectedPet, selectedAccessories } = usePet();
   const { colors } = useTheme();
 
+  if (!selectedPet) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <Text style={[styles.petName, { color: colors.text }]}>
+          No pet selected
+        </Text>
+      </View>
+    );
+  }
+
+  // Read hat choice from shared context (set in customize.tsx)
+  const hatId = selectedAccessories?.hats;
+  const hatSource =
+    hatId && hatId !== "none" ? hatImages[hatId] : null;
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
-        <Text style={[styles.petName, { color: colors.text }]}>{selectedPet.name}</Text>
+        <Text style={[styles.petName, { color: colors.text }]}>
+          {selectedPet.name}
+        </Text>
       </View>
 
       <View style={styles.imageContainer}>
-        <Image source={selectedPet.image} style={styles.petImage} resizeMode="contain" />
+        {/* Pet + hat overlay wrapper */}
+        <View style={styles.petWrapper}>
+          {/* Base pet image */}
+          <Image
+            source={selectedPet.image}
+            style={styles.petImage}
+            resizeMode="contain"
+          />
+
+          {/* Hat overlay, if selected */}
+          {hatSource && (
+            <Image
+              source={hatSource}
+              style={styles.hatOverlay}
+              resizeMode="contain"
+            />
+          )}
+        </View>
       </View>
 
       <View style={styles.buttonContainer}>
-        <TouchableOpacity 
-          style={[styles.button, { backgroundColor: colors.surface, borderColor: colors.border }]}
+        <TouchableOpacity
+          style={[
+            styles.button,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+          ]}
           onPress={() => router.push("/(child)/(tabs)/pet/customize")}
         >
-          <Ionicons name="color-palette-outline" size={24} color={colors.primary} style={styles.buttonIcon} />
-          <Text style={[styles.buttonText, { color: colors.text }]}>Customize</Text>
-          <Ionicons name="chevron-forward-outline" size={20} color={colors.text} />
+          <Ionicons
+            name="color-palette-outline"
+            size={24}
+            color={colors.primary}
+            style={styles.buttonIcon}
+          />
+          <Text style={[styles.buttonText, { color: colors.text }]}>
+            Customize
+          </Text>
+          <Ionicons
+            name="chevron-forward-outline"
+            size={20}
+            color={colors.text}
+          />
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={[styles.button, { backgroundColor: colors.surface, borderColor: colors.border }]}
-          onPress={() => router.push("/(child)/(tabs)/pet/shop")}
+        <TouchableOpacity
+          style={[
+            styles.button,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+          ]}
         >
-          <Ionicons name="cart-outline" size={24} color={colors.primary} style={styles.buttonIcon} />
-          <Text style={[styles.buttonText, { color: colors.text }]}>Shop</Text>
-          <Ionicons name="chevron-forward-outline" size={20} color={colors.text} />
+          <Ionicons
+            name="cart-outline"
+            size={24}
+            color={colors.primary}
+            style={styles.buttonIcon}
+          />
+          <Text style={[styles.buttonText, { color: colors.text }]}>
+            Shop
+          </Text>
+          <Ionicons
+            name="chevron-forward-outline"
+            size={20}
+            color={colors.text}
+          />
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={[styles.button, { backgroundColor: colors.surface, borderColor: colors.border }]}
-          onPress={() => router.push("/(child)/(tabs)/pet/collection")}
+        <TouchableOpacity
+          style={[
+            styles.button,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+          ]}
         >
-          <Ionicons name="pricetags-outline" size={24} color={colors.primary} style={styles.buttonIcon} />
-          <Text style={[styles.buttonText, { color: colors.text }]}>Collection</Text>
-          <Ionicons name="chevron-forward-outline" size={20} color={colors.text} />
+          <Ionicons
+            name="pricetags-outline"
+            size={24}
+            color={colors.primary}
+            style={styles.buttonIcon}
+          />
+          <Text style={[styles.buttonText, { color: colors.text }]}>
+            Collection
+          </Text>
+          <Ionicons
+            name="chevron-forward-outline"
+            size={20}
+            color={colors.text}
+          />
         </TouchableOpacity>
       </View>
     </View>
@@ -75,9 +154,23 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  // Wrapper so we can absolutely-position the hat
+  petWrapper: {
+    width: 300,
+    height: 300,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   petImage: {
     width: 300,
     height: 300,
+  },
+  hatOverlay: {
+    position: "absolute",
+    width: 150,
+    height: 150,
+    top: 10,   
+    left: 80,  
   },
   buttonContainer: {
     width: "90%",
@@ -86,8 +179,8 @@ const styles = StyleSheet.create({
   },
   button: {
     width: "100%",
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 16,
     paddingHorizontal: 16,
     borderRadius: 8,
@@ -98,9 +191,9 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   buttonText: {
-    fontWeight: 'bold',
+    fontWeight: "bold",
     fontSize: 20,
     flex: 1,
-    textAlign: 'center',
+    textAlign: "center",
   },
 });

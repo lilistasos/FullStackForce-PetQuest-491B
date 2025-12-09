@@ -1,7 +1,5 @@
-// frontend/lib/api.ts
 const BASE_URL =
   process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8080/api";
-// ↑ change to your backend URL/port if different
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, {
