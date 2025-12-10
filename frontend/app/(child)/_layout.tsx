@@ -14,6 +14,7 @@ import NewTaskDetector from '@/components/NewTaskDetector';
 import { useTasks } from '@/contexts/TaskContext';
 
 
+
 // Function to calculate luminance and determine text color
 const getContrastColor = (backgroundColor: string): string => {
   // Remove # if present
@@ -154,6 +155,7 @@ export default function ChildLayout() {
       <Tabs
       initialRouteName="(tabs)/pet"
       screenOptions={{
+        headerShown: true,
         tabBarActiveTintColor: headerTextColor,
         tabBarInactiveTintColor: "#555555",
         tabBarStyle: { backgroundColor: colors.primary },

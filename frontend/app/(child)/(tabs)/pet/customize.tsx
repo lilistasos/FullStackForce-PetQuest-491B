@@ -1,18 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, FlatList, Platform } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Platform } from "react-native";
 import { usePet } from "@/contexts/PetContext";
 import { useTheme } from "@/contexts/ThemeContext";
-import { useAuth } from "@/hooks/useAuth"; 
-
-const getApiUrl = () => {
-  if (Platform.OS === 'android') {
-    return __DEV__ ? "http://10.0.2.2:4000" : "http://10.0.2.2:4000";
-  } else if (Platform.OS === 'ios') {
-    return __DEV__ ? "http://localhost:4000" : "http://localhost:4000";
-  } else {
-    return "http://localhost:4000";
-  }
-};
+import { useAuth } from "@/hooks/useAuth";
+import { getApiUrl } from "@/utils/api";
 
 interface AccessoryItem {
   id: string;
@@ -47,26 +38,23 @@ interface BackendPet {
   accessories: BackendAccessory[];
 }
 
+interface ActivityItem {
+  id: string | number;
+  message: string;
+  createdAt: string;
+}
+
 type CategoryKey = keyof AccessoriesData;
 
 const petKeyFromName = (name: string) =>
   name.toLowerCase().replace(/\s+/g, "-");
 
-const getPetImage = (petKey: string) => {
-  switch (petKey) {
-    case "dragon":
-      return require("@/assets/images/pdragon.png");
-    case "cat":
-      return require("@/assets/images/cat.png");
-    case "dog":
-      return require("@/assets/images/fbdog.png");
-    case "lion":
-      return require("@/assets/images/lion.png");
-    case "unicorn":
-      return require("@/assets/images/unicorn.png");
-    default:
-      return require("@/assets/images/green-dragon.png");
-  }
+const combinedImages: Record<string, any> = {
+  "capdragon": require("@/assets/images/capdragon.png"),
+  "top-hatdragon": require("@/assets/images/top-hatdragon.png"),
+  "nonedragon": require("@/assets/images/pdragon.png"),
+  "glassesdragon": require("@/assets/images/glassesdragon.png"),
+  "footballdragon": require("@/assets/images/footballdragon.png"),
 };
 
 export default function CustomizeScreen() {
@@ -77,10 +65,17 @@ export default function CustomizeScreen() {
   const [visibleRows, setVisibleRows] = useState(2);
   const [userAccessories, setUserAccessories] = useState<AccessoriesData>({
     hats: [{ id: "none", name: "None", icon: "∅" }],
-    accessories: [{ id: "none", name: "None", icon: "∅" }]
+    accessories: [{ id: "none", name: "None", icon: "∅" }],
   });
+  const [activity, setActivity] = useState<ActivityItem[]>([]);
+  const [savingHat, setSavingHat] = useState(false);
+  const [combinedImage, setCombinedImage] = useState<string>("nonedragon");
 
-  const loadUserAccessories = async () => {
+  const petId = selectedPet?.id;
+  const HAT_ENDPOINT = petId ? `/pets/${petId}/hat` : null;
+  const ACTIVITY_ENDPOINT = petId ? `/pets/${petId}/activity` : null;
+
+  const loadUserAccessories = async (): Promise<AccessoriesData> => {
     const staticData: AccessoriesData = {
       hats: [
         { id: "none", name: "None", icon: "∅" },
@@ -91,7 +86,7 @@ export default function CustomizeScreen() {
         { id: "none", name: "None", icon: "∅" },
         { id: "glasses", name: "Sunglasses", icon: "" },
         { id: "football", name: "Football", icon: "" },
-      ]
+      ],
     };
 
     if (!token) return staticData;
@@ -189,20 +184,48 @@ export default function CustomizeScreen() {
     }
   };
 
-  React.useEffect(() => {
+  const loadActivity = async () => {
+    if (!ACTIVITY_ENDPOINT || !token) return;
+    try {
+      const API_URL = getApiUrl();
+      const response = await fetch(`${API_URL}${ACTIVITY_ENDPOINT}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (response.ok) {
+        const rows = await response.json();
+        setActivity(rows);
+      }
+    } catch (err) {
+      console.warn("Could not load pet activity", err);
+    }
+  };
+
+  useEffect(() => {
     loadUserAccessories().then(setUserAccessories);
   }, [token, selectedPet.id]);
 
-  const handleAccessorySelect = (item: AccessoryItem) => {
-    // Only track customization if selecting a non-empty accessory (not "none")
-    if (item.id !== "none" && selectedAccessories[selectedCategory] !== item.id) {
-      recordCustomization();
-    }
+  useEffect(() => {
+    // Update combined image when hat changes
+    const hatId = selectedAccessories?.hats || "none";
+    const petName = selectedPet?.name?.toLowerCase() || "dragon";
+    setCombinedImage(`${hatId.toLowerCase()}${petName}`);
+  }, [selectedAccessories?.hats, selectedPet?.name]);
+
+  // ------------------- Hat equip / unequip -------------------
+  const handleAccessorySelect = async (item: AccessoryItem) => {
+    const currentlySelected = selectedAccessories[selectedCategory];
+    const isSame = currentlySelected === item.id;
+
+    // For hats, tapping the same hat again should "take it off"
+    const newId = isSame ? "none" : item.id;
     setSelectedAccessories({
       ...selectedAccessories,
-      [selectedCategory]: item.id
+      [selectedCategory]: newId,
     });
 
+    // Update backend if item has backendId
     if (item.backendId && token && !item.isEmpty) {
       const API_URL = getApiUrl();
       fetch(`${API_URL}/api/pet-accessories/${item.backendId}/visibility`, {
@@ -214,49 +237,99 @@ export default function CustomizeScreen() {
         body: JSON.stringify({ isVisible: true }),
       }).catch((err) => console.log("Error updating accessory visibility:", err));
     }
+
+    // Handle hat activity tracking
+    if (selectedCategory === "hats") {
+      const hatIdPayload = newId === "none" ? null : newId; 
+      try {
+        setSavingHat(true);
+        const petName = selectedPet?.name?.toLowerCase() || "dragon";
+        setCombinedImage(`${newId.toLowerCase()}${petName}`);
+
+        const message =
+          hatIdPayload === null
+            ? "Removed hat"
+            : `Equipped a new hat`;
+
+        const nowIso = new Date().toISOString();
+        setActivity((prev) => [
+          {
+            id: nowIso,
+            message,
+            createdAt: nowIso,
+          },
+          ...prev,
+        ]);
+      } catch (err: any) {
+        console.error(err);
+        setSelectedAccessories({
+          ...selectedAccessories,
+          [selectedCategory]: currentlySelected,
+        });
+        alert(err?.message ?? "Could not update hat on server.");
+      } finally {
+        setSavingHat(false);
+      }
+    }
   };
 
-
-  const renderAccessoryItem = ({ item, index, key }: { item: AccessoryItem; index: number; key: string | number }) => (
-    <TouchableOpacity 
+  const renderAccessoryItem = ({
+    item,
+    index,
+    key,
+  }: {
+    item: AccessoryItem;
+    index: number;
+    key: string | number;
+  }) => (
+    <TouchableOpacity
       key={key}
       style={[
-        styles.accessoryItem, 
-        { backgroundColor: colors.background, borderColor: colors.primary },
-        item.isEmpty && [styles.emptyItem, { backgroundColor: colors.surface, borderColor: colors.border }],
-        selectedAccessories[selectedCategory] === item.id && { borderWidth: 4, borderColor: colors.primary }
+        styles.accessoryItem,
+        {
+          backgroundColor: colors.background,
+          borderColor: colors.primary,
+        },
+        item.isEmpty && [
+          styles.emptyItem,
+          { backgroundColor: colors.surface, borderColor: colors.border },
+        ],
+        selectedAccessories[selectedCategory] === item.id && {
+          borderWidth: 4,
+          borderColor: colors.primary,
+        },
       ]}
-      disabled={item.isEmpty}
-      onPress={() => handleAccessorySelect(item)}>
-      {!item.isEmpty && (
-        item.id === "cap" ? (
-          <Image 
-            source={require("@/assets/images/bbhat.png")} 
+      disabled={item.isEmpty || savingHat}
+      onPress={() => handleAccessorySelect(item)}
+    >
+      {!item.isEmpty &&
+        (item.id === "cap" ? (
+          <Image
+            source={require("@/assets/images/bbhat.png")}
             style={styles.accessoryImage}
             resizeMode="contain"
           />
         ) : item.id === "top-hat" ? (
-          <Image 
-            source={require("@/assets/images/tophat.png")} 
+          <Image
+            source={require("@/assets/images/tophat.png")}
             style={styles.accessoryImage}
             resizeMode="contain"
           />
         ) : item.id === "glasses" ? (
-          <Image 
-            source={require("@/assets/images/sunglasses.png")} 
+          <Image
+            source={require("@/assets/images/sunglasses.png")}
             style={styles.accessoryImage}
             resizeMode="contain"
           />
         ) : item.id === "football" ? (
-          <Image 
-            source={require("@/assets/images/football.png")} 
+          <Image
+            source={require("@/assets/images/football.png")}
             style={styles.accessoryImage}
             resizeMode="contain"
           />
         ) : (
           <Text style={styles.accessoryIcon}>{item.icon}</Text>
-        )
-      )}
+        ))}
     </TouchableOpacity>
   );
 
@@ -264,15 +337,17 @@ export default function CustomizeScreen() {
     const items = userAccessories[selectedCategory];
     const totalSlots = visibleRows * 3;
     const visibleItems = items.slice(0, totalSlots);
-    
+
     const emptySlots = Math.max(0, totalSlots - visibleItems.length);
-    const emptyBoxes = Array(emptySlots).fill(null).map((_, index) => ({
-      id: `empty-${index}`,
-      name: "",
-      icon: "",
-      isEmpty: true
-    }));
-    
+    const emptyBoxes = Array(emptySlots)
+      .fill(null)
+      .map((_, index) => ({
+        id: `empty-${index}`,
+        name: "",
+        icon: "",
+        isEmpty: true,
+      }));
+
     return [...visibleItems, ...emptyBoxes];
   };
 
@@ -285,45 +360,66 @@ export default function CustomizeScreen() {
   };
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      showsVerticalScrollIndicator={false}
+    >
       <View style={styles.imageContainer}>
-        <Image 
-          source={selectedPet.image} 
-          style={styles.petImage} 
+        <Image
+          source={combinedImages[combinedImage] || combinedImages["nonedragon"]}
+          style={styles.petImage}
           resizeMode="contain"
           blurRadius={0}
         />
       </View>
 
       <View style={styles.categoryContainer}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[
-            styles.categoryButton, 
+            styles.categoryButton,
             { backgroundColor: colors.surface },
-            selectedCategory === "hats" && [styles.selectedCategory, { backgroundColor: colors.primary }]
+            selectedCategory === "hats" && [
+              styles.selectedCategory,
+              { backgroundColor: colors.primary },
+            ],
           ]}
-          onPress={() => setSelectedCategory("hats")}>
-          <Text style={[
-            styles.categoryText, 
-            { color: colors.text },
-            selectedCategory === "hats" && [styles.selectedCategoryText, { color: colors.text }]
-          ]}>
+          onPress={() => setSelectedCategory("hats")}
+        >
+          <Text
+            style={[
+              styles.categoryText,
+              { color: colors.text },
+              selectedCategory === "hats" && [
+                styles.selectedCategoryText,
+                { color: colors.text },
+              ],
+            ]}
+          >
             Hats
           </Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={[
-            styles.categoryButton, 
+            styles.categoryButton,
             { backgroundColor: colors.surface },
-            selectedCategory === "accessories" && [styles.selectedCategory, { backgroundColor: colors.primary }]
+            selectedCategory === "accessories" && [
+              styles.selectedCategory,
+              { backgroundColor: colors.primary },
+            ],
           ]}
-          onPress={() => setSelectedCategory("accessories")}>
-          <Text style={[
-            styles.categoryText, 
-            { color: colors.text },
-            selectedCategory === "accessories" && [styles.selectedCategoryText, { color: colors.text }]
-          ]}>
+          onPress={() => setSelectedCategory("accessories")}
+        >
+          <Text
+            style={[
+              styles.categoryText,
+              { color: colors.text },
+              selectedCategory === "accessories" && [
+                styles.selectedCategoryText,
+                { color: colors.text },
+              ],
+            ]}
+          >
             Accessories
           </Text>
         </TouchableOpacity>
@@ -331,17 +427,42 @@ export default function CustomizeScreen() {
 
       <View style={styles.gridContainer}>
         <View style={styles.grid}>
-          {getVisibleItems().map((item, index) => 
+          {getVisibleItems().map((item, index) =>
             renderAccessoryItem({ item, index, key: item.id || index })
           )}
         </View>
-        
+
         {userAccessories[selectedCategory].length > visibleRows * 3 && (
-          <TouchableOpacity 
-            style={[styles.loadMoreButton, { backgroundColor: colors.primary }]} 
-            onPress={loadMoreItems}>
-            <Text style={[styles.loadMoreText, { color: colors.text }]}>Load More</Text>
+          <TouchableOpacity
+            style={[styles.loadMoreButton, { backgroundColor: colors.primary }]}
+            onPress={loadMoreItems}
+          >
+            <Text style={[styles.loadMoreText, { color: colors.text }]}>
+              Load More
+            </Text>
           </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Simple activity / comments section */}
+      <View style={styles.activityContainer}>
+        <Text style={styles.activityTitle}>Hat Activity</Text>
+        {activity.length === 0 ? (
+          <Text style={styles.activityEmpty}>
+            No hat activity yet. Try equipping a hat!
+          </Text>
+        ) : (
+          activity.slice(0, 10).map((row) => (
+            <View key={row.id} style={styles.activityRow}>
+              <Text style={styles.activityBullet}>•</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.activityMessage}>{row.message}</Text>
+                <Text style={styles.activityTime}>
+                  {new Date(row.createdAt).toLocaleString()}
+                </Text>
+              </View>
+            </View>
+          ))
         )}
       </View>
     </ScrollView>
@@ -375,9 +496,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
   },
-  selectedCategory: {
-    // Background color will be set dynamically
-  },
+  selectedCategory: {},
   categoryText: {
     fontFamily: "monospace",
     fontSize: 18,
@@ -387,7 +506,7 @@ const styles = StyleSheet.create({
   },
   gridContainer: {
     paddingHorizontal: 20,
-    paddingBottom: 40,
+    paddingBottom: 20,
   },
   grid: {
     flexDirection: "row",
@@ -403,8 +522,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 2,
   },
-  emptyItem: {
-  },
+  emptyItem: {},
   accessoryIcon: {
     fontSize: 40,
   },
@@ -423,5 +541,39 @@ const styles = StyleSheet.create({
     fontFamily: "monospace",
     fontSize: 16,
     fontWeight: "bold",
+  },
+  activityContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: "#333",
+  },
+  activityTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginBottom: 6,
+    color: "#fff",
+  },
+  activityEmpty: {
+    fontSize: 14,
+    color: "#aaa",
+  },
+  activityRow: {
+    flexDirection: "row",
+    marginTop: 6,
+  },
+  activityBullet: {
+    marginRight: 6,
+    marginTop: 2,
+    color: "#888",
+  },
+  activityMessage: {
+    fontSize: 14,
+    color: "#eee",
+  },
+  activityTime: {
+    fontSize: 11,
+    color: "#888",
   },
 });

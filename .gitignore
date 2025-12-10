@@ -1,4 +1,4 @@
-node_modules
+**/node_modules
 runscript.sh
 # Environment variables - never commit these!
 .env

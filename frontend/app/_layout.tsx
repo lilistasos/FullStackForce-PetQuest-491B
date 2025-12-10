@@ -15,9 +15,7 @@ import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 
-// If you used the helper file:
 import { ensureNotificationHandler } from '../lib/notifications';
-// Register the notification handler ONCE at module load (prevents double-registration on HMR)
 ensureNotificationHandler();
 
 export default function RootLayout() {
@@ -46,7 +44,6 @@ export default function RootLayout() {
       }
     })();
 
-    // Dev-only log to confirm we receive notifs
     const sub: Notifications.Subscription =
       Notifications.addNotificationReceivedListener((n) => {
         if (__DEV__) {

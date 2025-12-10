@@ -18,6 +18,7 @@ export type Task = {
   assignedToName?: string; // child name from backend
   assignedByName?: string; // parent name from backend
   createdAt: string;
+  type?: 'task' | 'event'; // Type of item: 'task' for todo list, 'event' for calendar
 };
 
 interface TaskContextType {
@@ -46,11 +47,6 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
 
     try {
       const apiUrl = getApiUrl();
-      console.log('TaskContext: Loading tasks from API URL:', `${apiUrl}/api/tasks`);
-      
-      // Add timeout to prevent hanging
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
       
       const response = await fetch(`${apiUrl}/api/tasks`, {
         method: 'GET',
@@ -58,10 +54,7 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        signal: controller.signal,
       });
-      
-      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error(`Failed to fetch tasks: ${response.statusText}`);
@@ -94,6 +87,7 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
           assignedToName: task.assignedToName,
           assignedByName: task.assignedByName,
           createdAt: task.createdAt,
+          type: task.type || 'task', // Default to 'task' for backward compatibility
         };
       });
 
@@ -102,9 +96,6 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
       setTasks(transformedTasks);
     } catch (error: any) {
       console.error('Error loading tasks:', error);
-      if (error.name === 'AbortError') {
-        console.error('TaskContext: Request timed out after 10 seconds');
-      }
       // Don't throw - just log and continue with empty tasks
       setTasks([]); // Set empty tasks on error so app doesn't hang
     } finally {
