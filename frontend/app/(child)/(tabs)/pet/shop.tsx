@@ -61,8 +61,6 @@ const petKeyFromName = (name: string) =>
 
 const getPetImage = (petKey: string) => {
   switch (petKey) {
-    case "dragon":
-      return require("@/assets/images/pdragon.png");
     case "cat":
       return require("@/assets/images/cat.png");
     case "dog":
@@ -72,7 +70,8 @@ const getPetImage = (petKey: string) => {
     case "unicorn":
       return require("@/assets/images/unicorn.png");
     default:
-      return require("@/assets/images/green-dragon.png");
+      // Fallback to cat if unknown pet type (should never happen with our filtering)
+      return require("@/assets/images/pdragon.png");
   }
 };
 
@@ -128,7 +127,9 @@ export default function ShopScreen() {
         }
 
         if (petsRes.ok) {
-          const backendPets: BackendPet[] = await petsRes.json();
+          const allBackendPets: BackendPet[] = await petsRes.json();
+          // Filter out Dragon immediately from backend response
+          const backendPets = allBackendPets.filter(p => !p.name.toLowerCase().includes('dragon'));
 
           // If no pets exist, initialize them
           if (backendPets.length === 0) {
@@ -161,29 +162,38 @@ export default function ShopScreen() {
                 });
                 
                 if (newPetsRes.ok) {
-                  const newBackendPets: BackendPet[] = await newPetsRes.json();
+                  const allNewBackendPets: BackendPet[] = await newPetsRes.json();
+                  // Filter out Dragon immediately from backend response
+                  const newBackendPets = allNewBackendPets.filter(p => !p.name.toLowerCase().includes('dragon'));
                   
-                  // Filter to only show unique pets (by name) - take the first one if duplicates exist
+                  // Filter to only show unique pets (by name) - prefer owned pets if duplicates exist
                   const uniquePets = newBackendPets.reduce((acc, p) => {
-                    const key = petKeyFromName(p.name);
-                    if (!acc.find(existing => petKeyFromName(existing.name) === key)) {
-                      acc.push(p);
-                    }
-                    return acc;
-                  }, [] as BackendPet[]);
+                      const key = petKeyFromName(p.name);
+                      const existing = acc.find(existing => petKeyFromName(existing.name) === key);
+                      if (!existing) {
+                        acc.push(p);
+                      } else if (p.isUnlocked && !existing.isUnlocked) {
+                        // Replace locked pet with unlocked one if we find a duplicate
+                        const index = acc.indexOf(existing);
+                        acc[index] = p;
+                      }
+                      return acc;
+                    }, [] as BackendPet[]);
 
-                  const pets: ShopItem[] = uniquePets.map((p) => {
-                    const key = petKeyFromName(p.name);
-                    return {
-                      id: `pet-${p.id}`, // Use backend ID to ensure uniqueness
-                      name: p.name,
-                      icon: key,
-                      price: p.cost ?? 0,
-                      owned: p.isUnlocked,
-                      backendId: p.id,
-                      type: "pet",
-                    };
-                  });
+                  const pets: ShopItem[] = uniquePets
+                    .filter((p) => !p.isUnlocked) // Only show pets that are NOT owned in the shop
+                    .map((p) => {
+                      const key = petKeyFromName(p.name);
+                      return {
+                        id: `pet-${p.id}`, // Use backend ID to ensure uniqueness
+                        name: p.name,
+                        icon: key,
+                        price: p.cost ?? 0,
+                        owned: p.isUnlocked,
+                        backendId: p.id,
+                        type: "pet",
+                      };
+                    });
 
                   // Collect all accessories and deduplicate by name
                   const allAccessories = uniquePets.flatMap((p) =>
@@ -211,7 +221,9 @@ export default function ShopScreen() {
                     return acc;
                   }, [] as ShopItem[]);
 
-                  setShopItems({ pets, customization });
+                  // Final safety check: filter out any dragon pets before setting
+                  const finalPets = pets.filter(p => !p.name.toLowerCase().includes('dragon') && !p.icon.includes('dragon'));
+                  setShopItems({ pets: finalPets, customization });
                   return;
                 }
               }
@@ -220,27 +232,40 @@ export default function ShopScreen() {
             }
           }
 
-          // Filter to only show unique pets (by name) - take the first one if duplicates exist
-          const uniquePets = backendPets.reduce((acc, p) => {
-            const key = petKeyFromName(p.name);
-            if (!acc.find(existing => petKeyFromName(existing.name) === key)) {
-              acc.push(p);
-            }
-            return acc;
-          }, [] as BackendPet[]);
+          // Filter to only show unique pets (by name) - prefer owned pets if duplicates exist
+          // Also filter out Dragon immediately
+          const uniquePets = backendPets
+            .filter((p) => {
+              const nameLower = p.name.toLowerCase();
+              return !nameLower.includes("dragon"); // Filter out dragon first
+            })
+            .reduce((acc, p) => {
+              const key = petKeyFromName(p.name);
+              const existing = acc.find(existing => petKeyFromName(existing.name) === key);
+              if (!existing) {
+                acc.push(p);
+              } else if (p.isUnlocked && !existing.isUnlocked) {
+                // Replace locked pet with unlocked one if we find a duplicate
+                const index = acc.indexOf(existing);
+                acc[index] = p;
+              }
+              return acc;
+            }, [] as BackendPet[]);
 
-          const pets: ShopItem[] = uniquePets.map((p) => {
-            const key = petKeyFromName(p.name);
-            return {
-              id: `pet-${p.id}`, // Use backend ID to ensure uniqueness
-              name: p.name,
-              icon: key,
-              price: p.cost ?? 0,
-              owned: p.isUnlocked,
-              backendId: p.id,
-              type: "pet",
-            };
-          });
+          const pets: ShopItem[] = uniquePets
+            .filter((p) => !p.isUnlocked) // Only show pets that are NOT owned in the shop
+            .map((p) => {
+              const key = petKeyFromName(p.name);
+              return {
+                id: `pet-${p.id}`, // Use backend ID to ensure uniqueness
+                name: p.name,
+                icon: key,
+                price: p.cost ?? 0,
+                owned: p.isUnlocked,
+                backendId: p.id,
+                type: "pet",
+              };
+            });
 
           // Collect all accessories and deduplicate by name
           const allAccessories = uniquePets.flatMap((p) =>
@@ -268,7 +293,9 @@ export default function ShopScreen() {
             return acc;
           }, [] as ShopItem[]);
 
-          setShopItems({ pets, customization });
+          // Final safety check: filter out any dragon pets before setting
+          const finalPets = pets.filter(p => !p.name.toLowerCase().includes('dragon') && !p.icon.includes('dragon'));
+          setShopItems({ pets: finalPets, customization });
         }
       } catch (err) {
         // Silently handle errors
@@ -340,29 +367,38 @@ export default function ShopScreen() {
       });
 
       if (petsRes.ok) {
-        const backendPets: BackendPet[] = await petsRes.json();
+        const allBackendPets: BackendPet[] = await petsRes.json();
+        // Filter out Dragon immediately from backend response
+        const backendPets = allBackendPets.filter(p => !p.name.toLowerCase().includes('dragon'));
         
-        // Filter to only show unique pets (by name) - take the first one if duplicates exist
+        // Filter to only show unique pets (by name) - prefer owned pets if duplicates exist
         const uniquePets = backendPets.reduce((acc, p) => {
-          const key = petKeyFromName(p.name);
-          if (!acc.find(existing => petKeyFromName(existing.name) === key)) {
-            acc.push(p);
-          }
-          return acc;
-        }, [] as BackendPet[]);
+            const key = petKeyFromName(p.name);
+            const existing = acc.find(existing => petKeyFromName(existing.name) === key);
+            if (!existing) {
+              acc.push(p);
+            } else if (p.isUnlocked && !existing.isUnlocked) {
+              // Replace locked pet with unlocked one if we find a duplicate
+              const index = acc.indexOf(existing);
+              acc[index] = p;
+            }
+            return acc;
+          }, [] as BackendPet[]);
 
-        const pets: ShopItem[] = uniquePets.map((p) => {
-          const key = petKeyFromName(p.name);
-          return {
-            id: `pet-${p.id}`, // Use backend ID to ensure uniqueness
-            name: p.name,
-            icon: key,
-            price: p.cost ?? 0,
-            owned: p.isUnlocked,
-            backendId: p.id,
-            type: "pet",
-          };
-        });
+        const pets: ShopItem[] = uniquePets
+          .filter((p) => !p.isUnlocked) // Only show pets that are NOT owned in the shop
+          .map((p) => {
+            const key = petKeyFromName(p.name);
+            return {
+              id: `pet-${p.id}`, // Use backend ID to ensure uniqueness
+              name: p.name,
+              icon: key,
+              price: p.cost ?? 0,
+              owned: p.isUnlocked,
+              backendId: p.id,
+              type: "pet",
+            };
+          });
 
         // Collect all accessories and deduplicate by name
         const allAccessories = uniquePets.flatMap((p) =>
@@ -385,7 +421,9 @@ export default function ShopScreen() {
           return acc;
         }, [] as ShopItem[]);
 
-        setShopItems({ pets, customization });
+        // Final safety check: filter out any dragon pets before setting
+        const finalPets = pets.filter(p => !p.name.toLowerCase().includes('dragon') && !p.icon.includes('dragon'));
+        setShopItems({ pets: finalPets, customization });
       }
     } catch (err) {
       // Silently handle purchase errors
@@ -401,9 +439,13 @@ export default function ShopScreen() {
   };
 
   const renderShopItem = (item: ShopItem) => {
+    // Safety check: don't render dragon items at all
+    if (item.name.toLowerCase().includes('dragon') || item.icon.toLowerCase().includes('dragon')) {
+      return null;
+    }
+    
     // Check if it's a pet by checking the icon or name
     const isPet = item.type === "pet" || 
-      item.icon === "dragon" ||
       item.icon === "cat" ||
       item.icon === "dog" ||
       item.icon === "lion" ||
@@ -469,7 +511,7 @@ export default function ShopScreen() {
         );
       }
     } else if (isPet) {
-      // Use item.icon which contains the pet key (dragon, cat, etc.)
+      // Use item.icon which contains the pet key (cat, dog, lion, unicorn only)
       const imgSource = getPetImage(item.icon);
       content = (
         <>
@@ -593,7 +635,15 @@ export default function ShopScreen() {
           </View>
         ) : (
           <View style={styles.grid}>
-            {shopItems[selectedTab].map(renderShopItem)}
+            {shopItems[selectedTab]
+              .filter(item => {
+                // Extra safety: filter out dragon in the render loop too
+                const nameLower = item.name.toLowerCase();
+                const iconLower = item.icon.toLowerCase();
+                return !nameLower.includes('dragon') && !iconLower.includes('dragon');
+              })
+              .map(renderShopItem)
+              .filter(item => item !== null)}
           </View>
         )}
       </View>

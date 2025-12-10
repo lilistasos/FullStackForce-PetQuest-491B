@@ -224,7 +224,6 @@ async function registerUser(payload) {
 // Initialize default pets and accessories for a user
 async function initializeDefaultPets(userId) {
   const defaultPets = [
-    { name: 'Dragon', cost: 0, isUnlocked: true, isVisible: true },
     { name: 'Cat', cost: 50, isUnlocked: false, isVisible: true },
     { name: 'Dog', cost: 75, isUnlocked: false, isVisible: true },
     { name: 'Lion', cost: 100, isUnlocked: false, isVisible: true },
@@ -232,12 +231,6 @@ async function initializeDefaultPets(userId) {
   ];
 
   const defaultAccessories = {
-    'Dragon': [
-      { name: 'Baseball Cap', cost: 0, isUnlocked: true, isVisible: true },
-      { name: 'Top Hat', cost: 30, isUnlocked: false, isVisible: true },
-      { name: 'Sunglasses', cost: 20, isUnlocked: false, isVisible: true },
-      { name: 'Football', cost: 15, isUnlocked: false, isVisible: true },
-    ],
     'Cat': [
       { name: 'Baseball Cap', cost: 0, isUnlocked: true, isVisible: true },
       { name: 'Top Hat', cost: 30, isUnlocked: false, isVisible: true },
@@ -1040,7 +1033,8 @@ app.get('/api/pets', authMiddleware, async (req, res) => {
     const userId = req.user.sub;
     
     // Get all pets for this user (including invisible ones for shop display)
-    const { rows: pets } = await pool.query(
+    // Exclude Dragon from shop display (filter out any pet with "dragon" in the name)
+    const { rows: allPets } = await pool.query(
       `SELECT id, user_id AS "userId", name, image_url AS "imageUrl", 
               is_unlocked AS "isUnlocked", is_visible AS "isVisible", cost
        FROM pets
@@ -1048,6 +1042,9 @@ app.get('/api/pets', authMiddleware, async (req, res) => {
        ORDER BY id`,
       [userId]
     );
+    
+    // Filter out Dragon pets (case-insensitive, handles variations like "Green Dragon")
+    const pets = allPets.filter(pet => !pet.name.toLowerCase().includes('dragon'));
 
     console.log(`[GET /api/pets] Found ${pets.length} pets for user ${userId}`);
 
