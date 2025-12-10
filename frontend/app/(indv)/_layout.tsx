@@ -121,6 +121,7 @@ export default function IndvLayout() {
       <Tabs
         initialRouteName="(tabs)/calendar"
         screenOptions={{
+          headerShown: true,
           tabBarActiveTintColor: headerTextColor,
           tabBarInactiveTintColor: "#555555",
           tabBarStyle: { backgroundColor: colors.primary },
