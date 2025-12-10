@@ -2,7 +2,7 @@ import React, { useState, useRef, useMemo, useEffect, useCallback } from "react"
 import { View, Text, TouchableOpacity, StyleSheet, Image, Pressable, Modal, TextInput, Animated, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useTasks } from "@/contexts/TaskContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -39,6 +39,7 @@ const ToDoScreen = ()=> {
   const { selectedPet } = usePet();
   const { recordTaskCompletion } = useAchievements();
   const styles = useMemo(() => createStyles(colors, isDarkMode), [colors, isDarkMode]);
+  const router = useRouter();
   
   // Refresh tasks when screen comes into focus
   useFocusEffect(
@@ -492,6 +493,11 @@ const toggleComplete = async (taskId: string) => {
           <TouchableOpacity onPress={toggleDropdown} style={styles.filterButton}>
             <Ionicons name="funnel-outline" size={20} color={colors.primary} />
           </TouchableOpacity>
+          <TouchableOpacity style={{alignItems: 'center', backgroundColor: '#52AFDD', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8}} 
+            onPress={() => router.push("/(child)/(tabs)/todo/task-history" as any)}>
+            <Text style={{fontSize: 14}}>Task History</Text>
+          </TouchableOpacity>
+
           {dropdown && (
             <>
               <TouchableOpacity style={styles.dropdownBackdrop} onPress={() => setDropdown(false)} />
@@ -650,6 +656,9 @@ const createStyles = (colors: any, isDarkMode: boolean) =>
       position: "relative",
       alignSelf: "flex-start",
       marginBottom: 8,
+      justifyContent: 'space-between',
+      flexDirection: 'row',
+      width: '100%',
     },
     filterButton: {
       padding: 4,
