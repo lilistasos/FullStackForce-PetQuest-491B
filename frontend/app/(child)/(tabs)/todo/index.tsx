@@ -157,41 +157,43 @@ const formatDateKey = (date: Date) => date.toISOString().split("T")[0];
 const tasksByDateTransformed = useMemo(() => {
   const grouped: { [key: string]: Task[] } = {};
   
-  contextTasks.forEach((task) => {
-    // Use dueDate to group tasks by date (format: YYYY-MM-DD)
-    const dateKey = task.dueDate ? task.dueDate.split('T')[0] : formatDateKey(new Date());
-    
-    if (!grouped[dateKey]) {
-      grouped[dateKey] = [];
-    }
-    
-    // Map TaskContext Task to local Task format
-    // Map category to match todo categories
-    let mappedCategory = task.category || 'Other';
-    // Map "Other" to "Extra" to match todo categories
-    if (mappedCategory === 'Other') {
-      mappedCategory = 'Extra';
-    }
-    // Keep Extracurriculars as is (it's a valid category)
-    
-    // Preserve original category before completion
-    const originalCategory = task.originalCategory || mappedCategory;
-    
-    // If task is completed, move it to "Completed" category
-    // When uncompleted, it will go back to original category
-    const displayCategory = task.completed ? 'Completed' : mappedCategory;
-    
-    grouped[dateKey].push({
-      id: task.id.toString(),
-      text: task.text,
-      completed: task.completed,
-      category: displayCategory, // Show in "Completed" if completed, otherwise original category
-      originalCategory: originalCategory, // Preserve original category for when uncompleting
-      description: task.description || '',
-      points: task.points || 0,
-      assignedByUserId: task.assignedByUserId, // Check if assigned by parent
+  contextTasks
+    .filter((task) => task.type === 'task' || !task.type) // Only show tasks on todo list (filter out events)
+    .forEach((task) => {
+      // Use dueDate to group tasks by date (format: YYYY-MM-DD)
+      const dateKey = task.dueDate ? task.dueDate.split('T')[0] : formatDateKey(new Date());
+      
+      if (!grouped[dateKey]) {
+        grouped[dateKey] = [];
+      }
+      
+      // Map TaskContext Task to local Task format
+      // Map category to match todo categories
+      let mappedCategory = task.category || 'Other';
+      // Map "Other" to "Extra" to match todo categories
+      if (mappedCategory === 'Other') {
+        mappedCategory = 'Extra';
+      }
+      // Keep Extracurriculars as is (it's a valid category)
+      
+      // Preserve original category before completion
+      const originalCategory = task.originalCategory || mappedCategory;
+      
+      // If task is completed, move it to "Completed" category
+      // When uncompleted, it will go back to original category
+      const displayCategory = task.completed ? 'Completed' : mappedCategory;
+      
+      grouped[dateKey].push({
+        id: task.id.toString(),
+        text: task.text,
+        completed: task.completed,
+        category: displayCategory, // Show in "Completed" if completed, otherwise original category
+        originalCategory: originalCategory, // Preserve original category for when uncompleting
+        description: task.description || '',
+        points: task.points || 0,
+        assignedByUserId: task.assignedByUserId, // Check if assigned by parent
+      });
     });
-  });
   
   return grouped;
 }, [contextTasks]);

@@ -48,9 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (t && u) {
           setToken(t);
           setUser(JSON.parse(u));
-          console.log("✅ Loaded saved user and token");
         } else {
-          console.log("⚠️ No stored credentials found. User needs to log in.");
           // Removed demo user auto-login - users must log in
         }
       } finally {
@@ -65,7 +63,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(u);
       await SecureStore.setItemAsync("token", t);
       await SecureStore.setItemAsync("user", JSON.stringify(u));
-      console.log("✅ Token and user saved to SecureStore");
     } catch (error) {
       console.error("Error saving auth data:", error);
     }

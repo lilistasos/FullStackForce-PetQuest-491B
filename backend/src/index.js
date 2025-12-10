@@ -120,7 +120,6 @@ function authMiddleware(req, res, next) {
     }
     const token = auth.split(' ')[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log("✅ Authenticated user:", decoded);
     req.user = decoded;
     next();
   } catch {
@@ -132,7 +131,8 @@ function authMiddleware(req, res, next) {
 async function findUserByEmail(email) {
   const { rows } = await pool.query(
     `SELECT id, email, password_hash, first_name AS "firstName", last_name AS "lastName",
-            role, family_code AS "familyCode", date_of_birth AS "dateOfBirth", created_at AS "createdAt"
+            role, family_code AS "familyCode", date_of_birth AS "dateOfBirth", created_at AS "createdAt",
+            points, last_login_date
      FROM users
      WHERE email = $1`,
     [email]
@@ -212,8 +212,84 @@ async function registerUser(payload) {
     familyCode: finalFamilyCode,
     dateOfBirth });
 
+  // Create default pets for child users
+  if (role === 'child') {
+    await initializeDefaultPets(user.id);
+  }
+
   const token = generateToken(user);
   return { user, token };
+}
+
+// Initialize default pets and accessories for a user
+async function initializeDefaultPets(userId) {
+  const defaultPets = [
+    { name: 'Dragon', cost: 0, isUnlocked: true, isVisible: true },
+    { name: 'Cat', cost: 50, isUnlocked: false, isVisible: true },
+    { name: 'Dog', cost: 75, isUnlocked: false, isVisible: true },
+    { name: 'Lion', cost: 100, isUnlocked: false, isVisible: true },
+    { name: 'Unicorn', cost: 150, isUnlocked: false, isVisible: true },
+  ];
+
+  const defaultAccessories = {
+    'Dragon': [
+      { name: 'Baseball Cap', cost: 25, isUnlocked: false, isVisible: true },
+      { name: 'Top Hat', cost: 30, isUnlocked: false, isVisible: true },
+      { name: 'Sunglasses', cost: 20, isUnlocked: false, isVisible: true },
+      { name: 'Football', cost: 15, isUnlocked: false, isVisible: true },
+    ],
+    'Cat': [
+      { name: 'Baseball Cap', cost: 25, isUnlocked: false, isVisible: true },
+      { name: 'Top Hat', cost: 30, isUnlocked: false, isVisible: true },
+      { name: 'Sunglasses', cost: 20, isUnlocked: false, isVisible: true },
+      { name: 'Football', cost: 15, isUnlocked: false, isVisible: true },
+    ],
+    'Dog': [
+      { name: 'Baseball Cap', cost: 25, isUnlocked: false, isVisible: true },
+      { name: 'Top Hat', cost: 30, isUnlocked: false, isVisible: true },
+      { name: 'Sunglasses', cost: 20, isUnlocked: false, isVisible: true },
+      { name: 'Football', cost: 15, isUnlocked: false, isVisible: true },
+    ],
+    'Lion': [
+      { name: 'Baseball Cap', cost: 25, isUnlocked: false, isVisible: true },
+      { name: 'Top Hat', cost: 30, isUnlocked: false, isVisible: true },
+      { name: 'Sunglasses', cost: 20, isUnlocked: false, isVisible: true },
+      { name: 'Football', cost: 15, isUnlocked: false, isVisible: true },
+    ],
+    'Unicorn': [
+      { name: 'Baseball Cap', cost: 25, isUnlocked: false, isVisible: true },
+      { name: 'Top Hat', cost: 30, isUnlocked: false, isVisible: true },
+      { name: 'Sunglasses', cost: 20, isUnlocked: false, isVisible: true },
+      { name: 'Football', cost: 15, isUnlocked: false, isVisible: true },
+    ],
+  };
+
+  for (const pet of defaultPets) {
+    try {
+      const { rows: petRows } = await pool.query(
+        `INSERT INTO pets (user_id, name, is_unlocked, is_visible, cost)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING id`,
+        [userId, pet.name, pet.isUnlocked, pet.isVisible, pet.cost]
+      );
+
+      const petId = petRows[0].id;
+      const accessories = defaultAccessories[pet.name] || [];
+
+      for (const accessory of accessories) {
+        await pool.query(
+          `INSERT INTO pet_accessories (pet_id, name, is_unlocked, is_visible, cost)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [petId, accessory.name, accessory.isUnlocked, accessory.isVisible, accessory.cost]
+        );
+      }
+      console.log(`Created pet "${pet.name}" (ID: ${petId}) with ${accessories.length} accessories`);
+    } catch (err) {
+      console.error(`Error creating pet "${pet.name}":`, err);
+      throw err;
+    }
+  }
+  console.log(`Successfully initialized all pets for user ${userId}`);
 }
 
 // Login Function
@@ -234,9 +310,62 @@ async function loginUser(payload) {
     throw err;
   }
 
-  const { password_hash, ...user } = userRow;
+  // Check for daily login reward (only for children)
+  let dailyRewardAwarded = false;
+  // Get today's date in UTC to avoid timezone issues
+  const now = new Date();
+  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
+    .toISOString().split('T')[0]; // YYYY-MM-DD format
+  
+  if (userRow.role === 'child') {
+    let lastLoginDate = null;
+    if (userRow.last_login_date) {
+      // Convert to UTC date string for comparison
+      const lastLogin = new Date(userRow.last_login_date);
+      lastLoginDate = new Date(Date.UTC(
+        lastLogin.getUTCFullYear(), 
+        lastLogin.getUTCMonth(), 
+        lastLogin.getUTCDate()
+      )).toISOString().split('T')[0];
+    }
+    
+    // Award daily reward if last login was not today
+    if (lastLoginDate !== today) {
+      const newPoints = (userRow.points || 0) + 5;
+      await pool.query(
+        `UPDATE users SET points = $1, last_login_date = $2 WHERE id = $3`,
+        [newPoints, today, userRow.id]
+      );
+      userRow.points = newPoints;
+      dailyRewardAwarded = true;
+    } else {
+      // Update last_login_date even if reward already given today
+      await pool.query(
+        `UPDATE users SET last_login_date = $1 WHERE id = $2`,
+        [today, userRow.id]
+      );
+    }
+  } else {
+    // Update last_login_date for non-child users (no reward)
+    await pool.query(
+      `UPDATE users SET last_login_date = $1 WHERE id = $2`,
+      [today, userRow.id]
+    );
+  }
+
+  // Fetch updated user data to ensure points are current
+  const { rows: updatedUserRows } = await pool.query(
+    `SELECT id, email, first_name AS "firstName", last_name AS "lastName", 
+            role, family_code AS "familyCode", date_of_birth AS "dateOfBirth", 
+            created_at AS "createdAt", points, username, profile_image AS "profileImage"
+     FROM users WHERE id = $1`,
+    [userRow.id]
+  );
+  
+  const updatedUser = updatedUserRows[0];
+  const { password_hash, ...user } = updatedUser || userRow;
   const token = generateToken(user);
-  return { user, token };
+  return { user, token, dailyRewardAwarded, dailyRewardPoints: dailyRewardAwarded ? 5 : 0 };
 }
 
 // Basic Routes
@@ -266,8 +395,8 @@ app.post('/api/auth/register', async (req, res) => {
 // Login Route
 app.post('/api/auth/login', async (req, res) => {
   try {
-    const { user, token } = await loginUser(req.body);
-    res.json({ user, token });
+    const { user, token, dailyRewardAwarded, dailyRewardPoints } = await loginUser(req.body);
+    res.json({ user, token, dailyRewardAwarded, dailyRewardPoints });
   } catch (err) {
     const status = err.status || 500;
     console.error('Login error:', err);
@@ -459,10 +588,7 @@ app.put('/api/account/update-account', authMiddleware, async (req, res) => {
       RETURNING id, email, username, first_name AS "firstName", profile_image AS "profileImage", role;
     `;
 
-    console.log('Executing query:', query);
-    console.log('With values:', values);
     const { rows } = await pool.query(query, values);
-    console.log('Query successful, rows returned:', rows);
     res.json(rows[0]);
   } catch (err) {
     console.error('Error updating account:', err);
@@ -502,7 +628,8 @@ const CreateTaskSchema = z.object({
   description: z.string().optional().default(''),
   points: z.number().int().min(0).optional().default(0),
   dueDate: z.string(), // ISO string
-  assignedToUserId: z.string().uuid(), // UUID string for user ID
+  assignedToUserId: z.number().int(),
+  type: z.enum(['task', 'event']).optional().default('task'), // Allow 'task' or 'event'
 });
 
 // Create a task (parent creates task for child)
@@ -536,13 +663,20 @@ app.post('/api/tasks', authMiddleware, async (req, res) => {
       return res.status(403).json({ error: 'Can only assign tasks to children in your family' });
     }
 
+    // Use the validated type from schema (defaults to 'task' if not provided)
+    const taskType = data.type || 'task';
     const { rows } = await pool.query(
-      `INSERT INTO tasks (title, category, description, point_value, due_date, assigned_to, user_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING id, title AS "text", completed, category, description, point_value AS "points", 
-                 due_date AS "dueDate", assigned_to AS "assignedToUserId",
-                 user_id AS "assignedByUserId", created_at AS "createdAt"`,
-      [data.text, data.category, data.description, data.points, data.dueDate, data.assignedToUserId, userId]
+      `INSERT INTO tasks (text, category, description, points, due_date, assigned_to_user_id, assigned_by_user_id, type)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       RETURNING id, text, completed, category, description, points, 
+                 CASE 
+                   WHEN type = 'event' AND due_date IS NOT NULL THEN due_date::text
+                   WHEN due_date IS NOT NULL THEN TO_CHAR(due_date, 'YYYY-MM-DD')
+                   ELSE NULL 
+                 END AS "dueDate",
+                 assigned_to_user_id AS "assignedToUserId",
+                 assigned_by_user_id AS "assignedByUserId", created_at AS "createdAt", type`,
+      [data.text, data.category, data.description, data.points, data.dueDate, data.assignedToUserId, userId, taskType]
     );
 
     res.status(201).json(rows[0]);
@@ -568,33 +702,46 @@ app.get('/api/tasks', authMiddleware, async (req, res) => {
 
     if (user.role === 'parent') {
       // Parents see all tasks they created
-      query = `SELECT t.id, t.title AS "text", t.completed, t.category, t.description, t.point_value AS "points",
-                      t.due_date AS "dueDate", t.assigned_to AS "assignedToUserId",
-                      t.user_id AS "assignedByUserId", t.created_at AS "createdAt",
+      // Return full datetime for events (to include time), date only for tasks
+      query = `SELECT t.id, t.text, t.completed, t.category, t.description, t.points, t.type,
+                      CASE 
+                        WHEN t.type = 'event' AND t.due_date IS NOT NULL THEN t.due_date::text
+                        WHEN t.due_date IS NOT NULL THEN TO_CHAR(t.due_date, 'YYYY-MM-DD')
+                        ELSE NULL 
+                      END AS "dueDate", 
+                      t.assigned_to_user_id AS "assignedToUserId",
+                      t.assigned_by_user_id AS "assignedByUserId", t.created_at AS "createdAt",
                       u.first_name AS "assignedToName"
                FROM tasks t
-               LEFT JOIN users u ON t.assigned_to = u.id
-               WHERE t.user_id = $1
+               LEFT JOIN users u ON t.assigned_to_user_id = u.id
+               WHERE t.assigned_by_user_id = $1
                ORDER BY t.due_date ASC, t.created_at DESC`;
       params = [userId];
     } else if (user.role === 'child') {
       // Children see tasks assigned to them
-      query = `SELECT t.id, t.title AS "text", t.completed, t.category, t.description, t.point_value AS "points",
-                      t.due_date AS "dueDate", t.assigned_to AS "assignedToUserId",
-                      t.user_id AS "assignedByUserId", t.created_at AS "createdAt",
+      // Return full datetime for events (to include time), date only for tasks
+      query = `SELECT t.id, t.text, t.completed, t.category, t.description, t.points, t.type,
+                      CASE 
+                        WHEN t.type = 'event' AND t.due_date IS NOT NULL THEN t.due_date::text
+                        WHEN t.due_date IS NOT NULL THEN TO_CHAR(t.due_date, 'YYYY-MM-DD')
+                        ELSE NULL 
+                      END AS "dueDate", 
+                      t.assigned_to_user_id AS "assignedToUserId",
+                      t.assigned_by_user_id AS "assignedByUserId", t.created_at AS "createdAt",
                       u.first_name AS "assignedByName"
                FROM tasks t
-               LEFT JOIN users u ON t.user_id = u.id
-               WHERE t.assigned_to = $1
+               LEFT JOIN users u ON t.assigned_by_user_id = u.id
+               WHERE t.assigned_to_user_id = $1
                ORDER BY t.due_date ASC, t.created_at DESC`;
       params = [userId];
     } else {
       // Individual users see their own tasks (if any)
-      query = `SELECT t.id, t.title AS "text", t.completed, t.category, t.description, t.point_value AS "points",
-                      t.due_date AS "dueDate", t.assigned_to AS "assignedToUserId",
-                      t.user_id AS "assignedByUserId", t.created_at AS "createdAt"
+      query = `SELECT t.id, t.text, t.completed, t.category, t.description, t.points, t.type,
+                      CASE WHEN t.due_date IS NOT NULL THEN TO_CHAR(t.due_date, 'YYYY-MM-DD') ELSE NULL END AS "dueDate", 
+                      t.assigned_to_user_id AS "assignedToUserId",
+                      t.assigned_by_user_id AS "assignedByUserId", t.created_at AS "createdAt"
                FROM tasks t
-               WHERE t.assigned_to = $1 OR t.user_id = $1
+               WHERE t.assigned_to_user_id = $1 OR t.assigned_by_user_id = $1
                ORDER BY t.due_date ASC, t.created_at DESC`;
       params = [userId];
     }
@@ -629,27 +776,32 @@ app.put('/api/tasks/:id', authMiddleware, async (req, res) => {
     const user = await findUserById(userId);
 
     // Only the assigned child can toggle completion, or parent can update any field
-    // Convert both to UUIDs for proper comparison
-    const assignedToUserId = task.assigned_to;
-    const currentUserId = userId;
+    // Convert both to numbers for proper comparison (handle both string and number types)
+    const assignedToUserId = Number(task.assigned_to_user_id);
+    const currentUserId = Number(userId);
     
     // Debug logging
     console.log('Task completion check:', {
       taskId,
       assignedToUserId,
       currentUserId,
-      assignedToUserIdRaw: task.assigned_to,
+      assignedToUserIdRaw: task.assigned_to_user_id,
       currentUserIdRaw: userId,
-      assignedToUserIdType: typeof task.assigned_to,
+      assignedToUserIdType: typeof task.assigned_to_user_id,
       currentUserIdType: typeof userId,
       areEqual: assignedToUserId === currentUserId
     });
+    
+    // Prevent children from completing events
+    if (completed !== undefined && task.type === 'event' && user.role === 'child') {
+      return res.status(403).json({ error: 'Events cannot be completed. They are informational only.' });
+    }
     
     if (completed !== undefined && assignedToUserId !== currentUserId) {
       console.error('Permission denied - User ID mismatch:', {
         assignedTo: assignedToUserId,
         current: currentUserId,
-        taskAssignedTo: task.assigned_to,
+        taskAssignedTo: task.assigned_to_user_id,
         reqUserId: userId
       });
       return res.status(403).json({ error: 'Only the assigned user can complete tasks' });
@@ -665,7 +817,7 @@ app.put('/api/tasks/:id', authMiddleware, async (req, res) => {
       values.push(completed);
     }
     if (text !== undefined) {
-      updates.push(`title = $${paramIndex++}`);
+      updates.push(`text = $${paramIndex++}`);
       values.push(text);
     }
     if (category !== undefined) {
@@ -677,7 +829,7 @@ app.put('/api/tasks/:id', authMiddleware, async (req, res) => {
       values.push(description);
     }
     if (points !== undefined) {
-      updates.push(`point_value = $${paramIndex++}`);
+      updates.push(`points = $${paramIndex++}`);
       values.push(points);
     }
     if (dueDate !== undefined) {
@@ -691,13 +843,16 @@ app.put('/api/tasks/:id', authMiddleware, async (req, res) => {
 
     values.push(taskId);
 
+    updates.push(`updated_at = NOW()`);
+
     const query = `
       UPDATE tasks
       SET ${updates.join(', ')}
       WHERE id = $${paramIndex}
-      RETURNING id, title AS "text", completed, category, description, point_value AS "points",
-                due_date AS "dueDate", assigned_to AS "assignedToUserId",
-                user_id AS "assignedByUserId", created_at AS "createdAt"
+      RETURNING id, text, completed, category, description, points, type,
+                CASE WHEN due_date IS NOT NULL THEN TO_CHAR(due_date, 'YYYY-MM-DD') ELSE NULL END AS "dueDate",
+                assigned_to_user_id AS "assignedToUserId",
+                assigned_by_user_id AS "assignedByUserId", created_at AS "createdAt"
     `;
 
     const { rows } = await pool.query(query, values);
@@ -716,7 +871,7 @@ app.delete('/api/tasks/:id', authMiddleware, async (req, res) => {
 
     // Get the task first
     const { rows: taskRows } = await pool.query(
-      `SELECT user_id FROM tasks WHERE id = $1`,
+      `SELECT assigned_by_user_id FROM tasks WHERE id = $1`,
       [taskId]
     );
 
@@ -725,7 +880,7 @@ app.delete('/api/tasks/:id', authMiddleware, async (req, res) => {
     }
 
     // Only the parent who created the task can delete it
-    if (taskRows[0].user_id !== userId) {
+    if (taskRows[0].assigned_by_user_id !== parseInt(userId)) {
       return res.status(403).json({ error: 'Only the task creator can delete tasks' });
     }
 
@@ -762,6 +917,7 @@ app.get('/api/users/children', authMiddleware, async (req, res) => {
   }
 });
 
+<<<<<<< HEAD
 // Parent adds a child to their family (reuses registerUser logic)
 app.post('/api/users/add-child', authMiddleware, async (req, res) => {
   try {
@@ -841,6 +997,230 @@ app.delete('/api/users/remove-child/:id', authMiddleware, async (req, res) => {
   } catch (err) {
     console.error('Remove child error:', err);
     res.status(500).json({ error: 'Failed to remove child.' });
+=======
+// Initialize pets for existing users (if they don't have any)
+// NOTE: This route must come BEFORE /api/pets to avoid route conflicts
+app.post('/api/pets/initialize', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.sub;
+    console.log(`[POST /api/pets/initialize] Initializing pets for user ${userId}`);
+    
+    // Check if user already has pets
+    const { rows: existingPets } = await pool.query(
+      `SELECT id FROM pets WHERE user_id = $1 LIMIT 1`,
+      [userId]
+    );
+
+    if (existingPets.length > 0) {
+      console.log(`[POST /api/pets/initialize] User ${userId} already has ${existingPets.length} pets`);
+      return res.json({ message: 'Pets already initialized', initialized: false });
+    }
+
+    console.log(`[POST /api/pets/initialize] Creating default pets for user ${userId}`);
+    await initializeDefaultPets(userId);
+    
+    // Verify pets were created
+    const { rows: newPets } = await pool.query(
+      `SELECT id, name FROM pets WHERE user_id = $1`,
+      [userId]
+    );
+    console.log(`[POST /api/pets/initialize] Created ${newPets.length} pets:`, newPets.map(p => p.name));
+    
+    res.json({ message: 'Pets initialized successfully', initialized: true, count: newPets.length });
+  } catch (err) {
+    console.error('Initialize pets error:', err);
+    res.status(500).json({ error: 'Server error', details: err.message });
+  }
+});
+
+// Get pets for the current user (with accessories)
+app.get('/api/pets', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.sub;
+    
+    // Get all pets for this user (including invisible ones for shop display)
+    const { rows: pets } = await pool.query(
+      `SELECT id, user_id AS "userId", name, image_url AS "imageUrl", 
+              is_unlocked AS "isUnlocked", is_visible AS "isVisible", cost
+       FROM pets
+       WHERE user_id = $1
+       ORDER BY id`,
+      [userId]
+    );
+
+    console.log(`[GET /api/pets] Found ${pets.length} pets for user ${userId}`);
+
+    // Get accessories for each pet
+    const petsWithAccessories = await Promise.all(
+      pets.map(async (pet) => {
+        const { rows: accessories } = await pool.query(
+          `SELECT id, name, image_url AS "imageUrl", 
+                  is_unlocked AS "isUnlocked", is_visible AS "isVisible", cost
+           FROM pet_accessories
+           WHERE pet_id = $1
+           ORDER BY id`,
+          [pet.id]
+        );
+        return {
+          ...pet,
+          accessories: accessories || []
+        };
+      })
+    );
+
+    console.log(`[GET /api/pets] Returning ${petsWithAccessories.length} pets with accessories`);
+    res.json(petsWithAccessories);
+  } catch (err) {
+    console.error('Get pets error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Purchase a pet or accessory
+app.post('/api/shop/purchase', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.sub;
+    const { type, id } = req.body;
+
+    if (!type || !id) {
+      return res.status(400).json({ error: 'Type and id are required' });
+    }
+
+    if (type !== 'pet' && type !== 'accessory') {
+      return res.status(400).json({ error: 'Type must be "pet" or "accessory"' });
+    }
+
+    // Get user's current points
+    const { rows: userRows } = await pool.query(
+      `SELECT points FROM users WHERE id = $1`,
+      [userId]
+    );
+
+    if (userRows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const userPoints = userRows[0].points;
+
+    // Get the item to purchase
+    let item;
+    if (type === 'pet') {
+      const { rows: petRows } = await pool.query(
+        `SELECT id, cost, is_unlocked, user_id FROM pets WHERE id = $1`,
+        [id]
+      );
+      if (petRows.length === 0) {
+        return res.status(404).json({ error: 'Pet not found' });
+      }
+      item = petRows[0];
+      
+      // Verify the pet belongs to this user
+      if (item.user_id !== parseInt(userId)) {
+        return res.status(403).json({ error: 'You can only purchase your own pets' });
+      }
+    } else {
+      const { rows: accRows } = await pool.query(
+        `SELECT pa.id, pa.cost, pa.is_unlocked, pa.pet_id, p.user_id 
+         FROM pet_accessories pa
+         JOIN pets p ON pa.pet_id = p.id
+         WHERE pa.id = $1`,
+        [id]
+      );
+      if (accRows.length === 0) {
+        return res.status(404).json({ error: 'Accessory not found' });
+      }
+      item = accRows[0];
+      
+      // Verify the accessory's pet belongs to this user
+      if (item.user_id !== parseInt(userId)) {
+        return res.status(403).json({ error: 'You can only purchase accessories for your pets' });
+      }
+    }
+
+    // Check if already unlocked
+    if (item.is_unlocked) {
+      return res.status(400).json({ error: 'Item is already unlocked' });
+    }
+
+    // Check if user has enough points
+    if (userPoints < item.cost) {
+      return res.status(400).json({ error: 'Insufficient points' });
+    }
+
+    // Start transaction
+    await pool.query('BEGIN');
+
+    try {
+      // Deduct points
+      const newPoints = userPoints - item.cost;
+      await pool.query(
+        `UPDATE users SET points = $1 WHERE id = $2`,
+        [newPoints, userId]
+      );
+
+      // Unlock the item
+      if (type === 'pet') {
+        await pool.query(
+          `UPDATE pets SET is_unlocked = true WHERE id = $1`,
+          [id]
+        );
+      } else {
+        await pool.query(
+          `UPDATE pet_accessories SET is_unlocked = true WHERE id = $1`,
+          [id]
+        );
+      }
+
+      await pool.query('COMMIT');
+
+      res.json({ success: true, points: newPoints });
+    } catch (err) {
+      await pool.query('ROLLBACK');
+      throw err;
+    }
+  } catch (err) {
+    console.error('Purchase error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Update pet name
+app.patch('/api/pets/:id', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.sub;
+    const petId = req.params.id;
+    const { name } = req.body;
+
+    if (!name || name.trim().length === 0) {
+      return res.status(400).json({ error: 'Pet name is required' });
+    }
+
+    // Verify the pet belongs to this user
+    const { rows: petRows } = await pool.query(
+      `SELECT id, user_id FROM pets WHERE id = $1`,
+      [petId]
+    );
+
+    if (petRows.length === 0) {
+      return res.status(404).json({ error: 'Pet not found' });
+    }
+
+    if (petRows[0].user_id !== parseInt(userId)) {
+      return res.status(403).json({ error: 'You can only update your own pets' });
+    }
+
+    // Update the pet name
+    const { rows: updatedRows } = await pool.query(
+      `UPDATE pets SET name = $1 WHERE id = $2 RETURNING id, name, image_url AS "imageUrl", 
+              is_unlocked AS "isUnlocked", is_visible AS "isVisible", cost`,
+      [name.trim(), petId]
+    );
+
+    res.json(updatedRows[0]);
+  } catch (err) {
+    console.error('Update pet error:', err);
+    res.status(500).json({ error: 'Server error' });
+>>>>>>> origin/tasos-4
   }
 });
 

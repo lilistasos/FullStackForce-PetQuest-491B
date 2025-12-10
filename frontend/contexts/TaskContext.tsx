@@ -47,7 +47,6 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
 
     try {
       const apiUrl = getApiUrl();
-      
       const response = await fetch(`${apiUrl}/api/tasks`, {
         method: 'GET',
         headers: {

@@ -8,7 +8,8 @@ import {
   Animated, 
   Alert,
   Platform,
-  RefreshControl 
+  RefreshControl,
+  Modal
 } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import { Ionicons } from '@expo/vector-icons';
@@ -78,19 +79,89 @@ const fetchChildrenTasks = async (token: string): Promise<ChildTask[]> => {
 
     const tasks = await response.json();
     
-    // Transform backend format to match ChildTask interface expected by parent calendar
-    const transformedTasks: ChildTask[] = tasks.map((task: any) => ({
-      id: task.id.toString(),
-      childName: task.assignedToName || 'Unknown Child',
-      childId: task.assignedToUserId?.toString() || '',
-      taskName: task.text || '',
-      description: task.description || '',
-      time: 'All Day', // Backend doesn't have time, using default
-      points: task.points || 0,
-      completed: task.completed || false,
-      category: task.category || 'Other',
-      date: task.dueDate || '', // Backend returns dueDate
-    }));
+      // Transform backend format to match ChildTask interface expected by parent calendar
+      // Filter to show only events (type === 'event')
+      console.log('Parent Calendar: All tasks received:', tasks.length, tasks.map((t: any) => ({ id: t.id, text: t.text, type: t.type, dueDate: t.dueDate })));
+      const transformedTasks: ChildTask[] = tasks
+        .filter((task: any) => {
+          // Show events: type === 'event' OR if type is missing but category suggests it's an event
+          const isEvent = task.type === 'event' || 
+                 (!task.type && ['School', 'Sporting Games', 'Family Gatherings'].includes(task.category));
+          if (isEvent) {
+            console.log('Parent Calendar: Found event:', { id: task.id, text: task.text, type: task.type, dueDate: task.dueDate });
+          }
+          return isEvent;
+        })
+        .map((task: any) => {
+          // Convert dueDate to YYYY-MM-DD format
+          // Backend returns PostgreSQL format: "2025-12-06 00:00:00-08" or ISO: "2025-12-06T00:00:00Z" or just "2025-12-06"
+          let dateStr = '';
+          if (task.dueDate) {
+            if (typeof task.dueDate === 'string') {
+              // Extract just the date part (before T or space)
+              dateStr = task.dueDate.split('T')[0].split(' ')[0];
+              // Ensure it's a valid date format
+              if (!dateStr.match(/^\d{4}-\d{2}-\d{2}/)) {
+                console.warn('Parent Calendar: Invalid date format:', task.dueDate, 'extracted:', dateStr);
+                dateStr = '';
+              }
+            } else {
+              // Date object, convert to YYYY-MM-DD
+              const date = new Date(task.dueDate);
+              if (!isNaN(date.getTime())) {
+                dateStr = date.toISOString().split('T')[0];
+              } else {
+                console.warn('Parent Calendar: Invalid date object:', task.dueDate);
+              }
+            }
+          } else {
+            console.warn('Parent Calendar: Task has no dueDate:', task.id, task.text);
+          }
+          
+          // Extract time from dueDate if it's a full datetime (for events)
+          let timeStr = '';
+          if (task.type === 'event' && task.dueDate) {
+            // For events, dueDate might be a full datetime string
+            // Backend returns PostgreSQL timestamp format: "2025-12-06 00:00:00-08" or ISO: "2025-12-06T00:00:00Z"
+            let dateObj: Date;
+            if (typeof task.dueDate === 'string') {
+              // Check if it's a datetime (has space or T separator, not just date)
+              const isDateTime = task.dueDate.includes('T') || (task.dueDate.includes(' ') && task.dueDate.match(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}/));
+              
+              if (isDateTime) {
+                // Parse the datetime string (handles both ISO and PostgreSQL formats)
+                dateObj = new Date(task.dueDate);
+              } else {
+                // Just a date, no time
+                dateObj = new Date(task.dueDate);
+              }
+            } else {
+              dateObj = new Date(task.dueDate);
+            }
+            
+            if (!isNaN(dateObj.getTime())) {
+              const hours = dateObj.getHours();
+              const minutes = dateObj.getMinutes();
+              const period = hours >= 12 ? 'PM' : 'AM';
+              const displayHours = hours % 12 || 12;
+              const displayMinutes = minutes.toString().padStart(2, '0');
+              timeStr = `${displayHours}:${displayMinutes} ${period}`;
+            }
+          }
+          
+          return {
+            id: task.id.toString(),
+            childName: task.assignedToName || 'Unknown Child',
+            childId: task.assignedToUserId?.toString() || '',
+            taskName: task.text || '',
+            description: task.description || '',
+            time: timeStr,
+            points: task.points || 0,
+            completed: task.completed || false,
+            category: task.category || 'Other',
+            date: dateStr,
+          };
+        });
     
     return transformedTasks;
   } catch (error) {
@@ -121,6 +192,10 @@ export default function ParentCalendarScreen() {
   const [childrenTasks, setChildrenTasks] = useState<{ [date: string]: ChildTask[] }>({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  
+  // Delete modal state
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState<ChildTask | null>(null);
   
   // Animation values for month transitions
   const slideAnim = useRef(new Animated.Value(0)).current;
@@ -160,17 +235,27 @@ export default function ParentCalendarScreen() {
       // Fetch real data from database instead of using mock data
       const tasks = await fetchChildrenTasks(token);
       
+      console.log('Parent Calendar: Transformed tasks:', tasks.length, tasks.map((t: any) => ({ id: t.id, text: t.taskName, date: t.date, time: t.time })));
+      
       // Group tasks by date
       const tasksByDate: { [date: string]: ChildTask[] } = {};
       
       tasks.forEach(task => {
-        if (task.date) {
-          if (!tasksByDate[task.date]) {
-            tasksByDate[task.date] = [];
+        // Only include tasks with valid dates
+        if (task.date && task.date.match(/^\d{4}-\d{2}-\d{2}/)) {
+          // Normalize date to YYYY-MM-DD format
+          const normalizedDate = task.date.split('T')[0].split(' ')[0];
+          if (!tasksByDate[normalizedDate]) {
+            tasksByDate[normalizedDate] = [];
           }
-          tasksByDate[task.date].push(task);
+          tasksByDate[normalizedDate].push(task);
+          console.log('Parent Calendar: Added task to date:', normalizedDate, task.taskName);
+        } else {
+          console.log('Parent Calendar: Task skipped - invalid date:', task.date, task.taskName);
         }
       });
+      
+      console.log('Parent Calendar: Tasks by date keys:', Object.keys(tasksByDate));
       
       setChildrenTasks(tasksByDate);
     } catch (error) {
@@ -352,8 +437,42 @@ export default function ParentCalendarScreen() {
     return colors[index];
   };
 
+  // Delete task/event function
+  const handleDelete = async () => {
+    if (!taskToDelete || !token) return;
+    
+    try {
+      const API_URL = getApiUrl();
+      const response = await fetch(`${API_URL}/api/tasks/${taskToDelete.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete event');
+      }
+
+      // Refresh tasks after deletion
+      await loadChildrenTasks(false);
+      setDeleteModalVisible(false);
+      setTaskToDelete(null);
+      Alert.alert('Success', 'Event deleted successfully');
+    } catch (error) {
+      console.error('Error deleting event:', error);
+      Alert.alert('Error', 'Failed to delete event');
+    }
+  };
+
   const renderTaskItem = ({ item }: { item: ChildTask }) => {
     const childColor = getChildColor(item.childId);
+    
+    // Format category with time (e.g., "Sporting Games: 10:00 AM")
+    const categoryDisplay = item.time 
+      ? `${item.category}: ${item.time}`
+      : item.category;
     
     return (
       <View style={[styles.taskCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -361,7 +480,17 @@ export default function ParentCalendarScreen() {
           <View style={[styles.childBadge, { backgroundColor: childColor }]}>
             <Text style={[styles.childBadgeText, { color: 'white' }]}>{item.childName}</Text>
           </View>
-          <Text style={[styles.taskTime, { color: colors.textSecondary }]}>{item.time}</Text>
+          <View style={styles.taskHeaderRight}>
+            <TouchableOpacity
+              onPress={() => {
+                setTaskToDelete(item);
+                setDeleteModalVisible(true);
+              }}
+              style={styles.deleteButton}
+            >
+              <Ionicons name="trash-outline" size={18} color="#FF4444" />
+            </TouchableOpacity>
+          </View>
         </View>
         <View style={styles.taskNameRow}>
           <Text style={[styles.taskName, { color: colors.text }]}>
@@ -373,7 +502,7 @@ export default function ParentCalendarScreen() {
         </View>
         <Text style={[styles.taskDescription, { color: colors.textSecondary }]}>{item.description}</Text>
         <View style={styles.taskFooter}>
-          <Text style={[styles.taskCategory, { color: colors.textSecondary }]}>{item.category}</Text>
+          <Text style={[styles.taskCategory, { color: colors.textSecondary }]}>{categoryDisplay}</Text>
           <Text style={[styles.taskPoints, { color: colors.primary }]}>{item.points} pts</Text>
         </View>
       </View>
@@ -724,6 +853,47 @@ export default function ParentCalendarScreen() {
           )}
         </View>
       </ScrollView>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        visible={deleteModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setDeleteModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Delete Event?</Text>
+            {taskToDelete && (
+              <>
+                <Text style={[styles.modalText, { color: colors.textSecondary }]}>
+                  Are you sure you want to delete "{taskToDelete.taskName}"?
+                </Text>
+                <Text style={[styles.modalText, { color: colors.textSecondary }]}>
+                  This action cannot be undone.
+                </Text>
+              </>
+            )}
+            <View style={styles.modalButtonRow}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalCancelButton, { backgroundColor: colors.secondary }]}
+                onPress={() => {
+                  setDeleteModalVisible(false);
+                  setTaskToDelete(null);
+                }}
+              >
+                <Text style={[styles.modalButtonText, { color: colors.text }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalDeleteButton, { backgroundColor: '#FF4444' }]}
+                onPress={handleDelete}
+              >
+                <Text style={[styles.modalButtonText, { color: 'white' }]}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -828,6 +998,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
+  taskHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  deleteButton: {
+    padding: 4,
+  },
   childBadge: {
     paddingVertical: 4,
     paddingHorizontal: 12,
@@ -885,5 +1063,56 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'monospace',
     marginTop: 12,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContainer: {
+    width: '80%',
+    maxWidth: 400,
+    borderRadius: 12,
+    padding: 24,
+    borderWidth: 1,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    fontFamily: 'monospace',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  modalText: {
+    fontSize: 16,
+    fontFamily: 'monospace',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  modalButtonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCancelButton: {
+    // Styled via backgroundColor prop
+  },
+  modalDeleteButton: {
+    // Styled via backgroundColor prop
+  },
+  modalButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: 'monospace',
   },
 });

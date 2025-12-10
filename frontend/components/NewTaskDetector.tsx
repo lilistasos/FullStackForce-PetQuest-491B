@@ -14,6 +14,7 @@ export default function NewTaskDetector() {
   const { user } = useAuth();
   const { showTasks } = useNewTask();
   const previousTaskIdsRef = useRef<Set<string>>(new Set());
+  const shownTaskIdsRef = useRef<Set<string>>(new Set()); // Track tasks that have already been shown
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const isInitialLoadRef = useRef(true);
 
@@ -32,17 +33,20 @@ export default function NewTaskDetector() {
     if (isInitialLoadRef.current) {
       if (tasks.length >= 0) { // Changed to >= 0 to handle empty task lists too
         // First load - just store the IDs, don't show notifications
-        previousTaskIdsRef.current = new Set(tasks.map(t => t.id.toString()));
+        // Also mark all existing tasks as already shown so they don't trigger popups
+        const taskIds = tasks.map(t => t.id.toString());
+        previousTaskIdsRef.current = new Set(taskIds);
+        shownTaskIdsRef.current = new Set(taskIds);
         isInitialLoadRef.current = false;
-        console.log('NewTaskDetector: Initial load complete, tracking', tasks.length, 'tasks');
-        console.log('NewTaskDetector: Task IDs:', Array.from(previousTaskIdsRef.current));
       }
       return;
     }
 
-    // After initial load, detect new tasks (not completed)
+    // After initial load, detect new tasks (not completed and not already shown)
     const newTasks = tasks.filter(
-      t => !previousTaskIdsRef.current.has(t.id.toString()) && !t.completed
+      t => !previousTaskIdsRef.current.has(t.id.toString()) && 
+           !t.completed && 
+           !shownTaskIdsRef.current.has(t.id.toString())
     );
 
     // Show notification for all new tasks
@@ -85,7 +89,6 @@ export default function NewTaskDetector() {
 
     const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
       if (nextAppState === 'active' && !isInitialLoadRef.current) {
-        console.log('NewTaskDetector: App came to foreground, refreshing tasks');
         refreshTasks();
       }
     });
@@ -99,7 +102,6 @@ export default function NewTaskDetector() {
   useFocusEffect(
     React.useCallback(() => {
       if (user?.role === 'child' && !isInitialLoadRef.current) {
-        console.log('NewTaskDetector: Screen focused, refreshing tasks');
         refreshTasks();
       }
     }, [user?.role, refreshTasks])
@@ -124,14 +126,12 @@ export default function NewTaskDetector() {
     // Refresh tasks periodically to catch new assignments
     console.log('NewTaskDetector: Starting periodic refresh (every 30 seconds)');
     refreshIntervalRef.current = setInterval(() => {
-      console.log('NewTaskDetector: Periodic refresh triggered');
       refreshTasks();
     }, 30000); // 30 seconds to reduce load
 
     // Cleanup on unmount or when dependencies change
     return () => {
       if (refreshIntervalRef.current) {
-        console.log('NewTaskDetector: Cleaning up periodic refresh');
         clearInterval(refreshIntervalRef.current);
         refreshIntervalRef.current = null;
       }

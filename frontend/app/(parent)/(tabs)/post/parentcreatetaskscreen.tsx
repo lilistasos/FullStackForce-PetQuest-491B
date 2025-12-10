@@ -21,7 +21,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/contexts/ThemeContext';
 import { getApiUrl } from '@/utils/api';
 
-const categories = [
+const taskCategories = [
   "Homework",
   "Chores",
   "Extracurriculars",
@@ -30,6 +30,17 @@ const categories = [
   "Other",
 ];
 
+const eventCategories = [
+  "School",
+  "Sporting Games",
+  "Family Gatherings",
+  "Appointments",
+  "Other",
+];
+
+const pointOptions = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
+
+type ItemType = "tasks" | "events";
 
 const ParentCreateTaskScreen = () => {
     const router = useRouter();
@@ -40,11 +51,16 @@ const ParentCreateTaskScreen = () => {
     const { token } = useAuth();
     const { colors, isDarkMode } = useTheme();
 
+    const [itemType, setItemType] = useState<ItemType>("tasks");
     const [taskName, setTaskName] = useState("");
     const [category, setCategory] = useState("");
+    const [categories, setCategories] = useState<string[]>(taskCategories);
     const [date, setDate] = useState(new Date());
+    const [time, setTime] = useState(new Date());
     const [showDatePicker, setShowDatePicker] = useState(false);
+    const [showTimePicker, setShowTimePicker] = useState(false);
     const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+    const [showTypeDropdown, setShowTypeDropdown] = useState(false);
 
     //Adding Task Points
     const [points, setPoints] = useState(0);
@@ -63,6 +79,30 @@ const ParentCreateTaskScreen = () => {
       } else if (Platform.OS === "ios") {
         setShowDatePicker(false);
       }
+    };
+
+    const onTimeChange = (_event: any, selectedTime?: Date) => {
+      if (Platform.OS === "android") {
+        setShowTimePicker(false);
+      }
+      if (selectedTime) {
+        setTime(selectedTime);
+        if (Platform.OS === "ios") {
+          setShowTimePicker(false);
+        }
+      } else if (Platform.OS === "ios") {
+        setShowTimePicker(false);
+      }
+    };
+
+    // Format time as "10:00 AM" or "2:30 PM"
+    const formatTime = (date: Date): string => {
+      const hours = date.getHours();
+      const minutes = date.getMinutes();
+      const period = hours >= 12 ? 'PM' : 'AM';
+      const displayHours = hours % 12 || 12;
+      const displayMinutes = minutes.toString().padStart(2, '0');
+      return `${displayHours}:${displayMinutes} ${period}`;
     };
 
     const handleCancel = () => {
@@ -93,6 +133,24 @@ const ParentCreateTaskScreen = () => {
       setShowCategoryDropdown(false);
     };
 
+    const handleTypeSelect = (type: ItemType) => {
+      setItemType(type);
+      setShowTypeDropdown(false);
+      // Reset category when switching types
+      setCategory("");
+      // Update categories based on type
+      if (type === "events") {
+        setCategories(eventCategories);
+      } else {
+        setCategories(taskCategories);
+      }
+    };
+
+    const handlePointsSelect = (selectedPoints: number) => {
+      setPoints(selectedPoints);
+      setShowPointsDropdown(false);
+    };
+
     const handlePointsIncrement = () => {
       setPoints(prev => prev + 5);
     };
@@ -104,13 +162,14 @@ const ParentCreateTaskScreen = () => {
     const handleAssignTask = async () => {
       // Validate required fields
       if (!taskName.trim()) {
-        Alert.alert("Error", "Please enter a task title.");
+        Alert.alert("Error", `Please enter a ${itemType === "events" ? "event" : "task"} title.`);
         return;
       }
       if (!category) {
         Alert.alert("Error", "Please select a category.");
         return;
       }
+      // Points validation: cannot be negative (points can be 0 for events)
       if (points < 0) {
         Alert.alert("Error", "Points cannot be negative.");
         return;
@@ -122,6 +181,27 @@ const ParentCreateTaskScreen = () => {
 
       try {
         const api = getApiUrl();
+        
+        // For events, combine date and time into a full datetime
+        // For tasks, just use the date
+        let dueDate: string;
+        if (itemType === "events") {
+          // Combine date and time into a single datetime
+          // Create a new date from the date's year, month, day
+          const year = date.getFullYear();
+          const month = date.getMonth();
+          const day = date.getDate();
+          
+          // Create new date with the time's hours and minutes
+          const combinedDateTime = new Date(year, month, day, time.getHours(), time.getMinutes(), 0, 0);
+          
+          // Format as ISO string for backend (includes timezone)
+          dueDate = combinedDateTime.toISOString();
+        } else {
+          // For tasks, just use the date (YYYY-MM-DD format)
+          dueDate = date.toISOString().split('T')[0];
+        }
+        
         const res = await fetch(`${api}/api/tasks`, {
           method: "POST",
           headers: {
@@ -129,22 +209,28 @@ const ParentCreateTaskScreen = () => {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            text: taskName, // Backend expects 'text' not 'title'
+            text: taskName,
             description: note || '',
-            dueDate: date.toISOString().split('T')[0], // Format as YYYY-MM-DD
-            points: points, // Backend expects 'points' not 'pointValue'
+            dueDate: dueDate,
+            points: points || 0, // Events can have 0 points
             category: category || "Other",
+<<<<<<< HEAD
             assignedToUserId: childId as string, // Backend expects 'assignedToUserId' as UUID string
+=======
+            assignedToUserId: parseInt(childId as string),
+            type: itemType === "events" ? "event" : "task",
+>>>>>>> origin/tasos-4
           }),
         });
         const data = await res.json();
         if (!res.ok) {
-          Alert.alert("Error", data.error || "Task creation failed.");
+          Alert.alert("Error", data.error || `${itemType === "events" ? "Event" : "Task"} creation failed.`);
           return;
         }
-        Alert.alert("Task Sent!", "Task successfully assigned.", [
+        const itemTypeName = itemType === "events" ? "Event" : "Task";
+        Alert.alert(`${itemTypeName} Created!`, `${itemTypeName} successfully ${itemType === "events" ? "added to calendar" : "assigned"}.`, [
           {
-            text: "Create Another Task",
+            text: `Create Another ${itemTypeName}`,
             onPress: () => {
               // Reset form
               setTaskName("");
@@ -156,15 +242,19 @@ const ParentCreateTaskScreen = () => {
             },
           },
           {
-            text: "Go to Homepage",
+            text: itemType === "events" ? "Go to Calendar" : "Go to Homepage",
             onPress: () => {
-              router.replace("/(parent)/(tabs)/calendar");
+              if (itemType === "events") {
+                router.replace("/(parent)/(tabs)/calendar");
+              } else {
+                router.replace("/(parent)/(tabs)/calendar");
+              }
             },
           },
         ]);
       } catch (err: any) {
-        console.error("Task creation error:", err);
-        Alert.alert("Error", err.message || "Failed to send task. Please check your connection.");
+        console.error(`${itemType} creation error:`, err);
+        Alert.alert("Error", err.message || `Failed to send ${itemType}. Please check your connection.`);
       }
     };
 
@@ -186,10 +276,25 @@ const ParentCreateTaskScreen = () => {
             nestedScrollEnabled={true}
             bounces={true}
           >
-        <Text style={styles.header}>Create a task</Text>
+          {/* Type Selection Dropdown */}
+          <Text style={styles.label}>Type</Text>
+          <View style={styles.categoryInputContainer}>
+            <TextInput
+              placeholder="Select type"
+              value={itemType === "events" ? "Events" : "Tasks"}
+              editable={false}
+              style={styles.categoryInput}
+            />
+            <TouchableOpacity
+              style={styles.dropdownIconButton}
+              onPress={() => setShowTypeDropdown(true)}
+            >
+              <Ionicons name="chevron-down-outline" size={24} color="#0077B6" />
+            </TouchableOpacity>
+          </View>
   
-          {/* Task Name */}
-          <Text style={styles.label}>Task Title</Text>
+          {/* Task/Event Name */}
+          <Text style={styles.label}>{itemType === "events" ? "Event Title" : "Task Title"}</Text>
           <TextInput
             placeholder="e.g., Finish Math Homework"
             value={taskName}
@@ -214,9 +319,28 @@ const ParentCreateTaskScreen = () => {
             </TouchableOpacity>
           </View>
 
+<<<<<<< HEAD
+=======
+          {/* Points - Available for both tasks and events */}
+          <Text style={styles.label}>Points</Text>
+          <View style={styles.categoryInputContainer}>
+            <TextInput
+              placeholder="Select points"
+              value={points > 0 ? `${points} points` : ""}
+              editable={false}
+              style={styles.categoryInput}
+            />
+            <TouchableOpacity
+              style={styles.dropdownIconButton}
+              onPress={() => setShowPointsDropdown(true)}
+            >
+              <Ionicons name="chevron-down-outline" size={24} color="#0077B6" />
+            </TouchableOpacity>
+          </View>
+>>>>>>> origin/tasos-4
 
           {/* Due Date */}
-          <Text style={styles.label}>Due Date</Text>
+          <Text style={styles.label}>Date</Text>
           <View style={styles.dateInputContainer}>
             <TextInput
               placeholder="Select a date"
@@ -231,6 +355,27 @@ const ParentCreateTaskScreen = () => {
               <Ionicons name="calendar-outline" size={24} color="#0077B6" />
             </TouchableOpacity>
           </View>
+
+          {/* Time - Only show for events */}
+          {itemType === "events" && (
+            <>
+              <Text style={styles.label}>Time</Text>
+              <View style={styles.dateInputContainer}>
+                <TextInput
+                  placeholder="Select a time"
+                  value={formatTime(time)}
+                  editable={false}
+                  style={styles.dateInput}
+                />
+                <TouchableOpacity
+                  style={styles.calendarIconButton}
+                  onPress={() => setShowTimePicker(true)}
+                >
+                  <Ionicons name="time-outline" size={24} color="#0077B6" />
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
   
           {/* Optional Notes */}
           <Text style={styles.label}>Notes (optional)</Text>
@@ -301,7 +446,7 @@ const ParentCreateTaskScreen = () => {
               onPress={handleAssignTask}
               activeOpacity={0.7}
             >
-              <Text style={styles.buttonText}>Send</Text>
+              <Text style={styles.buttonText}>{itemType === "events" ? "Add to Calendar" : "Send"}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -314,6 +459,70 @@ const ParentCreateTaskScreen = () => {
             onChange={onDateChange}
           />
         )}
+
+        {showTimePicker && (
+          <DateTimePicker
+            value={time}
+            mode="time"
+            display={Platform.OS === "ios" ? "spinner" : "default"}
+            onChange={onTimeChange}
+          />
+        )}
+
+        {/* Type Dropdown Modal */}
+        <Modal
+          visible={showTypeDropdown}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowTypeDropdown(false)}
+        >
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowTypeDropdown(false)}
+          >
+            <View style={styles.dropdownContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.categoryItem,
+                  itemType === "events" && styles.categoryItemSelected,
+                ]}
+                onPress={() => handleTypeSelect("events")}
+              >
+                <Text
+                  style={[
+                    styles.categoryItemText,
+                    itemType === "events" && styles.categoryItemTextSelected,
+                  ]}
+                >
+                  Events
+                </Text>
+                {itemType === "events" && (
+                  <Ionicons name="checkmark" size={20} color="#0077B6" />
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.categoryItem,
+                  itemType === "tasks" && styles.categoryItemSelected,
+                ]}
+                onPress={() => handleTypeSelect("tasks")}
+              >
+                <Text
+                  style={[
+                    styles.categoryItemText,
+                    itemType === "tasks" && styles.categoryItemTextSelected,
+                  ]}
+                >
+                  Tasks
+                </Text>
+                {itemType === "tasks" && (
+                  <Ionicons name="checkmark" size={20} color="#0077B6" />
+                )}
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </Modal>
 
         {/* Category Dropdown Modal */}
         <Modal

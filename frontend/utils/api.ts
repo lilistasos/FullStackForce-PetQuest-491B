@@ -55,7 +55,6 @@ export const getApiUrl = (): string => {
     url = localConfig?.WEB_URL || `http://localhost:${PORT}`;
   }
 
-  console.log(`getApiUrl: Platform=${Platform.OS}, URL=${url}`);
   return url;
 };
 

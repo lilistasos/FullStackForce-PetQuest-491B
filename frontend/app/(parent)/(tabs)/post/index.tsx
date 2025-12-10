@@ -235,7 +235,7 @@ const createStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   nextButton: {
     position: "absolute",
-    top: 20,
+    bottom: 20,
     right: 20,
     backgroundColor: colors.primary,
     borderRadius: 30,
