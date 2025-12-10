@@ -1,14 +1,44 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, Image, TouchableOpacity, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { usePet } from "@/contexts/PetContext";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useAuth } from "@/hooks/useAuth";
+import { getApiUrl } from "@/utils/api";
 
 export default function PetScreen() {
   const router = useRouter();
   const { selectedPet } = usePet();
   const { colors } = useTheme();
+  const { token } = useAuth();
+  const [petLevel, setPetLevel] = useState<number>(1);
+
+  // Fetch user points and calculate level
+  useEffect(() => {
+    if (!token) return;
+
+    const fetchUserPoints = async () => {
+      try {
+        const apiUrl = getApiUrl();
+        const response = await fetch(`${apiUrl}/api/users/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (response.ok) {
+          const userData = await response.json();
+          const points = userData.points ?? 0;
+          // Calculate level: every 100 points = 1 level (level 1 = 0-99, level 2 = 100-199, etc.)
+          const level = Math.floor(points / 100) + 1;
+          setPetLevel(level);
+        }
+      } catch (error) {
+        console.error("Error fetching user points:", error);
+      }
+    };
+
+    fetchUserPoints();
+  }, [token]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -18,6 +48,10 @@ export default function PetScreen() {
 
       <View style={styles.imageContainer}>
         <Image source={selectedPet.image} style={styles.petImage} resizeMode="contain" />
+        <View style={[styles.levelContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Ionicons name="star" size={20} color={colors.primary} />
+          <Text style={[styles.levelText, { color: colors.text }]}>Level {petLevel}</Text>
+        </View>
       </View>
 
       <View style={styles.buttonContainer}>
@@ -78,6 +112,21 @@ const styles = StyleSheet.create({
   petImage: {
     width: 300,
     height: 300,
+  },
+  levelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    marginTop: -8,
+    gap: 6,
+  },
+  levelText: {
+    fontSize: 18,
+    fontWeight: 'bold',
   },
   buttonContainer: {
     width: "90%",
