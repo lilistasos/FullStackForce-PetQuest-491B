@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Platform } from "react-native";
 import { usePet } from "@/contexts/PetContext";
 import { useTheme } from "@/contexts/ThemeContext";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth"; 
 import { getApiUrl } from "@/utils/api";
 
 interface AccessoryItem {
@@ -71,7 +71,7 @@ export default function CustomizeScreen() {
   const [savingHat, setSavingHat] = useState(false);
   const [combinedImage, setCombinedImage] = useState<string>("nonedragon");
 
-  const petId = selectedPet?.id;
+  const petId = selectedPet?.id; 
   const HAT_ENDPOINT = petId ? `/pets/${petId}/hat` : null;
   const ACTIVITY_ENDPOINT = petId ? `/pets/${petId}/activity` : null;
 
@@ -195,7 +195,7 @@ export default function CustomizeScreen() {
       });
       if (response.ok) {
         const rows = await response.json();
-        setActivity(rows);
+      setActivity(rows);
       }
     } catch (err) {
       console.warn("Could not load pet activity", err);
@@ -209,9 +209,10 @@ export default function CustomizeScreen() {
   useEffect(() => {
     // Update combined image when hat changes
     const hatId = selectedAccessories?.hats || "none";
-    const petName = selectedPet?.name?.toLowerCase() || "dragon";
-    setCombinedImage(`${hatId.toLowerCase()}${petName}`);
-  }, [selectedAccessories?.hats, selectedPet?.name]);
+    // Use selectedPet.id (pet type like "dragon") instead of name (which can be renamed)
+    const petType = selectedPet?.id?.toLowerCase() || "dragon";
+    setCombinedImage(`${hatId.toLowerCase()}${petType}`);
+  }, [selectedAccessories?.hats, selectedPet?.id]);
 
   // ------------------- Hat equip / unequip -------------------
   const handleAccessorySelect = async (item: AccessoryItem) => {
@@ -241,34 +242,35 @@ export default function CustomizeScreen() {
     // Handle hat activity tracking
     if (selectedCategory === "hats") {
       const hatIdPayload = newId === "none" ? null : newId; 
-      try {
-        setSavingHat(true);
-        const petName = selectedPet?.name?.toLowerCase() || "dragon";
-        setCombinedImage(`${newId.toLowerCase()}${petName}`);
+    try {
+      setSavingHat(true);
+        // Use selectedPet.id (pet type like "dragon") instead of name (which can be renamed)
+        const petType = selectedPet?.id?.toLowerCase() || "dragon";
+        setCombinedImage(`${newId.toLowerCase()}${petType}`);
 
-        const message =
-          hatIdPayload === null
-            ? "Removed hat"
-            : `Equipped a new hat`;
+      const message =
+        hatIdPayload === null
+          ? "Removed hat"
+          : `Equipped a new hat`;
 
-        const nowIso = new Date().toISOString();
-        setActivity((prev) => [
-          {
-            id: nowIso,
-            message,
-            createdAt: nowIso,
-          },
-          ...prev,
-        ]);
-      } catch (err: any) {
-        console.error(err);
-        setSelectedAccessories({
-          ...selectedAccessories,
-          [selectedCategory]: currentlySelected,
-        });
-        alert(err?.message ?? "Could not update hat on server.");
-      } finally {
-        setSavingHat(false);
+      const nowIso = new Date().toISOString();
+      setActivity((prev) => [
+        {
+          id: nowIso,
+          message,
+          createdAt: nowIso,
+        },
+        ...prev,
+      ]);
+    } catch (err: any) {
+      console.error(err);
+      setSelectedAccessories({
+        ...selectedAccessories,
+        [selectedCategory]: currentlySelected,
+      });
+      alert(err?.message ?? "Could not update hat on server.");
+    } finally {
+      setSavingHat(false);
       }
     }
   };

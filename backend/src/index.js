@@ -233,31 +233,31 @@ async function initializeDefaultPets(userId) {
 
   const defaultAccessories = {
     'Dragon': [
-      { name: 'Baseball Cap', cost: 25, isUnlocked: false, isVisible: true },
+      { name: 'Baseball Cap', cost: 0, isUnlocked: true, isVisible: true },
       { name: 'Top Hat', cost: 30, isUnlocked: false, isVisible: true },
       { name: 'Sunglasses', cost: 20, isUnlocked: false, isVisible: true },
       { name: 'Football', cost: 15, isUnlocked: false, isVisible: true },
     ],
     'Cat': [
-      { name: 'Baseball Cap', cost: 25, isUnlocked: false, isVisible: true },
+      { name: 'Baseball Cap', cost: 0, isUnlocked: true, isVisible: true },
       { name: 'Top Hat', cost: 30, isUnlocked: false, isVisible: true },
       { name: 'Sunglasses', cost: 20, isUnlocked: false, isVisible: true },
       { name: 'Football', cost: 15, isUnlocked: false, isVisible: true },
     ],
     'Dog': [
-      { name: 'Baseball Cap', cost: 25, isUnlocked: false, isVisible: true },
+      { name: 'Baseball Cap', cost: 0, isUnlocked: true, isVisible: true },
       { name: 'Top Hat', cost: 30, isUnlocked: false, isVisible: true },
       { name: 'Sunglasses', cost: 20, isUnlocked: false, isVisible: true },
       { name: 'Football', cost: 15, isUnlocked: false, isVisible: true },
     ],
     'Lion': [
-      { name: 'Baseball Cap', cost: 25, isUnlocked: false, isVisible: true },
+      { name: 'Baseball Cap', cost: 0, isUnlocked: true, isVisible: true },
       { name: 'Top Hat', cost: 30, isUnlocked: false, isVisible: true },
       { name: 'Sunglasses', cost: 20, isUnlocked: false, isVisible: true },
       { name: 'Football', cost: 15, isUnlocked: false, isVisible: true },
     ],
     'Unicorn': [
-      { name: 'Baseball Cap', cost: 25, isUnlocked: false, isVisible: true },
+      { name: 'Baseball Cap', cost: 0, isUnlocked: true, isVisible: true },
       { name: 'Top Hat', cost: 30, isUnlocked: false, isVisible: true },
       { name: 'Sunglasses', cost: 20, isUnlocked: false, isVisible: true },
       { name: 'Football', cost: 15, isUnlocked: false, isVisible: true },
@@ -917,7 +917,6 @@ app.get('/api/users/children', authMiddleware, async (req, res) => {
   }
 });
 
-<<<<<<< HEAD
 // Parent adds a child to their family (reuses registerUser logic)
 app.post('/api/users/add-child', authMiddleware, async (req, res) => {
   try {
@@ -997,7 +996,9 @@ app.delete('/api/users/remove-child/:id', authMiddleware, async (req, res) => {
   } catch (err) {
     console.error('Remove child error:', err);
     res.status(500).json({ error: 'Failed to remove child.' });
-=======
+  }
+});
+
 // Initialize pets for existing users (if they don't have any)
 // NOTE: This route must come BEFORE /api/pets to avoid route conflicts
 app.post('/api/pets/initialize', authMiddleware, async (req, res) => {
@@ -1220,7 +1221,6 @@ app.patch('/api/pets/:id', authMiddleware, async (req, res) => {
   } catch (err) {
     console.error('Update pet error:', err);
     res.status(500).json({ error: 'Server error' });
->>>>>>> origin/tasos-4
   }
 });
 

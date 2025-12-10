@@ -15,6 +15,8 @@ const combinedImages: Record<string, any> = {
   "capdragon": require("@/assets/images/capdragon.png"),
   "top-hatdragon": require("@/assets/images/top-hatdragon.png"),
   "nonedragon": require("@/assets/images/pdragon.png"),
+  "glassesdragon": require("@/assets/images/glassesdragon.png"),
+  "footballdragon": require("@/assets/images/footballdragon.png"),
 };
 
 export default function PetScreen() {
@@ -62,7 +64,9 @@ export default function PetScreen() {
 
   // Read hat choice from shared context (set in customize.tsx)
   const hatId = selectedAccessories?.hats || "none";
-  const combinedSource = `${hatId.toLowerCase()}${selectedPet.name.toLowerCase()}`;
+  // Use selectedPet.id (pet type like "dragon") instead of name (which can be renamed)
+  const petType = selectedPet.id.toLowerCase();
+  const combinedSource = `${hatId.toLowerCase()}${petType}`;
   const petImageSource = combinedImages[combinedSource] || selectedPet.image;
 
   return (

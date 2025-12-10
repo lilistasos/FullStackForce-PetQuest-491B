@@ -38,8 +38,6 @@ const eventCategories = [
   "Other",
 ];
 
-const pointOptions = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
-
 type ItemType = "tasks" | "events";
 
 const ParentCreateTaskScreen = () => {
@@ -146,11 +144,6 @@ const ParentCreateTaskScreen = () => {
       }
     };
 
-    const handlePointsSelect = (selectedPoints: number) => {
-      setPoints(selectedPoints);
-      setShowPointsDropdown(false);
-    };
-
     const handlePointsIncrement = () => {
       setPoints(prev => prev + 5);
     };
@@ -214,12 +207,8 @@ const ParentCreateTaskScreen = () => {
             dueDate: dueDate,
             points: points || 0, // Events can have 0 points
             category: category || "Other",
-<<<<<<< HEAD
-            assignedToUserId: childId as string, // Backend expects 'assignedToUserId' as UUID string
-=======
             assignedToUserId: parseInt(childId as string),
             type: itemType === "events" ? "event" : "task",
->>>>>>> origin/tasos-4
           }),
         });
         const data = await res.json();
@@ -289,7 +278,7 @@ const ParentCreateTaskScreen = () => {
               style={styles.dropdownIconButton}
               onPress={() => setShowTypeDropdown(true)}
             >
-              <Ionicons name="chevron-down-outline" size={24} color="#0077B6" />
+              <Ionicons name="chevron-down-outline" size={24} color={colors.primary} />
             </TouchableOpacity>
           </View>
   
@@ -315,29 +304,9 @@ const ParentCreateTaskScreen = () => {
               style={styles.dropdownIconButton}
               onPress={() => setShowCategoryDropdown(true)}
             >
-              <Ionicons name="chevron-down-outline" size={24} color="#0077B6" />
+              <Ionicons name="chevron-down-outline" size={24} color={colors.primary} />
             </TouchableOpacity>
           </View>
-
-<<<<<<< HEAD
-=======
-          {/* Points - Available for both tasks and events */}
-          <Text style={styles.label}>Points</Text>
-          <View style={styles.categoryInputContainer}>
-            <TextInput
-              placeholder="Select points"
-              value={points > 0 ? `${points} points` : ""}
-              editable={false}
-              style={styles.categoryInput}
-            />
-            <TouchableOpacity
-              style={styles.dropdownIconButton}
-              onPress={() => setShowPointsDropdown(true)}
-            >
-              <Ionicons name="chevron-down-outline" size={24} color="#0077B6" />
-            </TouchableOpacity>
-          </View>
->>>>>>> origin/tasos-4
 
           {/* Due Date */}
           <Text style={styles.label}>Date</Text>
@@ -352,7 +321,7 @@ const ParentCreateTaskScreen = () => {
               style={styles.calendarIconButton}
               onPress={() => setShowDatePicker(true)}
             >
-              <Ionicons name="calendar-outline" size={24} color="#0077B6" />
+              <Ionicons name="calendar-outline" size={24} color={colors.primary} />
             </TouchableOpacity>
           </View>
 
@@ -371,7 +340,7 @@ const ParentCreateTaskScreen = () => {
                   style={styles.calendarIconButton}
                   onPress={() => setShowTimePicker(true)}
                 >
-                  <Ionicons name="time-outline" size={24} color="#0077B6" />
+                  <Ionicons name="time-outline" size={24} color={colors.primary} />
                 </TouchableOpacity>
               </View>
             </>
@@ -498,7 +467,7 @@ const ParentCreateTaskScreen = () => {
                   Events
                 </Text>
                 {itemType === "events" && (
-                  <Ionicons name="checkmark" size={20} color="#0077B6" />
+                  <Ionicons name="checkmark" size={20} color={colors.primary} />
                 )}
               </TouchableOpacity>
               <TouchableOpacity
@@ -517,7 +486,7 @@ const ParentCreateTaskScreen = () => {
                   Tasks
                 </Text>
                 {itemType === "tasks" && (
-                  <Ionicons name="checkmark" size={20} color="#0077B6" />
+                  <Ionicons name="checkmark" size={20} color={colors.primary} />
                 )}
               </TouchableOpacity>
             </View>
@@ -557,7 +526,7 @@ const ParentCreateTaskScreen = () => {
                       {item}
                     </Text>
                     {category === item && (
-                      <Ionicons name="checkmark" size={20} color="#0077B6" />
+                      <Ionicons name="checkmark" size={20} color={colors.primary} />
                     )}
                   </TouchableOpacity>
                 )}
@@ -683,7 +652,7 @@ const createStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   assignButton: {
     flex: 1,
-    backgroundColor: colors.primary || "#0077B6",
+    backgroundColor: colors.primary,
     padding: 16,
     borderRadius: 10,
     alignItems: "center",
@@ -799,7 +768,7 @@ const createStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   pointsDisplayText: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#000",
+    color: colors.text,
     fontFamily: "monospace",
     zIndex: 1, // Ensure text is above the bar
   },
@@ -809,9 +778,9 @@ const createStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     gap: 12,
   },
   pointsButton: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.surface,
     borderWidth: 2,
-    borderColor: "#000",
+    borderColor: colors.border,
     borderRadius: 12,
     width: 60,
     height: 50,
@@ -829,7 +798,7 @@ const createStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   pointsButtonText: {
     fontSize: 24,
     fontWeight: "700",
-    color: "#000",
+    color: colors.text,
     fontFamily: "monospace",
   },
 });

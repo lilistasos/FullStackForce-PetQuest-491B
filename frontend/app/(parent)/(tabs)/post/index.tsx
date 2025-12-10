@@ -81,7 +81,7 @@ const ParentSelectChildScreen = () => {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#0077B6" />
+          <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Loading children...</Text>
         </View>
       </SafeAreaView>
@@ -155,7 +155,7 @@ const ParentSelectChildScreen = () => {
             })
           }
         >
-          <Text style={styles.nextArrow}>→</Text>
+          <Ionicons name="chevron-forward" size={28} color="#FFFFFF" />
         </TouchableOpacity>
       )}
     </SafeAreaView>
@@ -252,11 +252,6 @@ const createStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
-  nextArrow: {
-    color: "white",
-    fontSize: 28,
-    fontWeight: "bold",
-  },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
@@ -265,7 +260,7 @@ const createStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   loadingText: {
     marginTop: 10,
     fontSize: 16,
-    color: "#0077B6",
+    color: colors.primary,
   },
   emptyContainer: {
     flex: 1,
@@ -275,7 +270,7 @@ const createStyles = (colors: any, isDarkMode: boolean) => StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: "#666",
+    color: colors.textSecondary,
     textAlign: "center",
     marginBottom: 10,
   },

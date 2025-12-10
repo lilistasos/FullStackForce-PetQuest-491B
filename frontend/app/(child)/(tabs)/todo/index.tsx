@@ -495,9 +495,10 @@ const toggleComplete = async (taskId: string) => {
           <TouchableOpacity onPress={toggleDropdown} style={styles.filterButton}>
             <Ionicons name="funnel-outline" size={20} color={colors.primary} />
           </TouchableOpacity>
-          <TouchableOpacity style={{alignItems: 'center', backgroundColor: '#52AFDD', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8}} 
+          <TouchableOpacity 
+            style={[styles.historyButton, { backgroundColor: colors.primary }]} 
             onPress={() => router.push("/(child)/(tabs)/todo/task-history" as any)}>
-            <Text style={{fontSize: 14}}>Task History</Text>
+            <Text style={[styles.historyButtonText, { color: colors.text }]}>Task History</Text>
           </TouchableOpacity>
 
           {dropdown && (
@@ -661,6 +662,16 @@ const createStyles = (colors: any, isDarkMode: boolean) =>
       justifyContent: 'space-between',
       flexDirection: 'row',
       width: '100%',
+    },
+    historyButton: {
+      alignItems: 'center',
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 8,
+    },
+    historyButtonText: {
+      fontSize: 14,
+      fontWeight: '600',
     },
     filterButton: {
       padding: 4,

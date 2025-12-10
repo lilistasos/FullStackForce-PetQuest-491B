@@ -124,7 +124,6 @@ export default function NewTaskDetector() {
     }
 
     // Refresh tasks periodically to catch new assignments
-    console.log('NewTaskDetector: Starting periodic refresh (every 30 seconds)');
     refreshIntervalRef.current = setInterval(() => {
       refreshTasks();
     }, 30000); // 30 seconds to reduce load
