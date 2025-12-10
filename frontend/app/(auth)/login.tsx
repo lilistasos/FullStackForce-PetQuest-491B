@@ -30,15 +30,12 @@ export default function LoginScreen() {
 
     try {
       const apiUrl = getApiUrl();
-      console.log("Attempting login to:", apiUrl);
       
       const res = await fetch(`${apiUrl}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
-
-      console.log("Response status:", res.status);
       
       let data;
       try {
@@ -49,8 +46,6 @@ export default function LoginScreen() {
         setLoading(false);
         return;
       }
-      
-      console.log("Response data:", data);
 
       if (!res.ok) {
         setMessage(data.error || "Login failed");
@@ -78,7 +73,6 @@ export default function LoginScreen() {
         
         // Save credentials using the auth context
         await login(data.token, userData);
-        console.log("✅ Credentials saved successfully");
         
         setLoading(false);
         
@@ -124,7 +118,7 @@ export default function LoginScreen() {
         }
       }
     } catch (err: any) {
-      console.log("Error:", err);
+      console.error("Login error:", err.message || err);
       setMessage(err.message || "Unable to connect to the server. Make sure the backend is running on port 4000.");
       setLoading(false);
     }

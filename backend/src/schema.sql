@@ -31,6 +31,15 @@ CREATE TABLE IF NOT EXISTS users (
 DO $$ 
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name='users' AND column_name='date_of_birth') THEN
+    -- Add date_of_birth column, allowing NULL initially for existing users
+    ALTER TABLE users ADD COLUMN date_of_birth DATE;
+    -- Set a default date for existing users (you may want to update this manually)
+    UPDATE users SET date_of_birth = '2000-01-01' WHERE date_of_birth IS NULL;
+    -- Now make it NOT NULL
+    ALTER TABLE users ALTER COLUMN date_of_birth SET NOT NULL;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
                  WHERE table_name='users' AND column_name='points') THEN
     ALTER TABLE users ADD COLUMN points INTEGER NOT NULL DEFAULT 0;
   END IF;
